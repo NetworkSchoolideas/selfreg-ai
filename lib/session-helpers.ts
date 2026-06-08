@@ -1,17 +1,26 @@
-import type { StageId } from "./selfreg-model";
-import { getNextStage, getStageMeta, getStageQuestion } from "./selfreg-model";
-import type { Scenario } from "./selfreg-model";
-
-// RecordItem теперь живёт в @/types/session (единый источник правды).
-// Реэкспортируем для обратной совместимости с существующими импортами.
 import type { RecordItem } from "@/types/session";
+import type { Scenario, StageId } from "./selfreg-model";
+import { getNextStage, getStageMeta, getStageQuestion } from "./selfreg-model";
+import {
+  inferEventTypeFromRecord,
+  isProgressRecord as isFlowProgressRecord,
+  isSessionComplete as isFlowSessionComplete,
+} from "@/lib/selfreg-flow-machine";
+
 export type { RecordItem };
 
+export function inferRecordEventType(record: RecordItem): NonNullable<RecordItem["eventType"]> {
+  return inferEventTypeFromRecord(record);
+}
 
-/**
- * Pure helper: creates a standard RecordItem.
- * Keeps record creation logic in one place (elegance + DRY).
- */
+export function isProgressRecord(record: RecordItem): boolean {
+  return isFlowProgressRecord(record);
+}
+
+export function isAnswerRecord(record: RecordItem): boolean {
+  return inferRecordEventType(record) === "answer";
+}
+
 export function createRecord(params: {
   stageId: StageId;
   stageTitle: string;
@@ -25,24 +34,18 @@ export function createRecord(params: {
     stageId: params.stageId,
     stageTitle: params.stageTitle,
     scenario: params.scenario,
+    eventType: params.scenario === "skipped" ? "skip" : params.scenario === "clarify" ? "clarify_request" : "answer",
     answer: params.answer,
     feedback: params.feedback,
     question: params.question,
-    timestamp: new Date().toLocaleString(params.lang === "en" ? "en-US" : "ru-RU"),
+    timestamp: new Date().toISOString(),
   };
 }
 
-/**
- * Pure helper: determines if the session should be considered complete.
- */
 export function isSessionComplete(records: RecordItem[], stageCount: number): boolean {
-  return records.length >= stageCount;
+  return isFlowSessionComplete(records, stageCount);
 }
 
-/**
- * Pure helper: returns the next stage and its question after adding a record.
- * Useful for clean advancement logic.
- */
 export function getNextStageInfo(params: {
   currentStageId: StageId;
   context: string;

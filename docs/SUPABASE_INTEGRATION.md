@@ -16,11 +16,11 @@ The `.env.local` file has been created with the following variables:
 
 ```env
 # Supabase Configuration
-NEXT_PUBLIC_SUPABASE_URL=https://iyqfewihqswjkkdipoaj.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_qk00i8ckdb9Xt55oGkGtPA_QQAyAbdG
+NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<publishable-or-anon-key>
 
 # Service Role Key (Server-side only!)
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_SERVICE_ROLE_KEY=<service-role-or-secret-key>
 
 # Feature flag
 NEXT_PUBLIC_SUPABASE_ENABLED=true
@@ -35,7 +35,7 @@ NEXT_PUBLIC_SUPABASE_ENABLED=true
 
 Run the SQL script in Supabase Dashboard:
 
-1. Go to your Supabase project: https://iyqfewihqswjkkdipoaj.supabase.co
+1. Go to your Supabase project in the Supabase dashboard.
 2. Navigate to **SQL Editor**
 3. Copy and paste the contents of `supabase-schema.sql`
 4. Click **RUN** to execute

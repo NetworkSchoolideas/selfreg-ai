@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
 import { ChildrenStorage } from "@/lib/children-storage";
-import { isSupabaseAvailable } from "@/lib/supabase";
 import { aiService } from "@/services/ai-service";
 import type { ProviderId } from "@/lib/provider-registry";
 import type { AppLang } from "@/lib/app-i18n";
@@ -51,36 +50,38 @@ export function useSessionHistory(options: UseSessionHistoryOptions): UseSession
   const [isLoadingHistoryAI, setIsLoadingHistoryAI] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load sessions when childId changes (using callback pattern)
-  const loadSessions = useCallback(() => {
+  const loadSessions = useCallback(async () => {
     if (!childId) {
       setPastSessions([]);
       log("No childId, cleared sessions");
       return;
     }
-    
+
+    try {
+      const response = await fetch(`/api/children?childId=${encodeURIComponent(childId)}`, {
+        cache: "no-store",
+      });
+
+      if (response.ok) {
+        const payload = await response.json();
+        if (payload?.child) {
+          ChildrenStorage.upsertLocalChild(payload.child);
+        }
+      }
+    } catch {
+      log("Server history load failed, using local mirror");
+    }
+
     const sessions = ChildrenStorage.getCompletedSessionsForChild(childId);
     setPastSessions(sessions);
     log(`Loaded ${sessions.length} completed sessions`);
-    
-    // Check if Supabase is available and log status
-    if (isSupabaseAvailable()) {
-      log("Supabase is available for data sync");
-    } else {
-      log("Using localStorage only");
-    }
   }, [childId]);
 
-  // Initial load and reload when childId changes
   useEffect(() => {
-    if (!childId) {
-      setPastSessions([]); // eslint-disable-line react-hooks/set-state-in-effect
-      return;
-    }
-    
-    const sessions = ChildrenStorage.getCompletedSessionsForChild(childId);
-    setPastSessions(sessions); // eslint-disable-line react-hooks/set-state-in-effect
-  }, [childId]);
+    queueMicrotask(() => {
+      void loadSessions();
+    });
+  }, [loadSessions]);
 
   // Генерация AI-комментария
   const generateHistoryInsight = useCallback(async () => {
@@ -124,12 +125,8 @@ export function useSessionHistory(options: UseSessionHistoryOptions): UseSession
   }, [pastSessions, provider, model, userApiKey, lang, childId]);
 
   const reloadSessions = useCallback(() => {
-    if (childId) {
-      const sessions = ChildrenStorage.getCompletedSessionsForChild(childId);
-      setPastSessions(sessions);
-      log(`Reloaded ${sessions.length} sessions`);
-    }
-  }, [childId]);
+    void loadSessions();
+  }, [loadSessions]);
 
   const clearHistoryAIComment = useCallback(() => {
     setHistoryAIComment(null);

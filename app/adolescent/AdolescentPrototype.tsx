@@ -10,8 +10,8 @@ import { ClarificationBox } from "@/app/components/ClarificationBox";
 import { AdolescentFeedbackForm } from "@/app/components/AdolescentFeedbackForm";
 import { useAdolescentSession } from "./useAdolescentSession";
 import { withLang, type AppLang } from "@/lib/app-i18n";
-import { PROVIDERS, type ProviderId } from "@/lib/provider-registry";
-import { ChildrenStorage } from "@/lib/children-storage";
+import type { ProviderId } from "@/lib/provider-registry";
+import { ChildrenStorage, createChildId } from "@/lib/children-storage";
 import type { RecordItem, CompletedSession } from "@/types/session";
 import { useSessionSubmit } from "@/hooks/useSessionSubmit";
 import { useSessionHistory } from "@/hooks/useSessionHistory";
@@ -32,18 +32,20 @@ export function AdolescentPrototype() {
   const searchParams = useSearchParams();
   const lang = (searchParams.get("lang") === "en" ? "en" : "ru") as AppLang;
   const childIdFromUrl = searchParams.get("childId");
+  const teacherIdFromUrl = searchParams.get("teacher");
   const ui = useUiText(lang);
   const initialContext = lang === "en" ? "study project" : "учебный проект";
 
   // Core session state via hook
   const session = useAdolescentSession({ initialContext, lang });
   const {
-    context, setContext, stageId, stage, records, finalNote,
+    sessionId, context, setContext, stageId, stage, records, finalNote,
     lastClarificationFeedback, setLastClarificationFeedback,
     answer, updateAnswer, pendingHistoryInsight, setPendingHistoryInsight,
     currentQuestion, isCompleted, completedStages, stageCount,
-    addRecordAndAdvance, skipClarification, resetSession,
-    suppressClarifyForNextStage, setSuppressClarifyForNextStage
+    addProcessRecord, addRecordAndAdvance, skipClarification, resetSession,
+    suppressClarifyForNextStage, setSuppressClarifyForNextStage,
+    canGoBack, addClarificationRequest, goBackOneStep
   } = session;
 
   // Provider and model state
@@ -57,24 +59,67 @@ export function AdolescentPrototype() {
   const [participantName, setParticipantName] = useState("");
   const [participantClass, setParticipantClass] = useState("");
   const [isRegistered, setIsRegistered] = useState(false);
+  const [consentGiven, setConsentGiven] = useState(false);
+  const [teacherCode, setTeacherCode] = useState(teacherIdFromUrl ?? "");
 
   // UI-only state
   const [showHistory, setShowHistory] = useState(true);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
   const [justClearedClarify, setJustClearedClarify] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [childLookupAttempted, setChildLookupAttempted] = useState(false);
+  const [childLookupFailed, setChildLookupFailed] = useState(false);
+  const hasActiveChild = isRegistered || Boolean(currentChildId);
 
   // Load child info from URL on mount
   useEffect(() => {
-    if (childIdFromUrl) {
-      const child = ChildrenStorage.getChild(childIdFromUrl);
-      if (child) {
-        const sessionsCount = child.sessions?.length || 0;
-        const name = sessionsCount > 0 ? `${child.name} (${sessionsCount})` : child.name;
-        setCurrentChildName(name); // eslint-disable-line react-hooks/set-state-in-effect
-        setCurrentChildId(childIdFromUrl); // eslint-disable-line react-hooks/set-state-in-effect
-        setIsRegistered(true); // eslint-disable-line react-hooks/set-state-in-effect
+    let active = true;
+
+    const loadChild = async () => {
+      if (!childIdFromUrl) return;
+
+      try {
+        const response = await fetch(`/api/children?childId=${encodeURIComponent(childIdFromUrl)}`, {
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+
+        const payload = await response.json();
+        if (!active || !payload?.child) return;
+
+        ChildrenStorage.upsertLocalChild(payload.child);
+        const sessionsCount = payload.child.sessions?.length || 0;
+        const name = sessionsCount > 0 ? `${payload.child.name} (${sessionsCount})` : payload.child.name;
+
+        setCurrentChildName(name);
+        setCurrentChildId(payload.child.id);
+        setIsRegistered(true);
+        setChildLookupAttempted(true);
+        setChildLookupFailed(false);
+        return;
+      } catch {}
+
+      const localChild = ChildrenStorage.getChild(childIdFromUrl);
+      if (!localChild || !active) {
+        setChildLookupAttempted(true);
+        setChildLookupFailed(true);
+        return;
       }
-    }
+
+      const sessionsCount = localChild.sessions?.length || 0;
+      const name = sessionsCount > 0 ? `${localChild.name} (${sessionsCount})` : localChild.name;
+      setCurrentChildName(name);
+      setCurrentChildId(childIdFromUrl);
+      setIsRegistered(true);
+      setChildLookupAttempted(true);
+      setChildLookupFailed(false);
+    };
+
+    void loadChild();
+
+    return () => {
+      active = false;
+    };
   }, [childIdFromUrl]);
 
   // Restore pending history insight after refresh
@@ -101,10 +146,11 @@ export function AdolescentPrototype() {
   });
 
   // Submit hook
-  const [providerStatus, setProviderStatus] = useState(ui.mockStatus);
-  const { isSending, answerQualityWarning, submitAnswer, setAnswerQualityWarning } = useSessionSubmit({
-    context, stageId, stageTitle: stage.title, currentQuestion, records, finalNote, lang,
+  const [providerStatus, setProviderStatus] = useState("openrouter: ready");
+  const { isSending, answerQualityWarning, submitAnswer, saveSessionSnapshot, setAnswerQualityWarning } = useSessionSubmit({
+    sessionId, context, stageId, stageTitle: stage.title, currentQuestion, records, finalNote, lang,
     provider, model, userApiKey, currentChildId, pendingHistoryInsight,
+    addProcessRecord,
     addRecordAndAdvance,
     setFinalNote: session.setFinalNote,
     setLastClarificationFeedback,
@@ -116,18 +162,56 @@ export function AdolescentPrototype() {
   const progress = isCompleted ? 100 : Math.min(100, Math.round((completedStages / stageCount) * 100));
 
   // Registration handler
-  const handleRegister = useCallback((e: React.FormEvent) => {
+  const handleRegister = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     const fio = participantName.trim();
     const klass = participantClass.trim();
-    if (!fio || !klass) return;
+    if (!fio || !klass || !consentGiven || isRegistering) return;
 
     const anonId = generateAnonId(fio, klass);
-    ChildrenStorage.addChildWithRealData(anonId, fio, klass);
-    setCurrentChildId(anonId);
+    const teacherId = teacherCode.trim() || teacherIdFromUrl || undefined;
+    const consentTimestamp = new Date().toISOString();
+
+    setIsRegistering(true);
+    try {
+      const response = await fetch("/api/children", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: anonId,
+          name: fio,
+          className: klass,
+          teacherId,
+          consentGiven: true,
+          consentTimestamp,
+          realData: { fio, klass },
+        }),
+      });
+
+      if (response.ok) {
+        const payload = await response.json();
+        if (payload?.child) {
+          ChildrenStorage.upsertLocalChild(payload.child);
+          setCurrentChildId(payload.child.id);
+          setCurrentChildName(`${fio} (${klass})`);
+          setIsRegistered(true);
+          setChildLookupFailed(false);
+          return;
+        }
+      }
+    } catch {}
+
+    const localChild = ChildrenStorage.addChildWithRealData(anonId, fio, klass, {
+      teacherId,
+      consentGiven: true,
+      consentTimestamp,
+    });
+    setCurrentChildId(localChild.id);
     setCurrentChildName(`${fio} (${klass})`);
     setIsRegistered(true);
-  }, [participantName, participantClass]);
+    setChildLookupFailed(false);
+    setIsRegistering(false);
+  }, [participantName, participantClass, consentGiven, teacherCode, teacherIdFromUrl, isRegistering]);
 
   // Restart handler
   const handleRestart = useCallback(() => {
@@ -138,7 +222,7 @@ export function AdolescentPrototype() {
     setAnswerQualityWarning(null);
     setProviderStatus(ui.mockStatus);
     window.localStorage.removeItem(STORAGE_KEY);
-  }, [resetSession, setAnswerQualityWarning, setProviderStatus, ui.mockStatus]);
+  }, [resetSession, setAnswerQualityWarning, setProviderStatus, setSuppressClarifyForNextStage, ui.mockStatus]);
 
   // Provider change handler
   const handleProviderChange = useCallback((nextProvider: ProviderId) => {
@@ -161,7 +245,24 @@ export function AdolescentPrototype() {
       const note = buildSessionSummary(context, adv.nextRecords, lang);
       session.setFinalNote(note);
     }
-  }, [lastClarificationFeedback, skipClarification, answer, currentQuestion, stage.title, finalNote, context, lang, session.setFinalNote, setSuppressClarifyForNextStage]);
+  }, [lastClarificationFeedback, skipClarification, answer, currentQuestion, stage.title, finalNote, context, lang, session]);
+
+  const handleNeedClarification = useCallback(() => {
+    if (lastClarificationFeedback) return;
+    const result = addClarificationRequest(currentQuestion, stage.title);
+    saveSessionSnapshot(result.nextRecords, "");
+    setAnswerQualityWarning(null);
+    setSuppressClarifyForNextStage(false);
+  }, [lastClarificationFeedback, addClarificationRequest, currentQuestion, stage.title, saveSessionSnapshot, setAnswerQualityWarning, setSuppressClarifyForNextStage]);
+
+  const handleGoBack = useCallback(() => {
+    const result = goBackOneStep();
+    if (result) {
+      saveSessionSnapshot(result.nextRecords, "");
+    }
+    setAnswerQualityWarning(null);
+    setSuppressClarifyForNextStage(false);
+  }, [goBackOneStep, saveSessionSnapshot, setAnswerQualityWarning, setSuppressClarifyForNextStage]);
 
   // Generate history insight handler
   const handleGenerateInsight = useCallback(async () => {
@@ -243,7 +344,7 @@ export function AdolescentPrototype() {
           </div>
 
           {/* Registration form */}
-          {!isRegistered && !childIdFromUrl && (
+          {!isRegistered && (!childIdFromUrl || childLookupFailed) && (
             <div className="panel" style={{ marginBottom: 24 }}>
               <h3 style={{ marginTop: 0 }}>{ui.registrationTitle}</h3>
               <p className="muted" style={{ marginBottom: 16 }}>{ui.registrationText}</p>
@@ -256,15 +357,46 @@ export function AdolescentPrototype() {
                   <span>{ui.classLabel}</span>
                   <input type="text" value={participantClass} onChange={(e) => setParticipantClass(e.target.value)} placeholder={ui.classPlaceholder} required />
                 </label>
+                <label className="field">
+                  <span>{ui.teacherCode}</span>
+                  <input
+                    type="text"
+                    value={teacherCode}
+                    onChange={(e) => setTeacherCode(e.target.value)}
+                    placeholder={ui.teacherCodePlaceholder}
+                  />
+                </label>
+                <label className="checkbox-field">
+                  <input
+                    type="checkbox"
+                    checked={consentGiven}
+                    onChange={(e) => setConsentGiven(e.target.checked)}
+                    required
+                  />
+                  <span>{ui.consentText}</span>
+                </label>
                 <div className="action-row" style={{ marginTop: 12 }}>
-                  <button type="submit" className="button">{ui.startSession}</button>
+                  <button type="submit" className="button" disabled={!consentGiven || isRegistering}>
+                    {isRegistering ? (lang === "en" ? "Saving..." : "Сохраняю...") : ui.startSession}
+                  </button>
                 </div>
               </form>
             </div>
           )}
 
+          {childIdFromUrl && childLookupAttempted && childLookupFailed && !hasActiveChild && (
+            <div className="panel" style={{ marginBottom: 24, borderColor: "#e8b4b4", background: "#fff7f7" }}>
+              <h3 style={{ marginTop: 0 }}>{lang === "en" ? "Link needs attention" : "Нужно проверить ссылку"}</h3>
+              <p className="muted" style={{ marginBottom: 0 }}>
+                {lang === "en"
+                  ? "We could not find a saved participant for this child link. You can register again below or ask the teacher for an updated link."
+                  : "Мы не нашли сохраненного участника по этой ссылке. Можно зарегистрироваться заново ниже или запросить у педагога новую ссылку."}
+              </p>
+            </div>
+          )}
+
           {/* History review */}
-          {(isRegistered || childIdFromUrl) && pastSessions.length > 0 && showHistory && (
+          {hasActiveChild && pastSessions.length > 0 && showHistory && (
             <HistoryReviewPanel
               ui={ui}
               pastSessions={pastSessions}
@@ -280,7 +412,7 @@ export function AdolescentPrototype() {
           )}
 
           {/* Main session content */}
-          {(isRegistered || childIdFromUrl) && (!showHistory || pastSessions.length === 0) && (
+          {hasActiveChild && (!showHistory || pastSessions.length === 0) && (
             <>
               <label className="field">
                 <span>{ui.context}</span>
@@ -300,7 +432,16 @@ export function AdolescentPrototype() {
               )}
 
               {isCompleted ? (
-                <CompletionView ui={ui} finalNote={finalNote} onRestart={handleRestart} lang={lang} childIdFromUrl={childIdFromUrl} feedbackSubmitted={feedbackSubmitted} onFeedbackSubmitted={() => setFeedbackSubmitted(true)} />
+                <CompletionView
+                  ui={ui}
+                  finalNote={finalNote}
+                  onRestart={handleRestart}
+                  lang={lang}
+                  childIdFromUrl={childIdFromUrl}
+                  currentChildId={currentChildId}
+                  feedbackSubmitted={feedbackSubmitted}
+                  onFeedbackSubmitted={() => setFeedbackSubmitted(true)}
+                />
               ) : (
                 <SessionForm
                   ui={ui}
@@ -317,6 +458,9 @@ export function AdolescentPrototype() {
                   onSkip={handleSkipClarification}
                   onSubmit={handleSubmit}
                   onRestart={handleRestart}
+                  onNeedClarification={handleNeedClarification}
+                  onGoBack={handleGoBack}
+                  canGoBack={canGoBack}
                 />
               )}
             </>
@@ -366,8 +510,10 @@ function useUiText(lang: "ru" | "en") {
     contextPlaceholder: lang === "en" ? "e.g.: exam, project" : "например: экзамен, проект",
     answerLabel: lang === "en" ? "Your answer" : "Твой ответ",
     answerPlaceholder: lang === "en" ? "Write 1-3 sentences" : "Напиши 1-3 предложения",
-    submit: lang === "en" ? "Submit" : "Ответить",
+    submit: lang === "en" ? "Continue" : "Продолжить",
     sending: lang === "en" ? "Waiting for AI..." : "Жду ответ ИИ...",
+    clarifyBtn: lang === "en" ? "Need clarification" : "Не понял вопрос",
+    backBtn: lang === "en" ? "Go back" : "Назад",
     restart: lang === "en" ? "Start over" : "Начать заново",
     doneTitle: lang === "en" ? "Session completed" : "Сессия завершена",
     doneText: lang === "en" ? "Answers saved. You can open the dashboard or run the cycle again." : "Ответы сохранены. Можно открыть дашборд или пройти цикл заново.",
@@ -382,6 +528,9 @@ function useUiText(lang: "ru" | "en") {
     classPlaceholder: lang === "en" ? "9A" : "9А",
     startSession: lang === "en" ? "Start" : "Начать",
     mockStatus: lang === "en" ? "Mock mode: no external key needed" : "Mock-режим: ключ не нужен",
+    teacherCode: lang === "en" ? "Teacher code (optional)" : "Код учителя (опционально)",
+    teacherCodePlaceholder: lang === "en" ? "Enter code" : "Введите код",
+    consentText: lang === "en" ? "I consent to the processing of personal data for the purposes of the SelfReg AI project" : "Я согласен на обработку персональных данных для целей проекта SelfReg AI",
     historyTitle: lang === "en" ? "Your history" : "Ваша история",
     historyLatestLabel: lang === "en" ? "Latest session" : "Последняя сессия",
     historyAiButton: lang === "en" ? "Get AI comment" : "Получить комментарий от ИИ",
@@ -391,13 +540,8 @@ function useUiText(lang: "ru" | "en") {
   };
 }
 
-function generateAnonId(fio: string, klass: string): string {
-  const normalized = `${fio.trim().toLowerCase()}|${klass.trim().toLowerCase()}`;
-  let hash = 5381;
-  for (let i = 0; i < normalized.length; i++) {
-    hash = (hash * 33) ^ normalized.charCodeAt(i);
-  }
-  return 'id_' + (hash >>> 0).toString(36);
+function generateAnonId(_fio: string, _klass: string): string {
+  return createChildId();
 }
 
 // ========== Sub-components ==========
@@ -461,16 +605,19 @@ function HistoryReviewPanel({
 }
 
 function CompletionView({
-  ui, finalNote, onRestart, lang, childIdFromUrl, feedbackSubmitted, onFeedbackSubmitted
+  ui, finalNote, onRestart, lang, childIdFromUrl, currentChildId, feedbackSubmitted, onFeedbackSubmitted
 }: {
   ui: ReturnType<typeof useUiText>;
   finalNote: string;
   onRestart: () => void;
   lang: AppLang;
   childIdFromUrl: string | null;
+  currentChildId: string | null;
   feedbackSubmitted: boolean;
   onFeedbackSubmitted: () => void;
 }) {
+  const effectiveChildId = childIdFromUrl || currentChildId;
+
   return (
     <div className="final-note">
       <h3>{ui.doneTitle}</h3>
@@ -479,12 +626,12 @@ function CompletionView({
       <div className="action-row" style={{ marginTop: 16 }}>
         <button className="button secondary" type="button" onClick={onRestart}>{ui.restart}</button>
       </div>
-      {childIdFromUrl ? (
+      {effectiveChildId ? (
         <p className="muted" style={{ fontSize: 13, marginTop: 12 }}>{lang === "en" ? "Results saved for teacher." : "Результаты сохранены для педагога."}</p>
       ) : (
         <p className="muted" style={{ fontSize: 13, marginTop: 12 }}>{lang === "en" ? "You can start over anytime." : "Можно начать заново в любое время."}</p>
       )}
-      {!feedbackSubmitted && childIdFromUrl && <AdolescentFeedbackForm lang={lang} childIdFromUrl={childIdFromUrl} currentChildId={null} onSubmitted={onFeedbackSubmitted} />}
+      {!feedbackSubmitted && effectiveChildId && <AdolescentFeedbackForm lang={lang} childIdFromUrl={childIdFromUrl} currentChildId={currentChildId} onSubmitted={onFeedbackSubmitted} />}
       {feedbackSubmitted && <p style={{ fontSize: 13, color: 'var(--accent)', marginTop: 8 }}>{lang === "en" ? "Feedback saved." : "Обратная связь сохранена."}</p>}
     </div>
   );
@@ -492,7 +639,8 @@ function CompletionView({
 
 function SessionForm({
   ui, currentQuestion, answer, updateAnswer, lastClarificationFeedback, lang, provider, isSending,
-  answerQualityWarning, justClearedClarify, onClearAndRetry, onSkip, onSubmit, onRestart
+  answerQualityWarning, justClearedClarify, onClearAndRetry, onSkip, onSubmit, onRestart,
+  onNeedClarification, onGoBack, canGoBack
 }: {
   ui: ReturnType<typeof useUiText>;
   currentQuestion: string;
@@ -508,6 +656,9 @@ function SessionForm({
   onSkip: () => void;
   onSubmit: () => Promise<void>;
   onRestart: () => void;
+  onNeedClarification: () => void;
+  onGoBack: () => void;
+  canGoBack: boolean;
 }) {
   return (
     <>
@@ -540,10 +691,23 @@ function SessionForm({
         </div>
       )}
 
-      <div className="action-row">
-        <button className="button" type="button" onClick={onSubmit} disabled={isSending} aria-busy={isSending}>
+      <div className="action-row" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        {/* Secondary actions on the left */}
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button className="button secondary" type="button" onClick={onNeedClarification} disabled={isSending || Boolean(lastClarificationFeedback)}>
+            💬 {ui.clarifyBtn}
+          </button>
+          <button className="button secondary" type="button" onClick={onGoBack} disabled={isSending || !canGoBack}>
+            ← {ui.backBtn}
+          </button>
+        </div>
+        
+        {/* Primary action */}
+        <button className="button" type="button" onClick={onSubmit} disabled={isSending} aria-busy={isSending} style={{ flex: 1, maxWidth: 200 }}>
           {isSending ? ui.sending : ui.submit}
         </button>
+        
+        {/* Restart on the right */}
         <button className="button secondary" type="button" onClick={onRestart}>{ui.restart}</button>
       </div>
     </>

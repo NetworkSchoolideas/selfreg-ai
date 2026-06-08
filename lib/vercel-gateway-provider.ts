@@ -1,4 +1,4 @@
-import { type AnalyzeInput, type AnalyzeResult } from "@/lib/ai-provider";
+import { type AnalyzeInput, type AnalyzeResult } from "@/lib/ai-types";
 import { buildAnalyzeResultFromLlm } from "@/lib/llm-response";
 import { getNextStage, type StageId } from "@/lib/selfreg-model";
 import { providers } from "@/lib/config";

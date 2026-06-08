@@ -36,7 +36,7 @@ export class AIService {
       model?: string;
       userApiKey?: string;
       lang: AppLang;
-      history: Array<{ stage: string; answer: string; feedback?: string }>;
+      history: ChatHistoryItem[];
       forcedScenario?: Scenario;
     },
     options?: {
@@ -64,6 +64,14 @@ export class AIService {
 
       if (options?.timeoutMs) {
         clearTimeout(timeoutId);
+      }
+
+      const contentType = response.headers.get("content-type") || "";
+      if (!contentType.includes("application/json")) {
+        const raw = await response.text();
+        throw new Error(
+          `Chat API returned non-JSON response (${response.status}). ${raw.slice(0, 80)}`
+        );
       }
 
       const data = await response.json();

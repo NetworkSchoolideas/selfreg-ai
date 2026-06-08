@@ -1,4 +1,4 @@
-import type { AppLang } from "@/lib/app-i18n";
+﻿import type { AppLang } from "@/lib/app-i18n";
 
 export type StageId = "1" | "2" | "3" | "4" | "5";
 export type Scenario = "A" | "B" | "clarify" | "skipped";
@@ -151,6 +151,325 @@ const STAGES: StageCopy[] = [
   }
 ];
 
+
+
+const QUESTION_VARIANTS: Partial<Record<StageId, Partial<Record<Scenario | "default", { ru: string[]; en: string[] }>>>> = {
+  "1": {
+    A: {
+      ru: [
+        "Какую одну реальную ситуацию ты хочешь улучшить в ближайшее время?",
+        "Если выбрать только один фокус, что для тебя сейчас действительно важно?"
+      ],
+      en: [
+        "What one real situation do you want to improve in the near future?",
+        "If you choose only one focus, what actually matters to you now?"
+      ]
+    },
+    B: {
+      ru: [
+        "Без жестких требований к себе: что для тебя правда важно, кроме идеального результата?",
+        "Если убрать давление, какую цель можно назвать реалистичной и своей?"
+      ],
+      en: [
+        "Without harsh pressure on yourself, what really matters besides the ideal outcome?",
+        "If you remove pressure, what goal would feel realistic and truly yours?"
+      ]
+    },
+    clarify: {
+      ru: [
+        "Назови просто одну ситуацию: учеба, спорт, общение, проект или привычка.",
+        "Можно совсем коротко: где именно ты хочешь справляться лучше?"
+      ],
+      en: [
+        "Name just one situation: study, sport, communication, project, or habit.",
+        "You can answer very briefly: where exactly do you want to handle things better?"
+      ]
+    }
+  },
+  "2": {
+    A: {
+      ru: [
+        "Какой маленький шаг можно сделать без лишней подготовки уже сегодня?",
+        "Что займет 5-10 минут и даст нормальный старт?"
+      ],
+      en: [
+        "What small step can you take today without extra preparation?",
+        "What would take 5 to 10 minutes and give you a workable start?"
+      ]
+    },
+    B: {
+      ru: [
+        "Чтобы не давить на себя, какой шаг можно сделать совсем маленьким и посильным?",
+        "Если убрать рывок и перегрузку, с какого спокойного шага лучше начать?"
+      ],
+      en: [
+        "To reduce pressure, what step can you make very small and manageable?",
+        "If you remove the rush and overload, what calm first step makes more sense?"
+      ]
+    },
+    clarify: {
+      ru: [
+        "Напиши одно простое действие, которое реально сделать в ближайшее время.",
+        "Можно ответить совсем коротко: что именно ты сделаешь первым?"
+      ],
+      en: [
+        "Write one simple action that is realistic in the near future.",
+        "You can answer very briefly: what exactly will you do first?"
+      ]
+    }
+  },
+  "3": {
+    A: {
+      ru: [
+        "Какой комментарий, сигнал или результат тут уже можно использовать с пользой?",
+        "Что из обратной связи поможет сделать следующий шаг точнее?"
+      ],
+      en: [
+        "What comment, signal, or result here can already be used in a helpful way?",
+        "What part of the feedback can make the next step more precise?"
+      ]
+    },
+    B: {
+      ru: [
+        "Если реакция задевает слишком сильно, что здесь факт, а что уже самообвинение?",
+        "Какую часть обратной связи можно взять спокойно, без удара по себе?"
+      ],
+      en: [
+        "If the reaction hits too hard, what here is a fact and what is already self-attack?",
+        "What part of the feedback can you take calmly, without turning it against yourself?"
+      ]
+    },
+    clarify: {
+      ru: [
+        "Назови один комментарий, замечание или результат, на который ты сейчас смотришь.",
+        "Можно коротко: какой именно сигнал ты здесь получил?"
+      ],
+      en: [
+        "Name one comment, remark, or result you are looking at right now.",
+        "You can answer briefly: what exact signal did you receive here?"
+      ]
+    }
+  },
+  "4": {
+    A: {
+      ru: [
+        "Если сравнить результат с целью, что совпало и что пока не совпало?",
+        "Где видно одно конкретное совпадение и одно расхождение?"
+      ],
+      en: [
+        "If you compare the result with the goal, what matched and what did not yet match?",
+        "Where do you see one concrete match and one concrete mismatch?"
+      ]
+    },
+    B: {
+      ru: [
+        "Без общего жесткого вывода: какой один критерий можно сейчас спокойно проверить?",
+        "Если не обнулять все сразу, где именно видно одно расхождение?"
+      ],
+      en: [
+        "Without making a harsh overall verdict, what one criterion can you check calmly right now?",
+        "If you do not cancel everything at once, where exactly do you see one mismatch?"
+      ]
+    },
+    clarify: {
+      ru: [
+        "Скажи проще: если сравнить цель и результат, где они не совпали?",
+        "Можно одним предложением: что здесь вышло не так, как ты хотел?"
+      ],
+      en: [
+        "Say it more simply: if you compare the goal and the result, where did they not match?",
+        "You can answer in one sentence: what here turned out differently from what you wanted?"
+      ]
+    }
+  },
+  "5": {
+    A: {
+      ru: [
+        "Что можно немного изменить в следующей попытке, чтобы стало легче или точнее?",
+        "Какой один следующий вариант будет лучше без лишнего давления?"
+      ],
+      en: [
+        "What can you adjust a little in the next attempt so it becomes easier or more precise?",
+        "What one next version would be better without extra pressure?"
+      ]
+    },
+    B: {
+      ru: [
+        "Не полный передел: какую одну мягкую корректировку лучше выбрать сейчас?",
+        "Если не ломать все заново, что можно изменить в следующей попытке совсем точечно?"
+      ],
+      en: [
+        "Not a full rebuild: what one soft adjustment would make more sense now?",
+        "If you do not rebuild everything again, what can you change in the next attempt in one focused way?"
+      ]
+    },
+    clarify: {
+      ru: [
+        "Назови одно изменение, которое стоит попробовать в следующий раз.",
+        "Можно совсем коротко: что ты попробуешь сделать иначе?"
+      ],
+      en: [
+        "Name one change worth trying next time.",
+        "You can answer very briefly: what will you try to do differently?"
+      ]
+    }
+  }
+};
+
+
+type QuestionHistoryItem = { stageId?: string; answer: string; scenario?: string; eventType?: string };
+type QuestionFocusKey =
+  | "b-action-from-rigid-goal"
+  | "b-action-stuck"
+  | "b-action-rush"
+  | "b-feedback-self-attack"
+  | "b-comparison-collapse"
+  | "b-correction-rebuild";
+
+const QUESTION_FOCUS_VARIANTS: Partial<Record<StageId, Partial<Record<QuestionFocusKey, { ru: string[]; en: string[] }>>>> = {
+  "2": {
+    "b-action-from-rigid-goal": {
+      ru: [
+        "После жесткой цели лучше начать без давления: какой самый маленький шаг можно сделать спокойно?",
+        "Что можно сделать первым, чтобы приблизиться к цели без требования сделать все идеально?"
+      ],
+      en: [
+        "After a rigid goal, start without pressure: what is the smallest step you can take calmly?",
+        "What can you do first to move toward the goal without needing everything to be perfect?"
+      ]
+    },
+    "b-action-stuck": {
+      ru: [
+        "Если ты застрял, какой шаг можно сделать настолько маленьким, чтобы начать было почти не страшно?",
+        "Что можно сделать за 5 минут, чтобы выйти из откладывания без рывка и давления?"
+      ],
+      en: [
+        "If you are stuck, what step can be small enough that starting feels almost safe?",
+        "What can you do in 5 minutes to move out of postponing without a rush or pressure?"
+      ]
+    },
+    "b-action-rush": {
+      ru: [
+        "Если хочется резко сделать все сразу, какой один спокойный шаг лучше выбрать первым?",
+        "Что можно сделать сейчас без рывка, чтобы не перегрузить себя в самом начале?"
+      ],
+      en: [
+        "If you want to do everything at once, what one calm step should come first?",
+        "What can you do now without rushing, so you do not overload yourself at the start?"
+      ]
+    }
+  },
+  "3": {
+    "b-feedback-self-attack": {
+      ru: [
+        "Что в обратной связи было фактом, а что стало болезненной оценкой себя?",
+        "Какую одну полезную часть замечания можно взять без самообвинения?"
+      ],
+      en: [
+        "What in the feedback was a fact, and what turned into a painful judgment of yourself?",
+        "What one useful part of the comment can you take without self-blame?"
+      ]
+    }
+  },
+  "4": {
+    "b-comparison-collapse": {
+      ru: [
+        "Не обнуляя всю работу, где видно одно совпадение с целью и одно расхождение?",
+        "Какой один критерий можно спокойно проверить, чтобы сравнение стало точнее?"
+      ],
+      en: [
+        "Without cancelling the whole effort, where do you see one match with the goal and one mismatch?",
+        "What one criterion can you check calmly so the comparison becomes more precise?"
+      ]
+    }
+  },
+  "5": {
+    "b-correction-rebuild": {
+      ru: [
+        "Не переделывая все с нуля, какую одну точечную правку стоит попробовать?",
+        "Что можно изменить мягко и конкретно, чтобы следующая попытка стала лучше?"
+      ],
+      en: [
+        "Without rebuilding everything from zero, what one focused adjustment is worth trying?",
+        "What can you change gently and specifically so the next attempt becomes better?"
+      ]
+    }
+  }
+};
+
+function normalizeQuestionText(text: string): string {
+  return text.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function includesAny(text: string, markers: string[]): boolean {
+  return markers.some((marker) => text.includes(marker));
+}
+
+function getLastProgressItem(history: QuestionHistoryItem[]): QuestionHistoryItem | undefined {
+  for (let index = history.length - 1; index >= 0; index -= 1) {
+    const item = history[index];
+    if (item.scenario === "A" || item.scenario === "B") return item;
+  }
+  return undefined;
+}
+
+function getQuestionFocusHint(stageId: StageId, history: QuestionHistoryItem[]): QuestionFocusKey | undefined {
+  const lastProgress = getLastProgressItem(history);
+  if (!lastProgress) return undefined;
+
+  const answer = normalizeQuestionText(lastProgress.answer || "");
+  const wasB = lastProgress.scenario === "B";
+
+  const rigidGoal = includesAny(answer, [
+    "только пятер", "только 5", "любой ценой", "идеально", "доказать всем", "only top grade", "only an a", "at any cost", "perfect"
+  ]);
+  const stuck = includesAny(answer, [
+    "застр", "отклады", "не начну", "не могу начать", "потом", "stuck", "postpon", "can't start", "cannot start", "later"
+  ]);
+  const rush = includesAny(answer, [
+    "сразу все", "сразу всё", "срочно", "рывок", "не буду думать", "everything at once", "rush", "urgent", "without thinking"
+  ]);
+  const selfAttack = includesAny(answer, [
+    "я плох", "я туп", "я глуп", "полный ноль", "лучше молч", "стыд", "i am bad", "i am stupid", "total zero", "better stay silent", "shame"
+  ]);
+  const collapse = includesAny(answer, [
+    "все зря", "всё зря", "нигде", "ничего не вышло", "полный ноль", "обнул", "nothing matched", "nothing worked", "everything was pointless", "total failure"
+  ]);
+  const rebuild = includesAny(answer, [
+    "переделаю все", "переделаю всё", "с нуля", "брошу", "сдамся", "redo everything", "from zero", "quit", "give up"
+  ]);
+
+  if (stageId === "2" && rigidGoal) return "b-action-from-rigid-goal";
+  if (stageId === "2" && stuck) return "b-action-stuck";
+  if (stageId === "2" && (rush || wasB)) return "b-action-rush";
+  if (stageId === "3" && (selfAttack || wasB)) return "b-feedback-self-attack";
+  if (stageId === "4" && (collapse || wasB)) return "b-comparison-collapse";
+  if (stageId === "5" && (rebuild || wasB)) return "b-correction-rebuild";
+
+  return undefined;
+}
+function getQuestionScenarioHint(
+  stageId: StageId,
+  history: Array<{ stageId?: string; answer: string; scenario?: string; eventType?: string }>
+): Scenario | "default" {
+  if (history.length === 0) return "default";
+
+  for (let index = history.length - 1; index >= 0; index -= 1) {
+    const item = history[index];
+    if (item.stageId === stageId && item.scenario === "clarify") {
+      return "clarify";
+    }
+    if (item.stageId === stageId && item.eventType === "back") {
+      return "clarify";
+    }
+    if (item.scenario === "A" || item.scenario === "B") {
+      return item.scenario;
+    }
+  }
+
+  return "default";
+}
+
 function pick<T>(lang: AppLang, value: { ru: T; en: T }): T {
   return lang === "en" ? value.en : value.ru;
 }
@@ -179,17 +498,20 @@ export function getNextStage(stage: StageId): StageId {
 export function getStageQuestion(
   stageId: StageId,
   context = "",
-  history: Array<{ answer: string; scenario?: string }> = [],
+  history: Array<{ stageId?: string; answer: string; scenario?: string; eventType?: string }> = [],
   lang: AppLang = "ru"
 ) {
   const stage = getStageMeta(stageId, lang);
-
-  // Only count "real" (A/B) answers for question rotation.
-  // Clarify/skip records should not pollute the question variety on later stages.
-  const realProgress = history.filter(h => h.scenario === "A" || h.scenario === "B").length;
-
-  const seed = (context.trim().length + realProgress) % stage.questions.length;
-  return stage.questions[seed];
+  const realProgress = history.filter((h) => h.scenario === "A" || h.scenario === "B").length;
+  const scenarioHint = getQuestionScenarioHint(stageId, history);
+  const focusHint = getQuestionFocusHint(stageId, history);
+  const variantPool =
+    (focusHint ? QUESTION_FOCUS_VARIANTS[stageId]?.[focusHint]?.[lang] : undefined) ||
+    QUESTION_VARIANTS[stageId]?.[scenarioHint]?.[lang] ||
+    QUESTION_VARIANTS[stageId]?.default?.[lang] ||
+    stage.questions;
+  const seed = (context.trim().length + realProgress + variantPool.length) % variantPool.length;
+  return variantPool[seed];
 }
 
 type MockInput = {
@@ -198,22 +520,19 @@ type MockInput = {
   context: string;
   history: Array<{ answer: string }>;
   lang?: AppLang;
-  /** Absolute scenario from scenario-engine (highest priority) */
   forcedScenario?: Scenario;
 };
 
+function isNonAcademicContext(text: string) {
+  return /sport|training|music|art|friend|chat|habit|sleep|home|family|спорт|трениров|музык|рис|друз|общени|привыч|сон|дом|семь/i.test(text);
+}
+
 export function makeMockFeedback(input: MockInput) {
   const lang = input.lang || "ru";
-
-  // SCENARIO OWNERSHIP: forcedScenario (from scenario-engine via route) is absolute.
-  // The legacy detectScenario is intentionally NOT called anymore in any production path.
-  // If somehow forcedScenario is missing, we default to "A" (most common safe support type).
   const scenario: Scenario = input.forcedScenario ?? "A";
   const stage = getStageMeta(input.stageId, lang);
   const contextText = `${input.context} ${input.answer}`.toLowerCase();
-  const nonAcademic = /sport|training|music|art|friend|chat|habit|sleep|home|family|спорт|трениров|музык|рис|друз|общени|привыч|сон|дом|семь/i.test(
-    contextText
-  );
+  const nonAcademic = isNonAcademicContext(contextText);
   const contextTail =
     lang === "en"
       ? nonAcademic
@@ -224,17 +543,17 @@ export function makeMockFeedback(input: MockInput) {
         : "Этот ответ уже можно использовать как материал для следующего шага.";
 
   if (scenario === "clarify") {
-    // Make the clarify message slightly stage-aware so it doesn't feel like the same generic message on every step.
-    const stageHint = lang === "en"
-      ? `Focus on the "${stage.title}" stage for now.`
-      : `Сейчас сосредоточься на этапе «${stage.title}».`;
+    const stageHint =
+      lang === "en"
+        ? `Focus on the "${stage.title}" stage for now.`
+        : `Сейчас сосредоточься на этапе «${stage.title}».`;
 
     return {
       scenario,
       feedback:
         lang === "en"
           ? `The question felt too broad. ${stageHint} Write 1-2 concrete sentences about your real situation.`
-          : `Похоже, вопрос прозвучал слишком широко. ${stageHint} Напиши 1-2 конкретных предложения про твою реальную ситуацию.`,
+          : `Похоже, вопрос прозвучал слишком широко. ${stageHint} Напиши 1-2 конкретных предложения про свою реальную ситуацию.`,
       finalNote:
         lang === "en"
           ? "At this point the key is not precision, but a clear entry into the dialogue with simple language."
@@ -246,7 +565,7 @@ export function makeMockFeedback(input: MockInput) {
     "1":
       lang === "en"
         ? `There is already something to work with. At the "${stage.title}" stage, it helps to narrow this down to one concrete situation and one realistic result. ${contextTail}`
-        : `Здесь уже есть за что зацепиться. На этапе «${stage.title}» полезно сузить ответ до одной конкретной ситуации и одного реалистичного результата. ${contextTail}`,
+        : `Здесь уже есть материал для работы. На этапе «${stage.title}» полезно сузить ответ до одной конкретной ситуации и одного реалистичного результата. ${contextTail}`,
     "2":
       lang === "en"
         ? `A small entry point helps here. At the "${stage.title}" stage, choose an action that can be done in 5 to 10 minutes without extra preparation. ${contextTail}`
@@ -297,3 +616,4 @@ export function makeMockFeedback(input: MockInput) {
         : "По сессии видно, где нужна временная опора: уточнить цель, перейти к первому действию, спокойно разобрать обратную связь, сравнить результат с планом и выбрать следующую корректировку."
   };
 }
+

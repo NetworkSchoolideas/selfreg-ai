@@ -102,9 +102,9 @@ git push origin main
 В Vercel Dashboard → Settings → Environment Variables:
 
 ```
-NEXT_PUBLIC_SUPABASE_URL=https://iyqfewihqswjkkdipoaj.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_qk00i8ckdb9Xt55oGkGtPA_QQAyAbdG
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<publishable-or-anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<service-role-or-secret-key>
 NEXT_PUBLIC_SUPABASE_ENABLED=true
 ```
 

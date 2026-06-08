@@ -6,10 +6,12 @@ import { answerValidator } from "@/lib/answer-validator";
 import { sessionManager } from "@/lib/session-manager";
 import { buildSessionSummary } from "@/lib/session-summary";
 import { ChildrenStorage } from "@/lib/children-storage";
+import { decideSupportScenarioDetailed } from "@/lib/scenario-engine";
+import { makeMockFeedback } from "@/lib/selfreg-model";
 import type { ProviderId } from "@/lib/provider-registry";
 import type { AppLang } from "@/lib/app-i18n";
-import type { Scenario, StageId } from "@/lib/selfreg-model";
-import type { RecordItem, Session, CompletedSession, AiStageResult, AnswerQualityResult } from "@/types/session";
+import type { StageId } from "@/lib/selfreg-model";
+import type { RecordItem, Session, AiStageResult, AnswerQualityResult } from "@/types/session";
 
 const log = (message: string) => {
   if (process.env.NODE_ENV === "development") {
@@ -17,9 +19,6 @@ const log = (message: string) => {
   }
 };
 
-/**
- * Результат отправки ответа.
- */
 export interface SubmitResult {
   success: boolean;
   record?: RecordItem;
@@ -31,16 +30,8 @@ export interface SubmitResult {
   clarifyFeedback?: string;
 }
 
-/**
- * Хук для управления логикой отправки ответов, API и сохранения.
- * Выносит из AdolescentPrototype.tsx:
- *  - submitAnswer
- *  - валидацию ответа
- *  - взаимодействие с AI API
- *  - сохранение сессии
- *  - обработку race conditions и unmount
- */
 interface UseSessionSubmitOptions {
+  sessionId: string;
   context: string;
   stageId: StageId;
   stageTitle: string;
@@ -53,6 +44,7 @@ interface UseSessionSubmitOptions {
   userApiKey?: string;
   currentChildId: string | null;
   pendingHistoryInsight: string | null;
+  addProcessRecord: (record: RecordItem) => RecordItem[];
   addRecordAndAdvance: (record: RecordItem) => { completed: boolean; nextRecords: RecordItem[]; nextStageId?: StageId };
   setFinalNote: (note: string) => void;
   setLastClarificationFeedback: (feedback: string | null) => void;
@@ -62,6 +54,7 @@ interface UseSessionSubmitOptions {
 
 export function useSessionSubmit(options: UseSessionSubmitOptions) {
   const {
+    sessionId,
     context,
     stageId,
     stageTitle,
@@ -74,6 +67,7 @@ export function useSessionSubmit(options: UseSessionSubmitOptions) {
     userApiKey,
     currentChildId,
     pendingHistoryInsight,
+    addProcessRecord,
     addRecordAndAdvance,
     setFinalNote,
     setLastClarificationFeedback,
@@ -83,25 +77,19 @@ export function useSessionSubmit(options: UseSessionSubmitOptions) {
 
   const [isSending, setIsSending] = useState(false);
   const [answerQualityWarning, setAnswerQualityWarning] = useState<string | null>(null);
-  const [providerStatus, setInternalProviderStatus] = useState(
-    lang === "en"
-      ? "Mock mode: you can go through the scenario without an external key."
-      : "Mock-режим: можно пройти сценарий без внешнего ключа."
-  );
 
-  // Валидация ответа
   const validateAnswer = useCallback((answer: string): AnswerQualityResult => {
     return answerValidator.validateAnswer(answer, lang);
   }, [lang]);
 
-  // Формирование summary для завершённой сессии
   const buildFinalNote = useCallback((ctx: string, recs: RecordItem[]): string => {
     return buildSessionSummary(ctx, recs, lang);
   }, [lang]);
 
-  // Сохранение сессии
   const saveSession = useCallback((nextRecords: RecordItem[], note: string) => {
     const payload: Session = {
+      sessionId,
+      status: note.trim() ? "completed" : "in_progress",
       context,
       records: nextRecords,
       finalNote: note,
@@ -114,39 +102,50 @@ export function useSessionSubmit(options: UseSessionSubmitOptions) {
       payload.historyInsight = pendingHistoryInsight;
     }
 
-    // Save via sessionManager (uses localStorage)
     sessionManager.saveSession(payload);
-    
-    // Also save to ChildrenStorage (syncs to Supabase if available)
+
     if (currentChildId) {
       ChildrenStorage.saveSessionForChild(currentChildId, payload);
-      log("Session saved to Supabase (async)");
-    }
-  }, [context, lang, currentChildId, pendingHistoryInsight]);
+      log("Session saved to storage");
 
-  // Основная логика отправки
+      void fetch("/api/session-sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: payload.sessionId,
+          childId: currentChildId,
+          context: payload.context,
+          finalNote: payload.finalNote,
+          updatedAt: payload.updatedAt,
+          lang: payload.lang,
+          historyInsight: payload.historyInsight,
+          adolescentFeedback: payload.adolescentFeedback,
+          records: payload.records,
+        }),
+      }).catch((error) => log(`Session sync failed: ${error instanceof Error ? error.message : "unknown error"}`));
+    }
+  }, [sessionId, context, lang, currentChildId, pendingHistoryInsight]);
+
   const submitAnswer = useCallback(async (
     answer: string,
     suppressClarifyForNextStage: boolean
   ): Promise<SubmitResult> => {
     const cleanAnswer = answer.trim();
-    
-    // Валидация
+
     const quality = validateAnswer(cleanAnswer);
     if (!quality.ok) {
-      setAnswerQualityWarning(quality.message || (lang === "en" ? "Please write a more thoughtful answer." : "Напиши более осознанный ответ."));
+      setAnswerQualityWarning(
+        quality.message || (lang === "en" ? "Please write a more thoughtful answer." : "Напиши более осознанный ответ.")
+      );
       return { success: false, error: quality.message };
     }
     setAnswerQualityWarning(null);
-
     setIsSending(true);
 
-    // Контроллер для отмены запроса при unmount
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
 
     try {
-      // Mock-ответ по умолчанию
       let apiResult: AiStageResult = {
         scenario: "A",
         feedback: "Mock feedback",
@@ -154,15 +153,40 @@ export function useSessionSubmit(options: UseSessionSubmitOptions) {
         responseMode: "mock",
       };
 
-      // Запрос к API
       const history = records.map((item) => ({
         stage: item.stageId,
         answer: item.answer,
         feedback: item.feedback,
+        scenario: item.scenario,
+        eventType: item.eventType,
       }));
 
+      const localScenario = decideSupportScenarioDetailed(
+        cleanAnswer,
+        context,
+        history,
+        lang,
+        undefined,
+        stageId
+      ).scenario;
+      const localFallback = makeMockFeedback({
+        stageId,
+        answer: cleanAnswer,
+        context,
+        history,
+        lang,
+        forcedScenario: localScenario === "skipped" ? "A" : localScenario,
+      });
+
+      apiResult = {
+        scenario: localFallback.scenario === "skipped" ? "A" : localFallback.scenario,
+        feedback: localFallback.feedback,
+        finalNote: localFallback.finalNote,
+        responseMode: "mock",
+      };
+
       try {
-        const response = await aiService.getResponse(
+        apiResult = await aiService.getResponse(
           {
             userId: "demo-user",
             answer: cleanAnswer,
@@ -177,54 +201,78 @@ export function useSessionSubmit(options: UseSessionSubmitOptions) {
           { signal: controller.signal, timeoutMs: 30000 }
         );
 
-        apiResult = response;
-        setInternalProviderStatus(`${provider}: ${lang === "en" ? "received response" : "получен ответ"}`);
+        setProviderStatus(
+          `${provider}: ${lang === "en" ? "received response" : "получен ответ"} (${apiResult.responseMode})`
+        );
       } catch (apiError) {
         const message = apiError instanceof Error ? apiError.message : lang === "en" ? "unknown error" : "неизвестная ошибка";
-        setInternalProviderStatus(
+        setProviderStatus(
           lang === "en"
             ? `Could not get an LLM reply: ${message}. A safe mock feedback was shown.`
             : `Не удалось получить LLM-ответ: ${message}. Показан безопасный mock-фидбек.`
         );
       }
 
-      // Обработка clarify
       if (apiResult.scenario === "clarify") {
+        const clarifyRecord: RecordItem = {
+          stageId,
+          stageTitle,
+          scenario: "clarify",
+          eventType: "clarify_request",
+          provider,
+          model: model?.trim() || undefined,
+          responseMode: apiResult.responseMode,
+          answer: cleanAnswer,
+          feedback: apiResult.feedback,
+          question: currentQuestion,
+          timestamp: new Date().toISOString(),
+        };
+
+        const nextRecords = addProcessRecord(clarifyRecord);
+        saveSession(nextRecords, "");
+
         if (suppressClarifyForNextStage) {
           setSuppressClarifyForNextStage(false);
           setLastClarificationFeedback(null);
         } else {
           setLastClarificationFeedback(apiResult.feedback);
         }
+
         return {
           success: true,
+          record: clarifyRecord,
           clarificationNeeded: true,
           clarifyFeedback: apiResult.feedback,
+          nextRecords,
+          responseMode: apiResult.responseMode,
         };
       }
 
       setLastClarificationFeedback(null);
       setSuppressClarifyForNextStage(false);
 
-      // Создание записи
-      const item: RecordItem = {
+        const item: RecordItem = {
         stageId,
         stageTitle,
         scenario: apiResult.scenario,
+        eventType: "answer",
+        provider,
+        model: model?.trim() || undefined,
+        responseMode: apiResult.responseMode,
         answer: cleanAnswer,
         feedback: apiResult.feedback,
         question: currentQuestion,
-        timestamp: new Date().toLocaleString(lang === "en" ? "en-US" : "ru-RU"),
+        timestamp: new Date().toISOString(),
       };
 
       const adv = addRecordAndAdvance(item);
+      const note = adv.completed ? (finalNote || buildFinalNote(context, adv.nextRecords)) : "";
 
-      // Проверка завершения
       if (adv.completed && !finalNote) {
-        const note = buildFinalNote(context, adv.nextRecords);
         setFinalNote(note);
-        saveSession(adv.nextRecords, note);
       }
+
+      saveSession(adv.nextRecords, note);
 
       return {
         success: true,
@@ -237,18 +285,17 @@ export function useSessionSubmit(options: UseSessionSubmitOptions) {
       if (controller.signal.aborted) {
         return {
           success: false,
-          error: lang === "en" ? "Request timed out" : "Запрос истёк по времени",
+          error: lang === "en" ? "Request timed out" : "Запрос истек по времени",
         };
       }
+
       return {
         success: false,
         error: error instanceof Error ? error.message : lang === "en" ? "Unknown error" : "Неизвестная ошибка",
       };
     } finally {
       clearTimeout(timeoutId);
-      if (!controller.signal.aborted) {
-        setIsSending(false);
-      }
+      setIsSending(false);
     }
   }, [
     context,
@@ -264,18 +311,20 @@ export function useSessionSubmit(options: UseSessionSubmitOptions) {
     validateAnswer,
     buildFinalNote,
     saveSession,
+    addProcessRecord,
     addRecordAndAdvance,
     setFinalNote,
     setLastClarificationFeedback,
     setSuppressClarifyForNextStage,
+    setProviderStatus,
   ]);
 
   return {
     isSending,
     answerQualityWarning,
-    providerStatus: providerStatus,
-    setProviderStatus: setInternalProviderStatus,
     submitAnswer,
+    saveSessionSnapshot: saveSession,
     setAnswerQualityWarning,
   };
 }
+

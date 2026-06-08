@@ -1,4 +1,4 @@
-import type { AnalyzeInput, AnalyzeResult } from "@/lib/ai-provider";
+import type { AnalyzeInput, AnalyzeResult } from "@/lib/ai-types";
 import { makeMockFeedback, type Scenario, type StageId } from "@/lib/selfreg-model";
 
 /**

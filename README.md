@@ -480,8 +480,8 @@ Create `.env.local` file:
 
 ```env
 # Supabase Configuration
-NEXT_PUBLIC_SUPABASE_URL=https://iyqfewihqswjkkdipoaj.supabase.co
-NEXT_PUBLIC_SUPABASE_ANOM_KEY=sb_publishable_qk00i8ckdb9Xt55oGkGtPA_QQAyAbdG
+NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<publishable-or-anon-key>
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 NEXT_PUBLIC_SUPABASE_ENABLED=true
 ```

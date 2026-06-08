@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { EmailAuthModal } from "@/app/components/EmailAuthModal";
@@ -89,10 +90,13 @@ export function AuthButton({ lang }: AuthButtonProps) {
           border: "1px solid var(--line)",
         }}
       >
-        <img
+        <Image
           src={user.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.full_name || "User")}&background=4f46e5&color=fff`}
           alt={user.full_name || "User"}
-          style={{ width: 24, height: 24, borderRadius: "50%" }}
+          width={24}
+          height={24}
+          unoptimized
+          style={{ borderRadius: "50%" }}
         />
         <div style={{ display: "flex", flexDirection: "column", fontSize: 11 }}>
           <strong style={{ fontSize: 12 }}>{user.full_name || user.email}</strong>

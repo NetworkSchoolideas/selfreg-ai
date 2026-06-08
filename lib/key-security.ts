@@ -1,11 +1,13 @@
-import { config, security } from "@/lib/config";
+function isTrue(value?: string) {
+  return value === "true";
+}
 
 export function canUseEphemeralUserKey() {
-  return security.allowEphemeralKeys;
+  return isTrue(process.env.ALLOW_EPHEMERAL_USER_KEYS ?? "true");
 }
 
 export function canStoreUserKeys() {
-  return security.allowStoredKeys;
+  return isTrue(process.env.ALLOW_STORED_USER_KEYS ?? "false");
 }
 
 export function assertUserKeyPolicy(userApiKey?: string) {
@@ -13,7 +15,7 @@ export function assertUserKeyPolicy(userApiKey?: string) {
     throw new Error("Ephemeral user API keys are disabled");
   }
 
-  if (canStoreUserKeys() && !config.APP_ENCRYPTION_KEY) {
+  if (canStoreUserKeys() && !process.env.APP_ENCRYPTION_KEY) {
     throw new Error("APP_ENCRYPTION_KEY is required before storing user API keys");
   }
 }

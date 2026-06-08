@@ -1,22 +1,28 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { LanguageToggle } from "@/app/components/LanguageToggle";
 import { normalizeAppLang, withLang } from "@/lib/app-i18n";
-import { ChildrenStorage, type Child, type Session, type RecordItem } from "@/lib/children-storage";
+import { ChildrenStorage, createChildId, type Child, type Session, type RecordItem } from "@/lib/children-storage";
+import { inferRecordEventType } from "@/lib/session-helpers";
+import { isRetryRecord, reduceFlowState } from "@/lib/selfreg-flow-machine";
 
 // Устаревший ключ — оставлен только для совместимости при миграции
 
 // Простая инфографика без внешних библиотек
 function getScenarioDistribution(sessions: Session[]) {
   const allRecords = sessions.flatMap(s => s.records);
-  const total = allRecords.length || 1;
-  const a = allRecords.filter(r => r.scenario === "A").length;
-  const b = allRecords.filter(r => r.scenario === "B").length;
-  const clarify = allRecords.filter(r => r.scenario === "clarify").length;
-  const skipped = allRecords.filter(r => r.scenario === "skipped").length;
+  const supportRecords = allRecords.filter(r => {
+    const eventType = inferRecordEventType(r);
+    return eventType === "answer" || eventType === "skip";
+  });
+  const total = supportRecords.length || 1;
+  const a = supportRecords.filter(r => r.scenario === "A").length;
+  const b = supportRecords.filter(r => r.scenario === "B").length;
+  const clarify = allRecords.filter(r => inferRecordEventType(r) === "clarify_request").length;
+  const skipped = supportRecords.filter(r => r.scenario === "skipped").length;
 
   // Percentages are calculated on non-skipped records for visual stability
   const nonSkipped = total - skipped;
@@ -36,15 +42,108 @@ function getStageSupport(sessions: Session[]) {
   const stages: Record<string, { A: number; B: number; clarify: number; skipped: number }> = {};
 
   allRecords.forEach(r => {
+    const eventType = inferRecordEventType(r);
     if (!stages[r.stageId]) stages[r.stageId] = { A: 0, B: 0, clarify: 0, skipped: 0 };
-    const key = (r.scenario === "skipped" ? "skipped" : r.scenario) as "A" | "B" | "clarify" | "skipped";
-    stages[r.stageId][key]++;
+    if (eventType === "clarify_request") {
+      stages[r.stageId].clarify++;
+    } else if (eventType === "answer" || eventType === "skip") {
+      const key = (r.scenario === "skipped" ? "skipped" : r.scenario) as "A" | "B" | "clarify" | "skipped";
+      stages[r.stageId][key]++;
+    }
   });
 
   return Object.entries(stages).map(([stageId, counts]) => ({
     stageId,
     ...counts
   }));
+}
+
+function getSessionSignals(records: RecordItem[]) {
+  const flow = reduceFlowState(records);
+
+  return {
+    clarifications: flow.clarifyCount,
+    returns: flow.backCount,
+    retries: flow.retryCount,
+    skips: flow.skipCount,
+    progress: flow.progressCount,
+    completedStages: flow.completedStageIds.size,
+    isComplete: flow.isComplete,
+  };
+}
+
+function getSessionStatus(session: Session): "in_progress" | "completed" {
+  if (session.status) return session.status;
+  return session.finalNote?.trim() ? "completed" : "in_progress";
+}
+
+function getRecordEventLabel(record: RecordItem, lang: "ru" | "en") {
+  const eventType = inferRecordEventType(record);
+
+  if (eventType === "clarify_request") {
+    return lang === "en" ? "Question was unclear" : "Вопрос был непонятен";
+  }
+  if (eventType === "back") {
+    return lang === "en" ? "Returned to revise" : "Возврат к вопросу";
+  }
+  if (eventType === "skip") {
+    return lang === "en" ? "Step skipped" : "Шаг пропущен";
+  }
+  return lang === "en" ? "Answer accepted" : "Ответ принят";
+}
+
+function getResponseModeLabel(mode: RecordItem["responseMode"], lang: "ru" | "en") {
+  if (mode === "llm-json") {
+    return lang === "en" ? "external AI, structured" : "внешний ИИ, структурированный ответ";
+  }
+  if (mode === "llm-text") {
+    return lang === "en" ? "external AI, normalized text" : "внешний ИИ, текст нормализован";
+  }
+  if (mode === "llm-fallback") {
+    return lang === "en" ? "external AI with local fallback" : "внешний ИИ + локальная страховка";
+  }
+  if (mode === "mock") {
+    return lang === "en" ? "local safe mode" : "локальный безопасный режим";
+  }
+  return lang === "en" ? "source not recorded" : "источник не зафиксирован";
+}
+
+function getTrajectoryNote(
+  signals: ReturnType<typeof getSessionSignals>,
+  lang: "ru" | "en"
+) {
+  if (signals.clarifications === 0 && signals.returns === 0 && signals.retries === 0) {
+    return lang === "en"
+      ? "The session moved through the stages without recorded repairs."
+      : "Сессия прошла без зафиксированных уточнений и возвратов.";
+  }
+
+  const parts: string[] = [];
+  if (signals.clarifications > 0) {
+    parts.push(
+      lang === "en"
+        ? "the wording needed clarification"
+        : "формулировку пришлось уточнять"
+    );
+  }
+  if (signals.returns > 0) {
+    parts.push(
+      lang === "en"
+        ? "the adolescent returned to revise an answer"
+        : "подросток возвращался к вопросу"
+    );
+  }
+  if (signals.retries > 0) {
+    parts.push(
+      lang === "en"
+        ? "a revised attempt appeared after support"
+        : "после поддержки появилась повторная попытка"
+    );
+  }
+
+  return lang === "en"
+    ? `Trajectory: ${parts.join("; ")}. This is useful process data, not a failure marker.`
+    : `Траектория: ${parts.join("; ")}. Это данные о процессе, а не признак неуспеха.`;
 }
 
 function createSampleSession(lang: "ru" | "en", locale: string): Session {
@@ -118,7 +217,9 @@ function createSampleSession(lang: "ru" | "en", locale: string): Session {
 export function TeacherDashboard() {
   const searchParams = useSearchParams();
   const lang = normalizeAppLang(searchParams.get("lang"));
+  const teacherIdFromUrl = searchParams.get("teacher") || undefined;
   const locale = lang === "en" ? "en-US" : "ru-RU";
+  const serverBackedDashboard = Boolean(teacherIdFromUrl);
 
   // Выбранная сессия внутри выбранного ребёнка (по индексу после сортировки)
   const [selectedSessionIdx, setSelectedSessionIdx] = useState(0);
@@ -157,7 +258,9 @@ export function TeacherDashboard() {
     addNamePlaceholder:
       lang === "en" ? "Name / alias" : "Имя / псевдоним",
     addChild: lang === "en" ? "+ Add" : "+ Добавить",
-    storageLabel: lang === "en" ? "localStorage · ready for migration" : "localStorage · готово к миграции",
+    storageLabel: serverBackedDashboard
+      ? (lang === "en" ? "Supabase · server sync active" : "Supabase · серверная синхронизация активна")
+      : (lang === "en" ? "localStorage · ready for migration" : "localStorage · готово к миграции"),
     selectStudentLeft:
       lang === "en" ? "Select a student from the left" : "Выберите ученика слева",
     selectStudentLeftDesc:
@@ -177,15 +280,35 @@ export function TeacherDashboard() {
         : "Агрегированная аналитика (все сессии ученика)",
     scenarioDistribution:
       lang === "en" ? "Support type distribution" : "Распределение типов поддержки",
+    processEvents:
+      lang === "en" ? "Process events" : "События процесса",
     scenarioA: lang === "en" ? "Scenario A" : "Сценарий A",
     scenarioB: lang === "en" ? "Scenario B" : "Сценарий B",
     clarification: lang === "en" ? "Clarifications" : "Уточнения",
+    clarificationQuestion: lang === "en" ? "Question was unclear" : "Вопрос был непонятен",
+    returnToQuestion: lang === "en" ? "Returned to previous question" : "Вернулся к предыдущему вопросу",
+    retryAnswer: lang === "en" ? "Repeated attempt after clarification" : "Повторная попытка после уточнения",
     skipped: lang === "en" ? "Skipped" : "Пропущено",
     totalRecords: lang === "en" ? "Total records:" : "Всего записей:",
     stageSupportTitle:
       lang === "en" ? "Support need by stage" : "Нужда в поддержке по этапам",
     stage: lang === "en" ? "Stage" : "Этап",
+    stepsShort: lang === "en" ? "steps" : "шагов",
     records: lang === "en" ? "records" : "записей",
+    questionLabel: lang === "en" ? "Question:" : "Вопрос:",
+    answerLabel: lang === "en" ? "Adolescent answer:" : "Ответ подростка:",
+    supportLabel: lang === "en" ? "Support:" : "Поддержка:",
+    sessionSignals: lang === "en" ? "What happened in this session" : "Что произошло в этой сессии",
+    trajectoryNote: (signals: ReturnType<typeof getSessionSignals>) => getTrajectoryNote(signals, lang),
+    noSpecialSignals:
+      lang === "en"
+        ? "No clarifications or returns were recorded in this session."
+        : "В этой сессии не было уточнений или возвратов к вопросу.",
+    signalCount: (label: string, count: number) =>
+      lang === "en" ? `${label}: ${count}` : `${label}: ${count}`,
+    eventLabel: (record: RecordItem) => getRecordEventLabel(record, lang),
+    aiSourceLabel: lang === "en" ? "AI source:" : "Источник ИИ:",
+    responseModeLabel: (mode: RecordItem["responseMode"]) => getResponseModeLabel(mode, lang),
     noStageData: lang === "en" ? "No stage data yet" : "Пока нет данных по этапам",
     sessionsLabel: lang === "en" ? "Sessions" : "Сессии",
     createNewSession: lang === "en" ? "+ New session" : "+ Новая сессия",
@@ -264,6 +387,68 @@ export function TeacherDashboard() {
   }, [selectedChildId, selectedSessionIdx]);
 
   useEffect(() => {
+    if (!serverBackedDashboard) {
+      return;
+    }
+
+    let active = true;
+
+    const loadServerChildren = async () => {
+      try {
+        const query = teacherIdFromUrl ? `?teacherId=${encodeURIComponent(teacherIdFromUrl)}` : "";
+        const response = await fetch(`/api/teacher-data${query}`, { cache: "no-store" });
+        if (!response.ok) return;
+
+        const payload = await response.json();
+        if (!active || !Array.isArray(payload?.children)) return;
+
+        const serverChildren = payload.children as Child[];
+        ChildrenStorage.saveAll(serverChildren);
+        setChildren(serverChildren);
+
+        let restoredChildId: string | null = null;
+        let restoredSessionIdx = 0;
+
+        try {
+          const saved = localStorage.getItem(DASHBOARD_STATE_KEY);
+          if (saved) {
+            const parsed = JSON.parse(saved) as { childId?: string; sessionIdx?: number };
+            if (parsed.childId && serverChildren.some((child) => child.id === parsed.childId)) {
+              restoredChildId = parsed.childId;
+              restoredSessionIdx = Math.max(0, parsed.sessionIdx || 0);
+            }
+          }
+        } catch {}
+
+        if (restoredChildId) {
+          setSelectedChildId(restoredChildId);
+          setSelectedSessionIdx(restoredSessionIdx);
+          return;
+        }
+
+        setSelectedChildId((current) => {
+          if (current && serverChildren.some((child) => child.id === current)) {
+            return current;
+          }
+          return serverChildren[0]?.id ?? null;
+        });
+      } catch {
+        if (!active) return;
+        setChildren([]);
+        setSelectedChildId(null);
+      }
+    };
+
+    void loadServerChildren();
+
+    return () => {
+      active = false;
+    };
+  }, [serverBackedDashboard, teacherIdFromUrl]);
+
+  useEffect(() => {
+    if (serverBackedDashboard) return;
+
     let loaded = ChildrenStorage.getAll();
 
     // Если база пустая — создаём демо (ТОЛЬКО если данных нет вообще)
@@ -283,7 +468,7 @@ export function TeacherDashboard() {
     loaded = loaded.map(child => {
       if (seen.has(child.id)) {
         hadDuplicates = true;
-        return { ...child, id: `child_${Date.now()}_${Math.random().toString(36).slice(2, 11)}` };
+        return { ...child, id: createChildId() };
       }
       seen.add(child.id);
       return child;
@@ -315,7 +500,7 @@ export function TeacherDashboard() {
         setSelectedChildId(loaded[0].id);
       }
     });
-  }, []); // Убрали lang и locale из зависимостей, чтобы демо не пересоздавались
+  }, [serverBackedDashboard, lang, locale]);
 
   // === Создать новую пустую сессию для текущего ребёнка ===
   function createNewSessionForChild(customContext?: string) {
@@ -366,8 +551,19 @@ export function TeacherDashboard() {
   const getScenarioColor = (s: "A" | "B" | "clarify" | "skipped") =>
     s === "A" ? "var(--accent)" : s === "B" ? "var(--orange)" : s === "clarify" ? "var(--green)" : "var(--muted)";
 
-  const getScenarioLabel = (s: "A" | "B" | "clarify" | "skipped") =>
-    s === "clarify" ? "Уточнение" : s === "skipped" ? "Пропущено" : `Сценарий ${s}`;
+  const getEventBadgeStyle = (record: RecordItem) => {
+    const eventType = inferRecordEventType(record);
+    if (eventType === "clarify_request") {
+      return { background: "#ecfdf5", color: "#047857", border: "1px solid #a7f3d0" };
+    }
+    if (eventType === "back") {
+      return { background: "#fff7ed", color: "#c2410c", border: "1px solid #fed7aa" };
+    }
+    if (eventType === "skip") {
+      return { background: "#f3f4f6", color: "#4b5563", border: "1px solid #d1d5db" };
+    }
+    return { background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe" };
+  };
 
   // Recompute derived data (safe even if no child)
   const distribution = selectedChild
@@ -400,6 +596,9 @@ export function TeacherDashboard() {
     ? [...selectedChild.sessions].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
     : [];
   const currentSession = sortedSessions[selectedSessionIdx] || null;
+  const currentSessionSignals = currentSession
+    ? getSessionSignals(currentSession.records)
+    : { clarifications: 0, returns: 0, retries: 0, skips: 0, progress: 0, completedStages: 0, isComplete: false };
 
   // === Handlers for the new layout ===
   function selectChild(id: string) {
@@ -414,6 +613,31 @@ export function TeacherDashboard() {
   function deleteCurrentChild() {
     if (!selectedChild) return;
     if (!confirm(`Удалить ученика ${selectedChild.id} и все его сессии? Это необратимо.`)) return;
+
+    if (serverBackedDashboard) {
+      void (async () => {
+        try {
+          const teacherQuery = teacherIdFromUrl ? `&teacherId=${encodeURIComponent(teacherIdFromUrl)}` : "";
+          await fetch(`/api/children?childId=${encodeURIComponent(selectedChild.id)}${teacherQuery}`, {
+            method: "DELETE",
+          });
+        } catch {}
+
+        ChildrenStorage.deleteChild(selectedChild.id);
+        const fresh = ChildrenStorage.getAll();
+        setChildren(fresh);
+        setLastDeleted(null);
+        setNewSessionHint(null);
+
+        if (fresh.length > 0) {
+          setSelectedChildId(fresh[0].id);
+          setSelectedSessionIdx(0);
+        } else {
+          setSelectedChildId(null);
+        }
+      })();
+      return;
+    }
 
     ChildrenStorage.deleteChild(selectedChild.id);
     const fresh = ChildrenStorage.getAll();
@@ -430,16 +654,22 @@ export function TeacherDashboard() {
     }
   }
 
+  function buildPrototypeHref(child: Child) {
+    const teacherParam = child.teacherId || teacherIdFromUrl;
+    const suffix = teacherParam ? `&teacher=${encodeURIComponent(teacherParam)}` : "";
+    return withLang(`/adolescent?childId=${child.id}${suffix}`, lang);
+  }
+
   function copyAllLinks() {
     const links = children
-      .map((c) => `${window.location.origin}${withLang(`/adolescent?childId=${c.id}`, lang)}`)
+      .map((c) => `${window.location.origin}${buildPrototypeHref(c)}`)
       .join("\n");
     navigator.clipboard.writeText(links);
     alert(`Скопировано ${children.length} ссылок`);
   }
 
   function copyChildLink(child: Child) {
-    const link = `${window.location.origin}${withLang(`/adolescent?childId=${child.id}`, lang)}`;
+    const link = `${window.location.origin}${buildPrototypeHref(child)}`;
     navigator.clipboard.writeText(link).then(() => {
       setCopiedChildId(child.id);
       setTimeout(() => setCopiedChildId(null), 1400);
@@ -573,7 +803,7 @@ export function TeacherDashboard() {
                       {/* Per-child quick actions (do not bubble) */}
                       <div style={{ display: "flex", gap: 4 }} onClick={(e) => e.stopPropagation()}>
                         <Link
-                          href={withLang(`/adolescent?childId=${child.id}`, lang)}
+                          href={buildPrototypeHref(child)}
                           className="button"
                           target="_blank"
                           style={{ fontSize: 10, padding: "1px 6px", minHeight: 24 }}
@@ -603,7 +833,41 @@ export function TeacherDashboard() {
                 const form = e.currentTarget;
                 const nameInput = form.elements.namedItem("childName") as HTMLInputElement;
                 if (nameInput?.value.trim()) {
-                  const newC = ChildrenStorage.addChild(nameInput.value.trim());
+                  const name = nameInput.value.trim();
+
+                  if (serverBackedDashboard) {
+                    void (async () => {
+                      try {
+                        const response = await fetch("/api/children", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            name,
+                            teacherId: teacherIdFromUrl,
+                          }),
+                        });
+
+                        if (response.ok) {
+                          const payload = await response.json();
+                          if (payload?.child) {
+                            ChildrenStorage.upsertLocalChild(payload.child);
+                            setChildren(ChildrenStorage.getAll());
+                            selectChild(payload.child.id);
+                            nameInput.value = "";
+                            return;
+                          }
+                        }
+                      } catch {}
+
+                      const newC = ChildrenStorage.addChild(name);
+                      setChildren(ChildrenStorage.getAll());
+                      selectChild(newC.id);
+                      nameInput.value = "";
+                    })();
+                    return;
+                  }
+
+                  const newC = ChildrenStorage.addChild(name);
                   setChildren(ChildrenStorage.getAll());
                   selectChild(newC.id);
                   nameInput.value = "";
@@ -681,7 +945,7 @@ export function TeacherDashboard() {
                         + Новая сессия
                       </button>
                       <Link
-                        href={withLang(`/adolescent?childId=${selectedChild.id}`, lang)}
+                        href={buildPrototypeHref(selectedChild)}
                         className="button secondary"
                         target="_blank"
                         style={{ padding: "7px 12px" }}
@@ -715,15 +979,17 @@ export function TeacherDashboard() {
                     <div style={{ height: 22, background: "#f0f0f0", borderRadius: 999, overflow: "hidden", display: "flex" }}>
                       <div style={{ width: `${distribution.a}%`, background: "var(--accent)" }} title={`${ui.scenarioA}: ${distribution.a}%`} />
                       <div style={{ width: `${distribution.b}%`, background: "var(--orange)" }} title={`${ui.scenarioB}: ${distribution.b}%`} />
-                      <div style={{ width: `${distribution.clarify}%`, background: "var(--green)" }} title={`${ui.clarification}: ${distribution.clarify}%`} />
                     </div>
                     <div style={{ display: "flex", gap: 14, marginTop: 6, fontSize: 13 }}>
                       <span><span style={{ color: "var(--accent)" }}>●</span> {ui.scenarioA}: <strong>{distribution.a}%</strong> ({distribution.raw.a})</span>
                       <span><span style={{ color: "var(--orange)" }}>●</span> {ui.scenarioB}: <strong>{distribution.b}%</strong> ({distribution.raw.b})</span>
-                      <span><span style={{ color: "var(--green)" }}>●</span> {ui.clarification}: <strong>{distribution.clarify}%</strong> ({distribution.raw.clarify})</span>
                       {distribution.raw.skipped > 0 && (
                         <span style={{ color: "var(--muted)" }}>{ui.skipped}: <strong>{distribution.raw.skipped}</strong></span>
                       )}
+                    </div>
+                    <div style={{ display: "flex", gap: 10, marginTop: 8, fontSize: 12, color: "var(--muted)", flexWrap: "wrap" }}>
+                      <span>{ui.processEvents}:</span>
+                      <span>{ui.clarification}: <strong>{distribution.raw.clarify}</strong></span>
                     </div>
                     <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{ui.totalRecords} {totalRecords}</div>
                   </div>
@@ -743,8 +1009,12 @@ export function TeacherDashboard() {
                             <div style={{ height: 11, background: "#eee", borderRadius: 999, display: "flex", overflow: "hidden" }}>
                               <div style={{ width: `${(s.A / sum) * 100}%`, background: "var(--accent)" }} />
                               <div style={{ width: `${(s.B / sum) * 100}%`, background: "var(--orange)" }} />
-                              <div style={{ width: `${(s.clarify / sum) * 100}%`, background: "var(--green)" }} />
                             </div>
+                            {s.clarify > 0 && (
+                              <div className="muted" style={{ fontSize: 11, marginTop: 1 }}>
+                                {ui.clarification}: {s.clarify}
+                              </div>
+                            )}
                           </div>
                         );
                       })
@@ -776,7 +1046,7 @@ export function TeacherDashboard() {
                 {newSessionHint && (
                   <div style={{ background: "var(--soft)", borderRadius: 6, padding: "8px 12px", marginBottom: 10, fontSize: 13, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span>{ui.newSessionHint.replace("{context}", newSessionHint.context)}</span>
-                    <Link href={withLang(`/adolescent?childId=${selectedChild.id}`, lang)} className="button" target="_blank" style={{ fontSize: 12, padding: "3px 9px" }} onClick={() => setNewSessionHint(null)}>
+                    <Link href={buildPrototypeHref(selectedChild)} className="button" target="_blank" style={{ fontSize: 12, padding: "3px 9px" }} onClick={() => setNewSessionHint(null)}>
                       {ui.openPrototype}
                     </Link>
                   </div>
@@ -806,9 +1076,19 @@ export function TeacherDashboard() {
                       const isSel = idx === selectedSessionIdx;
                       const isNew = sess.updatedAt === highlightedSessionUpdatedAt;
                       const recs = sess.records.length;
-                      const aCnt = sess.records.filter(r => r.scenario === "A").length;
-                      const bCnt = sess.records.filter(r => r.scenario === "B").length;
-                      const cCnt = sess.records.filter(r => r.scenario === "clarify").length;
+                      const answerRecords = sess.records.filter(r => inferRecordEventType(r) === "answer");
+                      const aCnt = answerRecords.filter(r => r.scenario === "A").length;
+                      const bCnt = answerRecords.filter(r => r.scenario === "B").length;
+                      const flowSignals = getSessionSignals(sess.records);
+                      const sessionStatus = getSessionStatus(sess);
+                      const processBits = [
+                        `A:${aCnt}`,
+                        `B:${bCnt}`,
+                        flowSignals.clarifications > 0 ? `${ui.clarification}:${flowSignals.clarifications}` : null,
+                        flowSignals.returns > 0 ? `${ui.returnToQuestion}:${flowSignals.returns}` : null,
+                        flowSignals.skips > 0 ? `${ui.skipped}:${flowSignals.skips}` : null,
+                        flowSignals.retries > 0 ? `${ui.retryAnswer}:${flowSignals.retries}` : null,
+                      ].filter(Boolean).join(" · ");
 
                       return (
                         <button
@@ -836,10 +1116,9 @@ export function TeacherDashboard() {
                             <span style={{ fontSize: 11, color: "var(--muted)" }}>{new Date(sess.updatedAt).toLocaleDateString(locale)}</span>
                           </div>
                           <div style={{ fontSize: 12, color: "var(--muted)" }}>
-                            {recs} шагов
+                            {recs} {ui.stepsShort}
                             <span style={{ marginLeft: 8 }}>
-                              A:{aCnt} · B:{bCnt} · У:{cCnt}
-                              {sess.records.some(r => r.scenario === "skipped") && " · Проп: " + sess.records.filter(r => r.scenario === "skipped").length}
+                              {processBits}
                             </span>
                           </div>
                         </button>
@@ -873,12 +1152,47 @@ export function TeacherDashboard() {
 
                     {currentSession.records.length > 0 && (
                       <div style={{ display: "grid", gap: 10 }}>
-                        {currentSession.records.map((rec, i) => (
+                        <div style={{ padding: 12, background: "var(--soft)", borderRadius: 8, border: "1px solid var(--line)" }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8 }}>{ui.sessionSignals}</div>
+                          {currentSessionSignals.clarifications === 0 && currentSessionSignals.returns === 0 && currentSessionSignals.retries === 0 ? (
+                            <div style={{ fontSize: 13, color: "var(--muted)" }}>{ui.noSpecialSignals}</div>
+                          ) : (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                              {currentSessionSignals.clarifications > 0 && (
+                                <span className="badge badge-green">
+                                  {ui.signalCount(ui.clarificationQuestion, currentSessionSignals.clarifications)}
+                                </span>
+                              )}
+                              {currentSessionSignals.returns > 0 && (
+                                <span className="badge" style={{ background: "#fff3e8", color: "#a65300", border: "1px solid #ffd3a8" }}>
+                                  {ui.signalCount(ui.returnToQuestion, currentSessionSignals.returns)}
+                                </span>
+                              )}
+                              {currentSessionSignals.retries > 0 && (
+                                <span className="badge badge-blue">
+                                  {ui.signalCount(ui.retryAnswer, currentSessionSignals.retries)}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          <div style={{ fontSize: 13, color: "#334455", marginTop: 8 }}>
+                            {ui.trajectoryNote(currentSessionSignals)}
+                          </div>
+                        </div>
+                        {currentSession.records.map((rec, i) => {
+                          const eventType = inferRecordEventType(rec);
+                          const isProcessOnly = eventType === "clarify_request" || eventType === "back";
+
+                          return (
                           <div key={`${rec.stageId}-${i}-${rec.timestamp || ''}`} style={{ borderLeft: `4px solid ${getScenarioColor(rec.scenario)}`, paddingLeft: 12, paddingTop: 2, paddingBottom: 2 }}>
                             <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 1 }}>
                               {ui.stage} {rec.stageId} · {rec.stageTitle}
                             </div>
-                            <div style={{ marginBottom: 3 }}>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6 }}>
+                              <span className="badge" style={getEventBadgeStyle(rec)}>
+                                {ui.eventLabel(rec)}
+                              </span>
+                              {!isProcessOnly && (
                               <span style={{
                                 display: "inline-block",
                                 background: rec.scenario === "skipped" ? "var(--muted)" : getScenarioColor(rec.scenario),
@@ -890,12 +1204,28 @@ export function TeacherDashboard() {
                               }}>
                                 {ui.scenarioLabel(rec.scenario)}
                               </span>
+                              )}
+                              {isRetryRecord(currentSession.records, i) && (
+                                <span className="badge badge-blue">{ui.retryAnswer}</span>
+                              )}
+                              {rec.timestamp && (
+                                <span className="muted" style={{ fontSize: 11 }}>
+                                  {new Date(rec.timestamp).toLocaleString(locale)}
+                                </span>
+                              )}
                             </div>
-                            <div style={{ fontSize: 13, marginBottom: 2 }}><strong>Вопрос:</strong> {rec.question}</div>
-                            <div style={{ fontSize: 13, marginBottom: 2 }}><strong>Ответ подростка:</strong> {rec.answer}</div>
-                            <div style={{ fontSize: 13, color: "#334455" }}><strong>Поддержка:</strong> {rec.feedback}</div>
+                            <div style={{ fontSize: 13, marginBottom: 2 }}><strong>{ui.questionLabel}</strong> {rec.question}</div>
+                            <div style={{ fontSize: 13, marginBottom: 2 }}><strong>{ui.answerLabel}</strong> {rec.answer}</div>
+                            <div style={{ fontSize: 13, color: "#334455" }}><strong>{ui.supportLabel}</strong> {rec.feedback}</div>
+                            {(rec.responseMode || rec.provider || rec.model) && (
+                              <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+                                <strong>{ui.aiSourceLabel}</strong>{" "}
+                                {[rec.provider, rec.model, ui.responseModeLabel(rec.responseMode)].filter(Boolean).join(" · ")}
+                              </div>
+                            )}
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
 
@@ -943,3 +1273,4 @@ export function TeacherDashboard() {
     </main>
   );
 }
+

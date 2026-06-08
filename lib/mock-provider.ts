@@ -1,4 +1,4 @@
-import { type AnalyzeInput, type AnalyzeResult } from "@/lib/ai-provider";
+import { type AnalyzeInput, type AnalyzeResult } from "@/lib/ai-types";
 import { getNextStage, makeMockFeedback, type StageId } from "@/lib/selfreg-model";
 
 export const mockProvider = {

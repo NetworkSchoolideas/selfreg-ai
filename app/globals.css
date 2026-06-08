@@ -178,6 +178,22 @@ textarea {
   resize: vertical;
 }
 
+.checkbox-field {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 500;
+}
+
+.checkbox-field input {
+  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
 .provider-box {
   border: 1px solid var(--line);
   border-radius: 8px;
