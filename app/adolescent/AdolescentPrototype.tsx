@@ -11,6 +11,7 @@ import { AdolescentFeedbackForm } from "@/app/components/AdolescentFeedbackForm"
 import { useAdolescentSession } from "./useAdolescentSession";
 import { withLang, type AppLang } from "@/lib/app-i18n";
 import type { ProviderId } from "@/lib/provider-registry";
+import { ConsentModal } from "@/app/components/ConsentModal";
 import { ChildrenStorage, createChildId } from "@/lib/children-storage";
 import type { RecordItem, CompletedSession } from "@/types/session";
 import { useSessionSubmit } from "@/hooks/useSessionSubmit";
@@ -67,9 +68,21 @@ export function AdolescentPrototype() {
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
   const [justClearedClarify, setJustClearedClarify] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [showConsentModal, setShowConsentModal] = useState(false);
   const [childLookupAttempted, setChildLookupAttempted] = useState(false);
   const [childLookupFailed, setChildLookupFailed] = useState(false);
   const hasActiveChild = isRegistered || Boolean(currentChildId);
+
+  // Consent handlers
+  const handleConsent = useCallback(() => {
+    setConsentGiven(true);
+    setShowConsentModal(false);
+  }, []);
+
+  const handleDeclineConsent = useCallback(() => {
+    setConsentGiven(false);
+    setShowConsentModal(false);
+  }, []);
 
   // Load child info from URL on mount
   useEffect(() => {
