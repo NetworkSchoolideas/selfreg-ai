@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import ClassStats from "@/components/analytics/ClassStats";
+import ProgressChart from "@/components/analytics/ProgressChart";
 
 interface Child {
   id: string;
@@ -57,7 +59,6 @@ export default function TeacherDashboardPage() {
     loadChildren();
   }, [teacherId]);
 
-  // Early return if no teacher ID - check in render, not in effect
   if (!teacherId) {
     return (
       <div style={{
@@ -101,6 +102,18 @@ export default function TeacherDashboardPage() {
   const totalSessions = children.reduce((sum, child) => sum + (child.totalSessions || 0), 0);
   const classes = [...new Set(children.map(c => c.className))];
 
+  // Prepare analytics data
+  const classDistribution = classes.map(className => ({
+    className,
+    count: children.filter(c => c.className === className).length,
+  }));
+
+  const progressData = children.map(child => ({
+    totalSessions: child.totalSessions || 0,
+    completedSessions: child.totalSessions || 0,
+    lastActivity: child.lastSessionDate || child.createdAt,
+  }));
+
   return (
     <div style={{ minHeight: "100vh", background: "#f3f4f6", padding: 20 }}>
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
@@ -126,6 +139,11 @@ export default function TeacherDashboardPage() {
             <div style={{ fontSize: 14, color: "#6b7280", marginBottom: 8 }}>Classes</div>
             <div style={{ fontSize: 36, fontWeight: "bold" }}>{classes.length}</div>
           </div>
+        </div>
+
+        <div style={{ display: "grid", gap: 24, marginBottom: 32 }}>
+          <ClassStats data={classDistribution} />
+          <ProgressChart data={progressData} />
         </div>
 
         <div style={{ background: "white", borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.1)", padding: 24 }}>
