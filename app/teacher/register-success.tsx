@@ -1,4 +1,4 @@
-п»ї"use client";
+"use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -15,18 +15,18 @@ export default function TeacherRegisterSuccessPage() {
 
   const texts = {
     ru: {
-      title: "Р РµРіРёСЃС‚СЂР°С†РёСЏ СѓСЃРїРµС€РЅР°!",
-      subtitle: "Р’Р°С€ РєРѕРґ СѓС‡РёС‚РµР»СЏ:",
-      code: "РљРѕРґ СѓС‡РёС‚РµР»СЏ",
-      copy: "РљРѕРїРёСЂРѕРІР°С‚СЊ",
-      copied: "РЎРєРѕРїРёСЂРѕРІР°РЅРѕ!",
-      saveCode: "РЎРѕС…СЂР°РЅРёС‚Рµ СЌС‚РѕС‚ РєРѕРґ - РѕРЅ РїРѕРЅР°РґРѕР±РёС‚СЃСЏ РґР»СЏ РїСЂРёРІСЏР·РєРё СѓС‡РµРЅРёРєРѕРІ",
-      nextSteps: "РЎР»РµРґСѓСЋС‰РёРµ С€Р°РіРё:",
-      step1: "РџРѕРґРµР»РёС‚РµСЃСЊ РєРѕРґРѕРј СЃ СѓС‡РµРЅРёРєР°РјРё",
-      step2: "РЈС‡РµРЅРёРєРё РІРІРѕРґСЏС‚ РєРѕРґ РїСЂРё СЂРµРіРёСЃС‚СЂР°С†РёРё",
-      step3: "Р”РѕСЃС‚СѓРї Рє РґР°С€Р±РѕСЂРґСѓ Рё Р°РЅР°Р»РёС‚РёРєРµ",
-      goToDashboard: "РџРµСЂРµР№С‚Рё Рє РІС…РѕРґСѓ",
-      autoRedirect: "РџРµСЂРµРЅР°РїСЂР°РІР»РµРЅРёРµ С‡РµСЂРµР·",
+      title: "Регистрация успешна!",
+      subtitle: "Ваш код учителя:",
+      code: "Код учителя",
+      copy: "Копировать",
+      copied: "Скопировано!",
+      saveCode: "Сохраните этот код - он понадобится для привязки учеников",
+      nextSteps: "Следующие шаги:",
+      step1: "Поделитесь кодом с учениками",
+      step2: "Ученики вводят код при регистрации",
+      step3: "Доступ к дашборду и аналитике",
+      goToDashboard: "Перейти к входу",
+      autoRedirect: "Перенаправление через",
     },
     en: {
       title: "Registration successful!",
@@ -46,10 +46,6 @@ export default function TeacherRegisterSuccessPage() {
 
   const t = texts[lang];
 
-  useEffect(() => {
-    const code = searchParams.get("teacherCode") || sessionStorage.getItem("teacher_code") || "";
-    setTeacherCode(code);
-  }, [searchParams]);
 
   useEffect(() => {
     if (countdown > 0) {
@@ -63,7 +59,7 @@ export default function TeacherRegisterSuccessPage() {
   const copyToClipboard = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(teacherCode);
-      alert(lang === "en" ? "Code copied!" : "РљРѕРґ СЃРєРѕРїРёСЂРѕРІР°РЅ!");
+      alert(lang === "en" ? "Code copied!" : "Код скопирован!");
     } catch (err) {
       console.error("Failed to copy:", err);
     }
@@ -78,7 +74,7 @@ export default function TeacherRegisterSuccessPage() {
         justifyContent: "center",
         background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
       }}>
-        <div style={{ color: "white", fontSize: 20 }}>Р—Р°РіСЂСѓР·РєР°...</div>
+        <div style={{ color: "white", fontSize: 20 }}>Загрузка...</div>
       </div>
     );
   }
@@ -102,7 +98,7 @@ export default function TeacherRegisterSuccessPage() {
         boxShadow: "0 10px 40px rgba(0, 0, 0, 0.2)",
         textAlign: "center",
       }}>
-        <div style={{ fontSize: 64, marginBottom: 16 }}>вњ…</div>
+        <div style={{ fontSize: 64, marginBottom: 16 }}>?</div>
         
         <h1 style={{ marginTop: 0, marginBottom: 8, fontSize: 28, color: "#1f2937" }}>
           {t.title}
