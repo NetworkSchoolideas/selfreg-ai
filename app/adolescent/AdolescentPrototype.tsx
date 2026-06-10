@@ -101,6 +101,23 @@ export function AdolescentPrototype() {
         if (!active || !payload?.child) return;
 
         ChildrenStorage.upsertLocalChild(payload.child);
+          // Link child to teacher if teacherCode was provided
+          const enteredTeacherCode = teacherCode.trim();
+          if (enteredTeacherCode) {
+            try {
+              const joinResponse = await fetch("/api/join-teacher", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ teacherCode: enteredTeacherCode, childId: payload.child.id }),
+              });
+              if (joinResponse.ok) {
+                const joinResult = await joinResponse.json();
+                console.log("[Join Teacher] Successfully linked to:", joinResult.teacherName);
+              }
+            } catch (err) {
+              console.error("[Join Teacher] Error:", err);
+            }
+          }
         const sessionsCount = payload.child.sessions?.length || 0;
         const name = sessionsCount > 0 ? `${payload.child.name} (${sessionsCount})` : payload.child.name;
 
@@ -205,6 +222,23 @@ export function AdolescentPrototype() {
         const payload = await response.json();
         if (payload?.child) {
           ChildrenStorage.upsertLocalChild(payload.child);
+          // Link child to teacher if teacherCode was provided
+          const enteredTeacherCode = teacherCode.trim();
+          if (enteredTeacherCode) {
+            try {
+              const joinResponse = await fetch("/api/join-teacher", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ teacherCode: enteredTeacherCode, childId: payload.child.id }),
+              });
+              if (joinResponse.ok) {
+                const joinResult = await joinResponse.json();
+                console.log("[Join Teacher] Successfully linked to:", joinResult.teacherName);
+              }
+            } catch (err) {
+              console.error("[Join Teacher] Error:", err);
+            }
+          }
           setCurrentChildId(payload.child.id);
           setCurrentChildName(`${fio} (${klass})`);
           setIsRegistered(true);
