@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { LanguageToggle } from "@/app/components/LanguageToggle";
+import { OnboardingModal } from "@/app/components/OnboardingModal";
 import { normalizeAppLang, withLang } from "@/lib/app-i18n";
 import { createChildId, type Child, type Session, type RecordItem } from "@/lib/children-storage";
 import { DataService } from "@/lib/data-service";
@@ -230,6 +231,15 @@ export function TeacherDashboard() {
 
   // Показывать ли подсказку после создания новой сессии
   const [newSessionHint, setNewSessionHint] = useState<{ context: string } | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Onboarding check on first visit
+  useEffect(() => {
+    queueMicrotask(() => {
+      const seen = localStorage.getItem("selfreg_onboarding_seen_teacher");
+      if (!seen) setShowOnboarding(true);
+    });
+  }, []);
 
   const DASHBOARD_STATE_KEY = "selfreg_dashboard_state";
 
@@ -787,6 +797,15 @@ export function TeacherDashboard() {
 
   return (
     <main className="shell">
+      <OnboardingModal
+        isOpen={showOnboarding}
+        onClose={() => {
+          localStorage.setItem("selfreg_onboarding_seen_teacher", "1");
+          setShowOnboarding(false);
+        }}
+        lang={lang}
+        type="teacher"
+      />
       {/* Top bar — unchanged, professional */}
       <div className="topbar app-header">
         <div>

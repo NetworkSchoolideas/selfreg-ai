@@ -8,6 +8,7 @@ import { AuthButton } from "@/app/components/AuthButton";
 import { ApiKeyManager, type KeyStatus } from "@/app/components/ApiKeyManager";
 import { ClarificationBox } from "@/app/components/ClarificationBox";
 import { AdolescentFeedbackForm } from "@/app/components/AdolescentFeedbackForm";
+import { OnboardingModal } from "@/app/components/OnboardingModal";
 import { useAdolescentSession } from "./useAdolescentSession";
 import { withLang, type AppLang } from "@/lib/app-i18n";
 import type { ProviderId } from "@/lib/provider-registry";
@@ -78,7 +79,16 @@ export function AdolescentPrototype() {
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [childLookupAttempted, setChildLookupAttempted] = useState(false);
   const [childLookupFailed, setChildLookupFailed] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const hasActiveChild = isRegistered || Boolean(currentChildId);
+
+  // Onboarding check on first visit
+  useEffect(() => {
+    queueMicrotask(() => {
+      const seen = localStorage.getItem("selfreg_onboarding_seen_adolescent");
+      if (!seen) setShowOnboarding(true);
+    });
+  }, []);
 
   // Consent handlers
   const handleConsent = useCallback(() => {
@@ -361,6 +371,15 @@ export function AdolescentPrototype() {
 
   return (
     <main className="shell">
+      <OnboardingModal
+        isOpen={showOnboarding}
+        onClose={() => {
+          localStorage.setItem("selfreg_onboarding_seen_adolescent", "1");
+          setShowOnboarding(false);
+        }}
+        lang={lang}
+        type="adolescent"
+      />
       <div className="topbar app-header">
         <div>
           <p className="eyebrow">{ui.eyebrow}</p>

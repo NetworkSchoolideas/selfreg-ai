@@ -1490,6 +1490,36 @@ th {
   margin-bottom: 10px;
 }
 
+/* Onboarding modal body */
+.onboarding-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.onboarding-step {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.onboarding-step-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+  width: 32px;
+  text-align: center;
+}
+.onboarding-step-text {
+  font-size: 14px;
+  line-height: 1.5;
+}
+.onboarding-step-title {
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+.onboarding-footer {
+  margin-top: 24px;
+  text-align: center;
+}
+
 @media (max-width: 860px) {
   .topbar,
   .prototype-layout {
