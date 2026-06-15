@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { ChildrenStorage } from "@/lib/children-storage";
+import { DataService } from "@/lib/data-service";
 import { aiService } from "@/services/ai-service";
 import type { ProviderId } from "@/lib/provider-registry";
 import type { AppLang } from "@/lib/app-i18n";
@@ -65,14 +65,14 @@ export function useSessionHistory(options: UseSessionHistoryOptions): UseSession
       if (response.ok) {
         const payload = await response.json();
         if (payload?.child) {
-          ChildrenStorage.upsertLocalChild(payload.child);
+          await DataService.saveChild(payload.child);
         }
       }
     } catch {
       log("Server history load failed, using local mirror");
     }
 
-    const sessions = ChildrenStorage.getCompletedSessionsForChild(childId);
+    const sessions = await DataService.getCompletedSessions(childId);
     setPastSessions(sessions);
     log(`Loaded ${sessions.length} completed sessions`);
   }, [childId]);
@@ -108,7 +108,7 @@ export function useSessionHistory(options: UseSessionHistoryOptions): UseSession
         
         // Save insight to storage (will sync to Supabase if available)
         if (childId && insight) {
-          ChildrenStorage.attachHistoryInsight(childId, insight);
+          await DataService.attachHistoryInsight(childId, insight);
           log("History insight saved");
         }
       }

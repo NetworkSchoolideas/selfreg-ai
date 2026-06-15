@@ -5,9 +5,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { LanguageToggle } from "@/app/components/LanguageToggle";
 import { normalizeAppLang, withLang } from "@/lib/app-i18n";
-import { ChildrenStorage, createChildId, type Child, type Session, type RecordItem } from "@/lib/children-storage";
+import { createChildId, type Child, type Session, type RecordItem } from "@/lib/children-storage";
+import { DataService } from "@/lib/data-service";
 import { inferRecordEventType } from "@/lib/session-helpers";
 import { isRetryRecord, reduceFlowState } from "@/lib/selfreg-flow-machine";
+import ClassStats from "@/components/analytics/ClassStats";
+import ProgressChart from "@/components/analytics/ProgressChart";
+import type { TeacherAnalytics } from "@/lib/server-storage";
 
 // Устаревший ключ — оставлен только для совместимости при миграции
 
@@ -357,6 +361,7 @@ export function TeacherDashboard() {
   const [highlightedSessionUpdatedAt, setHighlightedSessionUpdatedAt] = useState<string | null>(null);
   const [copiedChildId, setCopiedChildId] = useState<string | null>(null);
   const [lastDeleted, setLastDeleted] = useState<{ childId: string; session: Session } | null>(null);
+  const [analytics, setAnalytics] = useState<TeacherAnalytics | null>(null);
 
   const selectedChild = children.find(c => c.id === selectedChildId) || children[0];
 
@@ -395,7 +400,9 @@ export function TeacherDashboard() {
 
     const loadServerChildren = async () => {
       try {
-        const query = teacherIdFromUrl ? `?teacherId=${encodeURIComponent(teacherIdFromUrl)}` : "";
+        const query = teacherIdFromUrl
+          ? `?teacherId=${encodeURIComponent(teacherIdFromUrl)}&analytics=true`
+          : "";
         const response = await fetch(`/api/teacher-data${query}`, { cache: "no-store" });
         if (!response.ok) return;
 
@@ -403,8 +410,14 @@ export function TeacherDashboard() {
         if (!active || !Array.isArray(payload?.children)) return;
 
         const serverChildren = payload.children as Child[];
-        ChildrenStorage.saveAll(serverChildren);
         setChildren(serverChildren);
+
+        // Set analytics if available
+        if (payload.analytics) {
+          setAnalytics(payload.analytics as TeacherAnalytics);
+        } else {
+          setAnalytics(null);
+        }
 
         let restoredChildId: string | null = null;
         let restoredSessionIdx = 0;
@@ -436,6 +449,7 @@ export function TeacherDashboard() {
         if (!active) return;
         setChildren([]);
         setSelectedChildId(null);
+        setAnalytics(null);
       }
     };
 
@@ -449,64 +463,90 @@ export function TeacherDashboard() {
   useEffect(() => {
     if (serverBackedDashboard) return;
 
-    let loaded = ChildrenStorage.getAll();
+    let active = true;
 
-    // Если база пустая — создаём демо (ТОЛЬКО если данных нет вообще)
-    if (loaded.length === 0) {
-      const child1 = ChildrenStorage.addChild("Алексей Петров");
-      const child2 = ChildrenStorage.addChild("Мария Иванова");
+    const loadLocalChildren = async () => {
+      let loaded = await DataService.getChildren();
 
-      // Добавляем демо-сессию первому ребёнку
-      ChildrenStorage.saveSessionForChild(child1.id, createSampleSession(lang, locale));
+      // Если база пустая — создаём демо (ТОЛЬКО если данных нет вообще)
+      if (loaded.length === 0) {
+        const child1 = await DataService.saveChild({
+          id: createChildId(),
+          name: "Алексей Петров",
+          sessions: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        } as Child);
+        const child2 = await DataService.saveChild({
+          id: createChildId(),
+          name: "Мария Иванова",
+          sessions: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        } as Child);
 
-      loaded = ChildrenStorage.getAll();
-    }
+        // Добавляем демо-сессию первому ребёнку
+        await DataService.saveSession(child1.id, createSampleSession(lang, locale));
 
-    // Defensive: если по какой-то причине есть дубликаты ID (legacy data), регенерируем их
-    const seen = new Set<string>();
-    let hadDuplicates = false;
-    loaded = loaded.map(child => {
-      if (seen.has(child.id)) {
-        hadDuplicates = true;
-        return { ...child, id: createChildId() };
+        loaded = await DataService.getChildren();
       }
-      seen.add(child.id);
-      return child;
-    });
-    if (hadDuplicates) {
-      ChildrenStorage.saveAll(loaded);
-    }
 
-    queueMicrotask(() => {
-      setChildren(loaded);
-
-      // Восстанавливаем последнее состояние из localStorage, если оно валидно
-      let restored = false;
-      try {
-        const saved = localStorage.getItem(DASHBOARD_STATE_KEY);
-        if (saved) {
-          const { childId: savedChildId, sessionIdx: savedSessionIdx } = JSON.parse(saved);
-
-          const childExists = loaded.some(c => c.id === savedChildId);
-          if (childExists) {
-            setSelectedChildId(savedChildId);
-            setSelectedSessionIdx(Math.max(0, savedSessionIdx || 0));
-            restored = true;
-          }
+      // Defensive: если по какой-то причине есть дубликаты ID (legacy data), регенерируем их
+      const seen = new Set<string>();
+      let hadDuplicates = false;
+      loaded = loaded.map((child: Child) => {
+        if (seen.has(child.id)) {
+          hadDuplicates = true;
+          return { ...child, id: createChildId() };
         }
-      } catch {}
-
-      if (!restored && loaded.length > 0) {
-        setSelectedChildId(loaded[0].id);
+        seen.add(child.id);
+        return child;
+      });
+      if (hadDuplicates) {
+        for (const child of loaded) {
+          await DataService.saveChild(child);
+        }
       }
-    });
+
+      if (!active) return;
+
+      queueMicrotask(() => {
+        setChildren(loaded);
+
+        // Восстанавливаем последнее состояние из localStorage, если оно валидно
+        let restored = false;
+        try {
+          const saved = localStorage.getItem(DASHBOARD_STATE_KEY);
+          if (saved) {
+            const { childId: savedChildId, sessionIdx: savedSessionIdx } = JSON.parse(saved);
+
+            const childExists = loaded.some((c: Child) => c.id === savedChildId);
+            if (childExists) {
+              setSelectedChildId(savedChildId);
+              setSelectedSessionIdx(Math.max(0, savedSessionIdx || 0));
+              restored = true;
+            }
+          }
+        } catch {}
+
+        if (!restored && loaded.length > 0) {
+          setSelectedChildId(loaded[0].id);
+        }
+      });
+    };
+
+    void loadLocalChildren();
+
+    return () => {
+      active = false;
+    };
   }, [serverBackedDashboard, lang, locale]);
 
   // === Создать новую пустую сессию для текущего ребёнка ===
   function createNewSessionForChild(customContext?: string) {
     if (!selectedChild) return;
 
-    const context = customContext?.trim() 
+    const context = customContext?.trim()
       ? customContext.trim()
       : `${selectedChild.name} — ${new Date().toLocaleDateString(locale)}`;
 
@@ -519,11 +559,13 @@ export function TeacherDashboard() {
       childId: selectedChild.id,
     };
 
-    ChildrenStorage.saveSessionForChild(selectedChild.id, newSession);
+    void (async () => {
+      await DataService.saveSession(selectedChild.id, newSession);
 
-    // Обновляем локальное состояние
-    const updatedChildren = ChildrenStorage.getAll();
-    setChildren(updatedChildren);
+      // Обновляем локальное состояние
+      const updatedChildren = await DataService.getChildren();
+      setChildren(updatedChildren);
+    })();
 
     // Переключаемся на самую свежую сессию
     setSelectedSessionIdx(0);
@@ -614,44 +656,29 @@ export function TeacherDashboard() {
     if (!selectedChild) return;
     if (!confirm(`Удалить ученика ${selectedChild.id} и все его сессии? Это необратимо.`)) return;
 
-    if (serverBackedDashboard) {
-      void (async () => {
+    void (async () => {
+      if (serverBackedDashboard) {
         try {
           const teacherQuery = teacherIdFromUrl ? `&teacherId=${encodeURIComponent(teacherIdFromUrl)}` : "";
           await fetch(`/api/children?childId=${encodeURIComponent(selectedChild.id)}${teacherQuery}`, {
             method: "DELETE",
           });
         } catch {}
+      }
 
-        ChildrenStorage.deleteChild(selectedChild.id);
-        const fresh = ChildrenStorage.getAll();
-        setChildren(fresh);
-        setLastDeleted(null);
-        setNewSessionHint(null);
+      await DataService.deleteChild(selectedChild.id);
+      const fresh = await DataService.getChildren();
+      setChildren(fresh);
+      setLastDeleted(null);
+      setNewSessionHint(null);
 
-        if (fresh.length > 0) {
-          setSelectedChildId(fresh[0].id);
-          setSelectedSessionIdx(0);
-        } else {
-          setSelectedChildId(null);
-        }
-      })();
-      return;
-    }
-
-    ChildrenStorage.deleteChild(selectedChild.id);
-    const fresh = ChildrenStorage.getAll();
-    setChildren(fresh);
-    setLastDeleted(null);
-    setNewSessionHint(null);
-
-    // pick next or none
-    if (fresh.length > 0) {
-      setSelectedChildId(fresh[0].id);
-      setSelectedSessionIdx(0);
-    } else {
-      setSelectedChildId(null);
-    }
+      if (fresh.length > 0) {
+        setSelectedChildId(fresh[0].id);
+        setSelectedSessionIdx(0);
+      } else {
+        setSelectedChildId(null);
+      }
+    })();
   }
 
   function buildPrototypeHref(child: Child) {
@@ -686,22 +713,76 @@ export function TeacherDashboard() {
     if (!confirm("Удалить эту сессию?")) return;
 
     setLastDeleted({ childId: selectedChild.id, session: { ...currentSession } });
-    ChildrenStorage.deleteSession(selectedChild.id, currentSession.updatedAt);
 
-    const fresh = ChildrenStorage.getAll();
-    setChildren(fresh);
-    setSelectedSessionIdx(0);
+    void (async () => {
+      await DataService.deleteSession(selectedChild.id, currentSession.updatedAt);
+
+      const fresh = await DataService.getChildren();
+      setChildren(fresh);
+      setSelectedSessionIdx(0);
+    })();
 
     setTimeout(() => setLastDeleted(null), 12000);
   }
 
   function undoLastDelete() {
     if (!lastDeleted) return;
-    ChildrenStorage.saveSessionForChild(lastDeleted.childId, lastDeleted.session);
-    const fresh = ChildrenStorage.getAll();
-    setChildren(fresh);
-    setLastDeleted(null);
-    setSelectedSessionIdx(0);
+
+    void (async () => {
+      await DataService.saveSession(lastDeleted.childId, lastDeleted.session);
+      const fresh = await DataService.getChildren();
+      setChildren(fresh);
+      setLastDeleted(null);
+      setSelectedSessionIdx(0);
+    })();
+  }
+
+  // === CSV Export ===
+  function exportToCsv() {
+    const rows: string[][] = [];
+    // Header
+    rows.push(["ID", "Name", "Class", "Total Sessions", "Completed Sessions", "Last Activity", "Teacher ID"]);
+
+    for (const child of children) {
+      const totalSessions = child.sessions?.length || 0;
+      const completedSessions = child.sessions?.filter(
+        (s) => s.status === "completed" || (s.finalNote && s.finalNote.trim())
+      ).length || 0;
+      const timestamps = child.sessions?.map((s) => s.updatedAt).filter(Boolean) as string[] | undefined;
+      const lastActivity = timestamps && timestamps.length > 0
+        ? timestamps.sort().reverse()[0] ?? ""
+        : "";
+
+      rows.push([
+        child.id,
+        child.realData?.fio || child.name || "",
+        child.realData?.klass || "",
+        String(totalSessions),
+        String(completedSessions),
+        lastActivity ? new Date(lastActivity).toISOString() : "",
+        child.teacherId || "",
+      ]);
+    }
+
+    const csvContent = rows
+      .map((row) =>
+        row
+          .map((cell) => {
+            // Escape quotes and wrap in quotes if contains comma or quote
+            const escaped = cell.replace(/"/g, '""');
+            return /[,"\n]/.test(cell) ? `"${escaped}"` : escaped;
+          })
+          .join(",")
+      )
+      .join("\n");
+
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `teacher-data-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   return (
@@ -718,6 +799,9 @@ export function TeacherDashboard() {
         </div>
         <div className="action-row">
           <LanguageToggle />
+          <button className="button secondary" onClick={exportToCsv} style={{ fontSize: 13, padding: "6px 12px" }}>
+            {lang === "en" ? "📥 CSV Export" : "📥 CSV экспорт"}
+          </button>
           <Link className="button secondary" href={withLang("/", lang)}>
             {ui.home}
           </Link>
@@ -835,8 +919,10 @@ export function TeacherDashboard() {
                 if (nameInput?.value.trim()) {
                   const name = nameInput.value.trim();
 
-                  if (serverBackedDashboard) {
-                    void (async () => {
+                  void (async () => {
+                    let newChild: Child;
+
+                    if (serverBackedDashboard) {
                       try {
                         const response = await fetch("/api/children", {
                           method: "POST",
@@ -850,27 +936,32 @@ export function TeacherDashboard() {
                         if (response.ok) {
                           const payload = await response.json();
                           if (payload?.child) {
-                            ChildrenStorage.upsertLocalChild(payload.child);
-                            setChildren(ChildrenStorage.getAll());
-                            selectChild(payload.child.id);
+                            newChild = payload.child as Child;
+                            await DataService.saveChild(newChild);
+                            const updated = await DataService.getChildren();
+                            setChildren(updated);
+                            selectChild(newChild.id);
                             nameInput.value = "";
                             return;
                           }
                         }
                       } catch {}
+                    }
 
-                      const newC = ChildrenStorage.addChild(name);
-                      setChildren(ChildrenStorage.getAll());
-                      selectChild(newC.id);
-                      nameInput.value = "";
-                    })();
-                    return;
-                  }
-
-                  const newC = ChildrenStorage.addChild(name);
-                  setChildren(ChildrenStorage.getAll());
-                  selectChild(newC.id);
-                  nameInput.value = "";
+                    // Fallback: create via DataService (localStorage)
+                    newChild = {
+                      id: createChildId(),
+                      name,
+                      sessions: [],
+                      createdAt: new Date().toISOString(),
+                      updatedAt: new Date().toISOString(),
+                    } as Child;
+                    await DataService.saveChild(newChild);
+                    const updated = await DataService.getChildren();
+                    setChildren(updated);
+                    selectChild(newChild.id);
+                    nameInput.value = "";
+                  })();
                 }
               }}
               style={{ display: "flex", gap: 6, flexWrap: 'wrap' }}
@@ -1024,6 +1115,69 @@ export function TeacherDashboard() {
                   </div>
                 </div>
               </div>
+
+              {/* SERVER ANALYTICS PANEL (only when server-backed) */}
+              {serverBackedDashboard && analytics && (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                    <ClassStats
+                      data={analytics.classDistribution}
+                      title={lang === "en" ? "Class Distribution" : "Распределение по классам"}
+                    />
+                    <div>
+                      <div style={{
+                        padding: 24,
+                        background: "white",
+                        borderRadius: 12,
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                        marginBottom: 16,
+                      }}>
+                        <h3 style={{ fontSize: 18, marginBottom: 16 }}>
+                          {lang === "en" ? "Overall Statistics" : "Общая статистика"}
+                        </h3>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                          <div style={{ padding: 16, background: "#f0f7ff", borderRadius: 8, textAlign: "center" }}>
+                            <div style={{ fontSize: 28, fontWeight: 700, color: "var(--accent)" }}>{analytics.totalChildren}</div>
+                            <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>
+                              {lang === "en" ? "Students" : "Учеников"}
+                            </div>
+                          </div>
+                          <div style={{ padding: 16, background: "#f0fdf4", borderRadius: 8, textAlign: "center" }}>
+                            <div style={{ fontSize: 28, fontWeight: 700, color: "#10b981" }}>{analytics.totalSessions}</div>
+                            <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>
+                              {lang === "en" ? "Sessions" : "Сессий"}
+                            </div>
+                          </div>
+                          <div style={{ padding: 16, background: "#fffbeb", borderRadius: 8, textAlign: "center" }}>
+                            <div style={{ fontSize: 28, fontWeight: 700, color: "#f59e0b" }}>{analytics.totalCompletedSessions}</div>
+                            <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>
+                              {lang === "en" ? "Completed" : "Завершено"}
+                            </div>
+                          </div>
+                          <div style={{ padding: 16, background: "#f5f3ff", borderRadius: 8, textAlign: "center" }}>
+                            <div style={{ fontSize: 28, fontWeight: 700, color: "#8b5cf6" }}>
+                              {analytics.totalSessions > 0
+                                ? Math.round((analytics.totalCompletedSessions / analytics.totalSessions) * 100)
+                                : 0}%
+                            </div>
+                            <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>
+                              {lang === "en" ? "Completion rate" : "Завершение"}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <ProgressChart
+                        data={analytics.studentProgress.map((sp) => ({
+                          totalSessions: sp.totalSessions,
+                          completedSessions: sp.completedSessions,
+                          lastActivity: sp.lastActivity ?? undefined,
+                        }))}
+                        title={lang === "en" ? "Student Progress" : "Прогресс учеников"}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* SESSIONS LIST */}
               <div className="panel" style={{ marginBottom: 16 }}>

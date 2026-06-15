@@ -4,7 +4,8 @@ import { Suspense, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import { LanguageToggle } from "@/app/components/LanguageToggle";
-import type { AppLang } from "@/lib/app-i18n";
+import { ErrorBoundary } from "@/app/components/ErrorBoundary";
+import { withLang, type AppLang } from "@/lib/app-i18n";
 
 function RoleSelectionContent() {
   const router = useRouter();
@@ -35,12 +36,9 @@ function RoleSelectionContent() {
   const t = texts[lang];
 
   const handleRoleSelect = useCallback((role: "teacher" | "student") => {
+    // Save role preference and redirect to registration with role parameter
     sessionStorage.setItem("selected_role", role);
-    if (role === "teacher") {
-      router.push(`/teacher/register?lang=${lang}`);
-    } else {
-      router.push(`/adolescent?lang=${lang}`);
-    }
+    router.push(withLang(`/auth/register?role=${role}`, lang));
   }, [lang, router]);
 
   return (
@@ -106,18 +104,20 @@ function RoleSelectionContent() {
 
 export default function RoleSelectionPage() {
   return (
-    <Suspense fallback={
-      <div style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-      }}>
-        <div style={{ color: "white", fontSize: 20 }}>Загрузка...</div>
-      </div>
-    }>
-      <RoleSelectionContent />
-    </Suspense>
+    <ErrorBoundary>
+      <Suspense fallback={
+        <div style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        }}>
+          <div style={{ color: "white", fontSize: 20 }}>Загрузка...</div>
+        </div>
+      }>
+        <RoleSelectionContent />
+      </Suspense>
+    </ErrorBoundary>
   );
 }

@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { Suspense, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { signUpWithEmail } from "@/lib/supabase-auth";
 import { supabase } from "@/lib/supabase";
+import { ErrorBoundary } from "@/app/components/ErrorBoundary";
 import type { AppLang } from "@/lib/app-i18n";
 
-export default function TeacherRegisterPage() {
+function TeacherRegisterContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const lang = (searchParams.get("lang") === "en" ? "en" : "ru") as AppLang;
@@ -293,5 +294,15 @@ export default function TeacherRegisterPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function TeacherRegisterPage() {
+  return (
+    <ErrorBoundary>
+      <Suspense fallback={null}>
+        <TeacherRegisterContent />
+      </Suspense>
+    </ErrorBoundary>
   );
 }

@@ -1,15 +1,26 @@
+/**
+ * SelfReg AI — Auth Callback
+ *
+ * Handles OAuth callbacks from Supabase (Google sign-in).
+ * - Exchanges auth code for session
+ * - Reads ?role parameter from redirect URL
+ * - Upserts user profile with role in the profiles table
+ * - Redirects based on role: /teacher or /student/dashboard
+ */
+
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-// This route handles OAuth callbacks from Supabase
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
   const error = requestUrl.searchParams.get("error");
+  const roleParam = requestUrl.searchParams.get("role"); // "teacher" | "student" | null
+  const lang = requestUrl.searchParams.get("lang") || "ru";
 
   if (error) {
     console.error("[Auth Callback] OAuth error:", error);
-    return NextResponse.redirect(`${requestUrl.origin}/?auth=error`);
+    return NextResponse.redirect(`${requestUrl.origin}/auth/login?lang=${lang}&auth=error`);
   }
 
   if (code) {
@@ -18,7 +29,7 @@ export async function GET(request: Request) {
 
     if (!supabaseUrl || !supabaseAnonKey) {
       console.warn("[Auth Callback] Supabase not configured");
-      return NextResponse.redirect(`${requestUrl.origin}/?auth=error`);
+      return NextResponse.redirect(`${requestUrl.origin}/auth/login?lang=${lang}&auth=error`);
     }
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
@@ -29,31 +40,63 @@ export async function GET(request: Request) {
 
       if (error || !session) {
         console.error("[Auth Callback] Failed to exchange code:", error);
-        return NextResponse.redirect(`${requestUrl.origin}/?auth=error`);
+        return NextResponse.redirect(`${requestUrl.origin}/auth/login?lang=${lang}&auth=error`);
       }
 
-      // User is authenticated - redirect based on role
-      // We'll check the profile table to determine role
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", session.user.id)
-        .single();
+      const userId = session.user.id;
+      const userEmail = session.user.email || "";
+      const userName = session.user.user_metadata?.full_name ||
+                       session.user.user_metadata?.name ||
+                       userEmail.split("@")[0];
 
-      const role = profile?.role || "student";
+      // Determine role: from URL param > localStorage fallback > existing profile > default "student"
+      let role = roleParam || "student";
+
+      // If no role in URL, try to read from localStorage (passed via redirect state)
+      // This is a best-effort approach — the role will be set in profiles table
+      if (!roleParam) {
+        // Check if user already has a profile
+        const { data: existingProfile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", userId)
+          .single();
+
+        if (existingProfile?.role) {
+          role = existingProfile.role;
+        }
+      }
+
+      // Upsert profile with role
+      const { error: upsertError } = await supabase
+        .from("profiles")
+        .upsert({
+          id: userId,
+          email: userEmail,
+          full_name: userName,
+          role: role,
+          avatar_url: session.user.user_metadata?.avatar_url ||
+                      session.user.user_metadata?.picture ||
+                      `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=4f46e5&color=fff`,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "id" });
+
+      if (upsertError) {
+        console.error("[Auth Callback] Failed to upsert profile:", upsertError);
+      }
 
       // Redirect based on role
       if (role === "teacher") {
-        return NextResponse.redirect(`${requestUrl.origin}/teacher?auth=success`);
+        return NextResponse.redirect(`${requestUrl.origin}/teacher?lang=${lang}&auth=success`);
       } else {
-        return NextResponse.redirect(`${requestUrl.origin}/adolescent?auth=success`);
+        return NextResponse.redirect(`${requestUrl.origin}/student/dashboard?lang=${lang}&auth=success`);
       }
     } catch (err) {
       console.error("[Auth Callback] Exception:", err);
-      return NextResponse.redirect(`${requestUrl.origin}/?auth=error`);
+      return NextResponse.redirect(`${requestUrl.origin}/auth/login?lang=${lang}&auth=error`);
     }
   }
 
-  // No code - redirect to home
-  return NextResponse.redirect(requestUrl.origin);
+  // No code — redirect to login
+  return NextResponse.redirect(`${requestUrl.origin}/auth/login?lang=${lang}`);
 }

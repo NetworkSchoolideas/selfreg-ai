@@ -7,6 +7,8 @@ import {
   fetchChildrenFromSupabase,
   upsertChildInSupabase,
 } from "@/lib/server-storage";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 
 const ChildPayload = z.object({
   id: z.string().min(1).optional(),
@@ -23,11 +25,56 @@ const ChildPayload = z.object({
     .optional(),
 });
 
+/**
+ * Получает ID текущего пользователя из сессии Supabase.
+ * Используется для поддержки childId=current.
+ */
+async function getCurrentUserId(): Promise<string | null> {
+  try {
+    const cookieStore = await cookies();
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey =
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return null;
+    }
+
+    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll() {
+          // Read-only в API route
+        },
+      },
+    });
+
+    const { data } = await supabase.auth.getUser();
+    return data?.user?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const childId = url.searchParams.get("childId");
     const teacherId = url.searchParams.get("teacherId") || undefined;
+
+    // Поддержка childId=current — читает ID текущего пользователя из сессии
+    if (childId === "current") {
+      const userId = await getCurrentUserId();
+      if (!userId) {
+        return NextResponse.json({ ok: true, child: null });
+      }
+
+      const child = await fetchChildFromSupabase(userId);
+      return NextResponse.json({ ok: true, child });
+    }
 
     if (childId) {
       const child = await fetchChildFromSupabase(childId);
@@ -51,7 +98,22 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const payload = ChildPayload.parse(await request.json());
+    const body = await request.json();
+
+    // Поддержка action="upsert" для синхронизации из ChildrenStorage
+    if (body.action === "upsert" && body.child) {
+      const child = await upsertChildInSupabase(body.child);
+      return NextResponse.json({ ok: true, child });
+    }
+
+    // Поддержка action="delete" для синхронизации из ChildrenStorage
+    if (body.action === "delete" && body.childId) {
+      await deleteChildFromSupabase(body.childId);
+      return NextResponse.json({ ok: true, childId: body.childId });
+    }
+
+    // Стандартный payload
+    const payload = ChildPayload.parse(body);
     const child = await upsertChildInSupabase(payload);
     return NextResponse.json({ ok: true, child });
   } catch (error) {

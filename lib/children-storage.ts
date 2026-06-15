@@ -41,6 +41,32 @@ function writeChildren(children: Child[]) {
   log(`Saved ${children.length} children to localStorage`);
 }
 
+/**
+ * Проверяет, доступен ли Supabase admin client (серверная сторона).
+ * Используется для fire-and-forget синхронизации.
+ */
+function isSupabaseAvailable(): boolean {
+  return (
+    typeof process !== "undefined" &&
+    (process.env.NEXT_PUBLIC_SUPABASE_ENABLED === "true" ||
+      process.env.SUPABASE_SERVICE_ROLE_KEY !== undefined)
+  );
+}
+
+/**
+ * Отправляет fire-and-forget запрос к API для синхронизации с Supabase.
+ */
+function syncToApi(endpoint: string, body: unknown) {
+  if (typeof window === "undefined") return;
+  if (!isSupabaseAvailable()) return;
+
+  void fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  }).catch((err) => log(`Sync to ${endpoint} failed`, err));
+}
+
 export const ChildrenStorage = {
   getAll(): Child[] {
     return readChildren();
@@ -61,6 +87,29 @@ export const ChildrenStorage = {
     }
 
     writeChildren(children);
+  },
+
+  /**
+   * Асинхронная версия upsertLocalChild — сохраняет в localStorage
+   * и дублирует в Supabase через API.
+   */
+  async upsertLocalChildAsync(child: Child): Promise<Child> {
+    this.upsertLocalChild(child);
+
+    syncToApi("/api/children", {
+      action: "upsert",
+      child: {
+        id: child.id,
+        name: child.name,
+        className: child.realData?.klass,
+        teacherId: child.teacherId,
+        consentGiven: child.consentGiven,
+        consentTimestamp: child.consentTimestamp,
+        realData: child.realData,
+      },
+    });
+
+    return child;
   },
 
   removeLocalChild(childId: string) {
@@ -136,6 +185,16 @@ export const ChildrenStorage = {
     writeChildren(children);
   },
 
+  /**
+   * Асинхронная версия saveSessionForChild — сохраняет в localStorage
+   * и дублирует в Supabase через API.
+   */
+  async saveSessionForChildAsync(childId: string, session: Session): Promise<void> {
+    this.saveSessionForChild(childId, session);
+
+    syncToApi("/api/session-sync", { childId, session });
+  },
+
   getSessionsForChild(childId: string): Session[] {
     return this.getChild(childId)?.sessions ?? [];
   },
@@ -159,6 +218,24 @@ export const ChildrenStorage = {
     return true;
   },
 
+  /**
+   * Асинхронная версия deleteSession — удаляет из localStorage
+   * и дублирует удаление в Supabase через API.
+   */
+  async deleteSessionAsync(childId: string, sessionUpdatedAt: string): Promise<boolean> {
+    const removed = this.deleteSession(childId, sessionUpdatedAt);
+
+    if (removed) {
+      syncToApi("/api/session-sync", {
+        action: "delete",
+        childId,
+        sessionUpdatedAt,
+      });
+    }
+
+    return removed;
+  },
+
   deleteChild(childId: string): boolean {
     const children = readChildren();
     const filtered = children.filter((child) => child.id !== childId);
@@ -166,6 +243,20 @@ export const ChildrenStorage = {
 
     writeChildren(filtered);
     return true;
+  },
+
+  /**
+   * Асинхронная версия deleteChild — удаляет из localStorage
+   * и дублирует удаление в Supabase через API.
+   */
+  async deleteChildAsync(childId: string): Promise<boolean> {
+    const removed = this.deleteChild(childId);
+
+    if (removed) {
+      syncToApi("/api/children", { action: "delete", childId });
+    }
+
+    return removed;
   },
 
   attachHistoryInsight(childId: string, insight: string): boolean {
@@ -184,15 +275,16 @@ export const ChildrenStorage = {
     children[index].updatedAt = new Date().toISOString();
     writeChildren(children);
 
-    if (typeof window !== "undefined") {
-      void fetch("/api/session-feedback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ childId, historyInsight: insight }),
-      }).catch((err) => log("Session feedback sync failed", err));
-    }
+    syncToApi("/api/session-feedback", { childId, historyInsight: insight });
 
     return true;
+  },
+
+  /**
+   * Асинхронная версия attachHistoryInsight.
+   */
+  async attachHistoryInsightAsync(childId: string, insight: string): Promise<boolean> {
+    return this.attachHistoryInsight(childId, insight);
   },
 
   saveAdolescentFeedback(childId: string, feedback: AdolescentFeedback): boolean {
@@ -211,15 +303,16 @@ export const ChildrenStorage = {
     children[index].updatedAt = new Date().toISOString();
     writeChildren(children);
 
-    if (typeof window !== "undefined") {
-      void fetch("/api/session-feedback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ childId, adolescentFeedback: feedback }),
-      }).catch((err) => log("Session feedback sync failed", err));
-    }
+    syncToApi("/api/session-feedback", { childId, adolescentFeedback: feedback });
 
     return true;
+  },
+
+  /**
+   * Асинхронная версия saveAdolescentFeedback.
+   */
+  async saveAdolescentFeedbackAsync(childId: string, feedback: AdolescentFeedback): Promise<boolean> {
+    return this.saveAdolescentFeedback(childId, feedback);
   },
 
   getLatestSessionForChild(childId: string): Session | null {

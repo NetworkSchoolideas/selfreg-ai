@@ -5,7 +5,7 @@ import { aiService } from "@/services/ai-service";
 import { answerValidator } from "@/lib/answer-validator";
 import { sessionManager } from "@/lib/session-manager";
 import { buildSessionSummary } from "@/lib/session-summary";
-import { ChildrenStorage } from "@/lib/children-storage";
+import { DataService } from "@/lib/data-service";
 import { decideSupportScenarioDetailed } from "@/lib/scenario-engine";
 import { makeMockFeedback } from "@/lib/selfreg-model";
 import type { ProviderId } from "@/lib/provider-registry";
@@ -86,7 +86,7 @@ export function useSessionSubmit(options: UseSessionSubmitOptions) {
     return buildSessionSummary(ctx, recs, lang);
   }, [lang]);
 
-  const saveSession = useCallback((nextRecords: RecordItem[], note: string) => {
+  const saveSession = useCallback(async (nextRecords: RecordItem[], note: string) => {
     const payload: Session = {
       sessionId,
       status: note.trim() ? "completed" : "in_progress",
@@ -105,7 +105,7 @@ export function useSessionSubmit(options: UseSessionSubmitOptions) {
     sessionManager.saveSession(payload);
 
     if (currentChildId) {
-      ChildrenStorage.saveSessionForChild(currentChildId, payload);
+      await DataService.saveSession(currentChildId, payload);
       log("Session saved to storage");
 
       void fetch("/api/session-sync", {

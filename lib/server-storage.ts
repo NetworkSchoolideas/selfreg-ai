@@ -348,3 +348,76 @@ export async function deleteChildFromSupabase(childId: string): Promise<void> {
     throw new Error(error.message);
   }
 }
+
+// ========================================================================
+// Analytics
+// ========================================================================
+
+export interface ClassDistribution {
+  className: string;
+  count: number;
+}
+
+export interface StudentProgress {
+  childId: string;
+  childName: string;
+  totalSessions: number;
+  completedSessions: number;
+  lastActivity: string | null;
+}
+
+export interface TeacherAnalytics {
+  classDistribution: ClassDistribution[];
+  studentProgress: StudentProgress[];
+  totalChildren: number;
+  totalSessions: number;
+  totalCompletedSessions: number;
+}
+
+/**
+ * Вычислить аналитику для учителя на основе данных из Supabase.
+ */
+export async function computeTeacherAnalytics(teacherId: string): Promise<TeacherAnalytics> {
+  const children = await fetchChildrenFromSupabase(teacherId);
+
+  // Class distribution
+  const classMap = new Map<string, number>();
+  for (const child of children) {
+    const className = child.realData?.klass || "unknown";
+    classMap.set(className, (classMap.get(className) || 0) + 1);
+  }
+  const classDistribution: ClassDistribution[] = Array.from(classMap.entries())
+    .map(([className, count]) => ({ className, count }))
+    .sort((a, b) => b.count - a.count);
+
+  // Student progress
+  let totalSessions = 0;
+  let totalCompletedSessions = 0;
+  const studentProgress: StudentProgress[] = children.map((child) => {
+    const sessions = child.sessions || [];
+    const completedSessions = sessions.filter((s) => s.status === "completed" || (s.finalNote && s.finalNote.trim()));
+    totalSessions += sessions.length;
+    totalCompletedSessions += completedSessions.length;
+
+    const timestamps = sessions.map((s) => s.updatedAt).filter(Boolean) as string[];
+    const lastActivity = timestamps.length > 0
+      ? timestamps.sort().reverse()[0] ?? null
+      : null;
+
+    return {
+      childId: child.id,
+      childName: child.realData?.fio || child.name,
+      totalSessions: sessions.length,
+      completedSessions: completedSessions.length,
+      lastActivity,
+    };
+  });
+
+  return {
+    classDistribution,
+    studentProgress,
+    totalChildren: children.length,
+    totalSessions,
+    totalCompletedSessions,
+  };
+}

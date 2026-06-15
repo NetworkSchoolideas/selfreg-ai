@@ -12,7 +12,8 @@ import { useAdolescentSession } from "./useAdolescentSession";
 import { withLang, type AppLang } from "@/lib/app-i18n";
 import type { ProviderId } from "@/lib/provider-registry";
 import { ConsentModal } from "@/app/components/ConsentModal";
-import { ChildrenStorage, createChildId } from "@/lib/children-storage";
+import { createChildId } from "@/lib/children-storage";
+import { DataService } from "@/lib/data-service";
 import type { RecordItem, CompletedSession } from "@/types/session";
 import { useSessionSubmit } from "@/hooks/useSessionSubmit";
 import { useSessionHistory } from "@/hooks/useSessionHistory";
@@ -91,36 +92,50 @@ export function AdolescentPrototype() {
     const loadChild = async () => {
       if (!childIdFromUrl) return;
 
+      // 1. Пробуем DataService (Supabase → localStorage)
+      const found = await DataService.getChild(childIdFromUrl);
+      if (found && active) {
+        // Link child to teacher if teacherCode was provided
+        const enteredTeacherCode = teacherCode.trim();
+        if (enteredTeacherCode) {
+          try {
+            const joinResponse = await fetch("/api/join-teacher", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ teacherCode: enteredTeacherCode, childId: found.id }),
+            });
+            if (joinResponse.ok) {
+              const joinResult = await joinResponse.json();
+              console.log("[Join Teacher] Successfully linked to:", joinResult.teacherName);
+            }
+          } catch (err) {
+            console.error("[Join Teacher] Error:", err);
+          }
+        }
+        const sessionsCount = found.sessions?.length || 0;
+        const name = sessionsCount > 0 ? `${found.name} (${sessionsCount})` : found.name;
+        setCurrentChildName(name);
+        setCurrentChildId(found.id);
+        setIsRegistered(true);
+        setChildLookupAttempted(true);
+        setChildLookupFailed(false);
+        return;
+      }
+
+      // 2. Запасной вариант: API
       try {
         const response = await fetch(`/api/children?childId=${encodeURIComponent(childIdFromUrl)}`, {
           cache: "no-store",
         });
-        if (!response.ok) return;
+        if (!response.ok) throw new Error("API not available");
 
         const payload = await response.json();
-        if (!active || !payload?.child) return;
+        if (!active || !payload?.child) throw new Error("No child in response");
 
-        ChildrenStorage.upsertLocalChild(payload.child);
-          // Link child to teacher if teacherCode was provided
-          const enteredTeacherCode = teacherCode.trim();
-          if (enteredTeacherCode) {
-            try {
-              const joinResponse = await fetch("/api/join-teacher", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ teacherCode: enteredTeacherCode, childId: payload.child.id }),
-              });
-              if (joinResponse.ok) {
-                const joinResult = await joinResponse.json();
-                console.log("[Join Teacher] Successfully linked to:", joinResult.teacherName);
-              }
-            } catch (err) {
-              console.error("[Join Teacher] Error:", err);
-            }
-          }
+        await DataService.saveChild(payload.child);
+
         const sessionsCount = payload.child.sessions?.length || 0;
         const name = sessionsCount > 0 ? `${payload.child.name} (${sessionsCount})` : payload.child.name;
-
         setCurrentChildName(name);
         setCurrentChildId(payload.child.id);
         setIsRegistered(true);
@@ -129,20 +144,10 @@ export function AdolescentPrototype() {
         return;
       } catch {}
 
-      const localChild = ChildrenStorage.getChild(childIdFromUrl);
-      if (!localChild || !active) {
+      if (active) {
         setChildLookupAttempted(true);
         setChildLookupFailed(true);
-        return;
       }
-
-      const sessionsCount = localChild.sessions?.length || 0;
-      const name = sessionsCount > 0 ? `${localChild.name} (${sessionsCount})` : localChild.name;
-      setCurrentChildName(name);
-      setCurrentChildId(childIdFromUrl);
-      setIsRegistered(true);
-      setChildLookupAttempted(true);
-      setChildLookupFailed(false);
     };
 
     void loadChild();
@@ -221,7 +226,7 @@ export function AdolescentPrototype() {
       if (response.ok) {
         const payload = await response.json();
         if (payload?.child) {
-          ChildrenStorage.upsertLocalChild(payload.child);
+          await DataService.saveChild(payload.child);
           // Link child to teacher if teacherCode was provided
           const enteredTeacherCode = teacherCode.trim();
           if (enteredTeacherCode) {
@@ -248,11 +253,19 @@ export function AdolescentPrototype() {
       }
     } catch {}
 
-    const localChild = ChildrenStorage.addChildWithRealData(anonId, fio, klass, {
+    const now = new Date().toISOString();
+    const localChild: import("@/types/session").ChildProfile = {
+      id: anonId,
+      name: anonId,
+      createdAt: now,
+      updatedAt: now,
+      sessions: [],
+      realData: { fio: fio.trim(), klass: klass.trim() },
       teacherId,
       consentGiven: true,
       consentTimestamp,
-    });
+    };
+    await DataService.saveChild(localChild);
     setCurrentChildId(localChild.id);
     setCurrentChildName(`${fio} (${klass})`);
     setIsRegistered(true);

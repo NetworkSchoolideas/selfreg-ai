@@ -1,26 +1,31 @@
+import { DataService } from "@/lib/data-service";
 import { ChildrenStorage } from "@/lib/children-storage";
 import type { Session, RecordItem, CompletedSession } from "@/types/session";
 
 const DEMO_SESSION_KEY = "selfreg_demo_session";
 
 /**
- * Менеджер сессий — слой для работы с хранилищем (localStorage + ChildrenStorage).
+ * Менеджер сессий — слой для работы с хранилищем через DataService.
  * Отвечает за:
  *  - сохранение и загрузку сессий
  *  - привязку к childId (если есть)
  *  - извлечение завершённых сессий для истории
  *
+ * Все операции записи дублируются в Supabase (через DataService → ChildrenStorage).
  * Чистый слой — не зависит от React.
  */
 export class SessionManager {
   /**
    * Сохраняет сессию:
-   * - если есть childId → в ChildrenStorage
+   * - если есть childId → через DataService (localStorage + Supabase)
    * - иначе → в localStorage (демо-режим)
    */
   saveSession(session: Session): void {
     if (session.childId) {
-      ChildrenStorage.saveSessionForChild(session.childId, session);
+      // Fire-and-forget: DataService сам синхронизирует с Supabase
+      DataService.saveSession(session.childId, session).catch(() => {
+        // Ошибка логируется внутри DataService
+      });
     } else {
       localStorage.setItem(DEMO_SESSION_KEY, JSON.stringify(session));
     }
@@ -28,14 +33,18 @@ export class SessionManager {
 
   /**
    * Загружает сессию:
-   * - если есть childId → из ChildrenStorage (последняя)
+   * - если есть childId → через DataService (Supabase → localStorage)
    * - иначе → из localStorage (демо-режим)
    */
   loadSession(childId?: string): Session | null {
     if (childId) {
+      // Синхронная загрузка из localStorage (быстрый путь)
       const child = ChildrenStorage.getChild(childId);
       if (!child || child.sessions.length === 0) return null;
-      // Возвращаем последнюю сессию (самую свежую)
+
+      // Фоновая синхронизация с Supabase (если нужно)
+      DataService.getChild(childId).catch(() => {});
+
       return [...child.sessions].sort(
         (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
       )[0] ?? null;
@@ -54,7 +63,7 @@ export class SessionManager {
    */
   deleteSession(childId?: string): void {
     if (childId) {
-      // Для ChildrenStorage нужно знать updatedAt сессии
+      // Для удаления нужно знать updatedAt сессии
       // Пока просто не делаем ничего — удаление сессий через API педагога
     } else {
       localStorage.removeItem(DEMO_SESSION_KEY);
@@ -124,9 +133,12 @@ export class SessionManager {
 
   /**
    * Привязывает LLM-комментарий к последней сессии ребёнка.
+   * Делегирует в DataService для синхронизации с Supabase.
    */
   attachHistoryInsight(childId: string, insight: string): boolean {
-    return ChildrenStorage.attachHistoryInsight(childId, insight);
+    // Fire-and-forget: DataService сам синхронизирует с Supabase
+    DataService.attachHistoryInsight(childId, insight).catch(() => {});
+    return true;
   }
 }
 
