@@ -53,8 +53,15 @@ export interface HistoryInsightInput {
 // ============================================================================
 
 const log = (message: string, data?: unknown) => {
-  if (process.env.NODE_ENV === "development") {
-    console.log(`[DataService] ${message}`, data ?? "");
+  const prefix = "[DataService]";
+  if (data instanceof Error) {
+    console.error(`${prefix} ${message}`, {
+      name: data.name,
+      message: data.message,
+      stack: data.stack,
+    });
+  } else if (process.env.NODE_ENV === "development") {
+    console.log(`${prefix} ${message}`, data ?? "");
   }
 };
 

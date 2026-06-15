@@ -4,8 +4,9 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { AppLang } from "@/lib/app-i18n";
+import { ErrorBoundary } from "@/app/components/ErrorBoundary";
 
-export default function TeacherRegisterSuccessPage() {
+function TeacherRegisterSuccessPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const lang = (searchParams.get("lang") === "en" ? "en" : "ru") as AppLang;
@@ -130,3 +131,13 @@ export default function TeacherRegisterSuccessPage() {
     </div>
   );
 }
+
+function RegisterSuccessWrapper() {
+  return (
+    <ErrorBoundary>
+      <TeacherRegisterSuccessPage />
+    </ErrorBoundary>
+  );
+}
+
+export default RegisterSuccessWrapper;
