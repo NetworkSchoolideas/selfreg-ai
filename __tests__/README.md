@@ -2,24 +2,21 @@
 
 ## Overview
 
-This project uses a combination of unit tests and E2E tests to ensure quality.
+This project uses **Jest** for unit tests and **Playwright** for E2E tests.
 
 ## Test Structure
 
 ```
 __tests__/
-├── e2e/           # End-to-end tests
-│   ├── auth.test.ts
-│   ├── teacher-flow.test.ts
-│   └── student-flow.test.ts
-└── unit/          # Unit tests
-    ├── analytics/
-    └── lib/
+├── e2e/           # End-to-end tests (Playwright)
+│   └── teacher-flow.test.ts
+└── unit/          # Unit tests (Jest)
+    └── analytics.test.ts
 ```
 
 ## Running Tests
 
-### Unit Tests (Vitest)
+### Unit Tests (Jest)
 ```bash
 npm run test:unit
 ```
@@ -31,7 +28,7 @@ npm run test:e2e
 
 ### All Tests
 ```bash
-npm run test
+npm test
 ```
 
 ### Test with Coverage
@@ -39,46 +36,35 @@ npm run test
 npm run test:coverage
 ```
 
-## Test Categories
+## Test Configuration
 
-### 1. Authentication Flow
-- [ ] Teacher registration
-- [ ] Student registration
-- [ ] Role selection
-- [ ] Session management
+- **Jest config**: [`jest.config.ts`](../jest.config.ts) — uses `ts-jest` with `tsconfig.test.json`
+- **Playwright config**: [`playwright.config.ts`](../playwright.config.ts) — Chromium only, base URL `http://localhost:3000`
+- **Test tsconfig**: [`tsconfig.test.json`](../tsconfig.test.json) — extends main `tsconfig.json` with CommonJS module resolution
 
-### 2. Teacher Features
-- [ ] Dashboard load
-- [ ] Student list
-- [ ] Analytics view
-- [ ] Child detail page
+## Writing Tests
 
-### 3. Student Features
-- [ ] Profile view
-- [ ] Session history
-- [ ] Teacher linkage
+### Unit Tests
+Place unit tests in `__tests__/unit/`. Use Jest's global `describe`, `it`, `expect`:
 
-### 4. API Endpoints
-- [ ] /api/children
-- [ ] /api/join-teacher
-- [ ] Health checks
-
-## Setup for E2E Tests
-
-1. Install Playwright:
-```bash
-npm install -D @playwright/test
-npx playwright install
+```typescript
+describe("Feature Name", () => {
+  it("should do something", () => {
+    expect(true).toBe(true);
+  });
+});
 ```
 
-2. Set up test environment:
-```bash
-cp .env.test.example .env.test
-```
+### E2E Tests
+Place E2E tests in `__tests__/e2e/`. Use Playwright's test API:
 
-3. Run tests:
-```bash
-npm run test:e2e
+```typescript
+import { test, expect } from "@playwright/test";
+
+test("page loads", async ({ page }) => {
+  await page.goto("/");
+  await expect(page).toHaveTitle(/SelfReg/);
+});
 ```
 
 ## CI/CD Integration
@@ -88,24 +74,4 @@ Tests run automatically on:
 - Main branch pushes
 - Release tags
 
-## Manual Testing Checklist
-
-### Teacher Flow
-- [ ] Register as teacher
-- [ ] Get teacher code
-- [ ] View dashboard
-- [ ] See student list
-- [ ] View analytics
-- [ ] Click student details
-
-### Student Flow
-- [ ] Register as student
-- [ ] Enter teacher code
-- [ ] View profile
-- [ ] See session history
-
-### Security
-- [ ] Teacher can't access student routes
-- [ ] Student can't access teacher routes
-- [ ] RLS policies enforced
-- [ ] Sessions expire correctly
+See `.github/workflows/ci.yml` for the CI pipeline configuration.

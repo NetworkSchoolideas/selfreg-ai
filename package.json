@@ -11,7 +11,11 @@
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm run lint",
     "check:fix": "npm run lint:fix && npm run typecheck",
-    "check:full": "npm run check && npm run build"
+    "check:full": "npm run check && npm run build",
+    "test": "jest",
+    "test:unit": "jest __tests__/unit",
+    "test:e2e": "playwright test",
+    "test:coverage": "jest --coverage"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",
@@ -22,11 +26,17 @@
     "zod": "^3.25.0"
   },
   "devDependencies": {
+    "@jest/globals": "^30.4.1",
+    "@playwright/test": "^1.61.0",
+    "@types/jest": "^30.0.0",
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.6",
+    "jest": "^30.4.2",
+    "ts-jest": "^29.4.11",
+    "ts-node": "^10.9.2",
     "typescript": "^5.8.0"
   }
 }
