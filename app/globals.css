@@ -1204,6 +1204,14 @@ th {
   gap: 12px;
 }
 
+/* Stat grid 3col — for student/child dashboard stat cards */
+.stat-grid-3col {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-bottom: 32px;
+}
+
 /* Stat item */
 .stat-item {
   padding: 16px;
@@ -1520,7 +1528,38 @@ th {
   text-align: center;
 }
 
-@media (max-width: 860px) {
+/* Tablet: 768px-1024px */
+@media (max-width: 1024px) {
+  .dashboard-layout {
+    flex-direction: column;
+  }
+  .dashboard-sidebar {
+    width: 100%;
+    flex: none;
+  }
+  .analytics-grid,
+  .analytics-grid-2col,
+  .stat-grid-2col,
+  .stat-grid-3col {
+    grid-template-columns: 1fr;
+  }
+  .shell {
+    padding: 20px 16px;
+  }
+  .topbar {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .topbar h1 {
+    font-size: clamp(24px, 4vw, 32px);
+  }
+  .action-row {
+    width: 100%;
+  }
+}
+
+/* Mobile: < 768px */
+@media (max-width: 768px) {
   .topbar,
   .prototype-layout {
     grid-template-columns: 1fr;
@@ -1529,5 +1568,21 @@ th {
 
   .provider-row {
     grid-template-columns: 1fr;
+  }
+
+  .action-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .action-row .button,
+  .action-row a.button {
+    text-align: center;
+  }
+  .sessions-grid {
+    flex-direction: column;
+  }
+  .session-card-btn {
+    flex: none;
+    width: 100%;
   }
 }

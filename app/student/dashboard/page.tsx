@@ -202,7 +202,7 @@ function StudentDashboardContent() {
           </Link>
         </div>
 
-        <div className="grid mb-32" style={{ gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
+        <div className="stat-grid-3col">
           <div className="stat-card" style={{ padding: 24, borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
             <div className="fs-14 c-muted mb-8">{t.totalSessions}</div>
             <div className="fs-36 fw-700">{totalSessions}</div>
