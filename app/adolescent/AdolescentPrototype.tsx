@@ -5,7 +5,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { LanguageToggle } from "@/app/components/LanguageToggle";
 import { AuthButton } from "@/app/components/AuthButton";
-import { ApiKeyManager } from "@/app/components/ApiKeyManager";
+import { ApiKeyManager, type KeyStatus } from "@/app/components/ApiKeyManager";
 import { ClarificationBox } from "@/app/components/ClarificationBox";
 import { AdolescentFeedbackForm } from "@/app/components/AdolescentFeedbackForm";
 import { useAdolescentSession } from "./useAdolescentSession";
@@ -54,6 +54,12 @@ export function AdolescentPrototype() {
   const [provider, setProvider] = useState<ProviderId>("openrouter");
   const [model, setModel] = useState("openrouter/free");
   const [userApiKey, setUserApiKey] = useState("");
+
+  // Key verification status from ApiKeyManager
+  const [keyStatus, setKeyStatus] = useState<KeyStatus>({ isValid: null, isTesting: false, hasSavedKey: false });
+  const handleKeyStatusChange = useCallback((status: KeyStatus) => {
+    setKeyStatus(status);
+  }, []);
 
   // Registration state
   const [currentChildName, setCurrentChildName] = useState<string | null>(null);
@@ -280,6 +286,7 @@ export function AdolescentPrototype() {
     setFeedbackSubmitted(false);
     setSuppressClarifyForNextStage(false);
     setAnswerQualityWarning(null);
+    setKeyStatus({ isValid: null, isTesting: false, hasSavedKey: false });
     setProviderStatus(ui.mockStatus);
     window.localStorage.removeItem(STORAGE_KEY);
   }, [resetSession, setAnswerQualityWarning, setProviderStatus, setSuppressClarifyForNextStage, ui.mockStatus]);
@@ -287,6 +294,7 @@ export function AdolescentPrototype() {
   // Provider change handler
   const handleProviderChange = useCallback((nextProvider: ProviderId) => {
     setProvider(nextProvider);
+    setKeyStatus({ isValid: null, isTesting: false, hasSavedKey: false });
     // Set default model based on provider
     if (nextProvider === "gigachat") setModel("GigaChat");
     else if (nextProvider === "openrouter") setModel("openrouter/free");
@@ -398,9 +406,73 @@ export function AdolescentPrototype() {
               lang={lang}
               provider={provider}
               onKeyChange={(savedKey) => setUserApiKey(savedKey)}
+              onStatusChange={handleKeyStatusChange}
             />
 
-            <p className="muted small-text">{providerStatus}</p>
+            <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginTop: 8 }}>
+              {keyStatus.isTesting ? (
+                <span
+                  style={{
+                    display: "inline-block",
+                    padding: "2px 8px",
+                    borderRadius: 4,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    background: "#cce5ff",
+                    color: "#004085",
+                    border: "1px solid #b8daff",
+                  }}
+                >
+                  {lang === "en" ? "Testing key..." : "Проверка ключа..."}
+                </span>
+              ) : keyStatus.isValid === true ? (
+                <span
+                  style={{
+                    display: "inline-block",
+                    padding: "2px 8px",
+                    borderRadius: 4,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    background: "#d4edda",
+                    color: "#155724",
+                    border: "1px solid #c3e6cb",
+                  }}
+                >
+                  ✓ {lang === "en" ? "Key valid" : "Ключ работает"}
+                </span>
+              ) : keyStatus.isValid === false ? (
+                <span
+                  style={{
+                    display: "inline-block",
+                    padding: "2px 8px",
+                    borderRadius: 4,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    background: "#f8d7da",
+                    color: "#721c24",
+                    border: "1px solid #f5c6cb",
+                  }}
+                >
+                  ✗ {lang === "en" ? "Key invalid" : "Ключ не работает"}
+                </span>
+              ) : keyStatus.hasSavedKey ? (
+                <span
+                  style={{
+                    display: "inline-block",
+                    padding: "2px 8px",
+                    borderRadius: 4,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    background: "#fff3cd",
+                    color: "#856404",
+                    border: "1px solid #ffeeba",
+                  }}
+                >
+                  {lang === "en" ? "Key saved, not tested" : "Ключ сохранён, не проверен"}
+                </span>
+              ) : null}
+              <span className="muted small-text">{providerStatus}</span>
+            </div>
           </div>
 
           {/* Registration form */}

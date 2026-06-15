@@ -1,36 +1,67 @@
 ﻿"use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import { validateGigaChatKey, getGigaChatAccessToken } from "@/lib/gigachat-token";
+
+export interface KeyStatus {
+  isValid: boolean | null;
+  isTesting: boolean;
+  hasSavedKey: boolean;
+}
 
 interface ApiKeyManagerProps {
   lang: "ru" | "en";
   provider: string;
   onKeyChange: (key: string) => void;
+  onStatusChange?: (status: KeyStatus) => void;
 }
 
-function readSavedKey(provider: string) {
-  if (typeof window === "undefined") return "";
-  return localStorage.getItem(`api_key_${provider}`) ?? "";
+type KeyStorage = "local" | "session";
+
+function readSavedKey(provider: string): { key: string; storage: KeyStorage } {
+  if (typeof window === "undefined") return { key: "", storage: "local" };
+  const local = localStorage.getItem(`api_key_${provider}`) ?? "";
+  if (local) return { key: local, storage: "local" };
+  const session = sessionStorage.getItem(`api_key_${provider}`) ?? "";
+  if (session) return { key: session, storage: "session" };
+  return { key: "", storage: "local" };
 }
 
-export function ApiKeyManager({ lang, provider, onKeyChange }: ApiKeyManagerProps) {
-  const savedKey = readSavedKey(provider);
+function saveKey(provider: string, key: string, storage: KeyStorage) {
+  localStorage.removeItem(`api_key_${provider}`);
+  sessionStorage.removeItem(`api_key_${provider}`);
+  if (!key) return;
+  if (storage === "local") {
+    localStorage.setItem(`api_key_${provider}`, key);
+  } else {
+    sessionStorage.setItem(`api_key_${provider}`, key);
+  }
+}
+
+function removeKey(provider: string) {
+  localStorage.removeItem(`api_key_${provider}`);
+  sessionStorage.removeItem(`api_key_${provider}`);
+}
+
+export function ApiKeyManager({ lang, provider, onKeyChange, onStatusChange }: ApiKeyManagerProps) {
+  const saved = readSavedKey(provider);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [key, setKey] = useState(savedKey);
-  const [isSaved, setIsSaved] = useState(Boolean(savedKey));
-  const [isValid, setIsValid] = useState(
-    provider !== "gigachat" || !savedKey || validateGigaChatKey(savedKey),
+  const [key, setKey] = useState(saved.key);
+  const [storage, setStorage] = useState<KeyStorage>(saved.storage);
+  const [isSaved, setIsSaved] = useState(Boolean(saved.key));
+  const [isValid, setIsValid] = useState<boolean | null>(
+    provider !== "gigachat" || !saved.key || validateGigaChatKey(saved.key) ? null : false,
   );
   const [testStatus, setTestStatus] = useState<string | null>(null);
+  const [isTesting, setIsTesting] = useState(false);
 
   const ui = useMemo(
     () => ({
       title: lang === "en" ? "API key settings" : "Настройки API-ключа",
       description:
         lang === "en"
-          ? "Save a key for the selected provider. It remains in this browser."
-          : "Сохраните ключ для выбранного провайдера. Он остается в этом браузере.",
+          ? "Save a key for the selected provider."
+          : "Сохраните ключ для выбранного провайдера.",
       placeholder:
         lang === "en"
           ? provider === "gigachat"
@@ -47,15 +78,16 @@ export function ApiKeyManager({ lang, provider, onKeyChange }: ApiKeyManagerProp
       notSet: lang === "en" ? "not set" : "не задан",
       invalid: lang === "en" ? "invalid" : "ошибка",
       testing: lang === "en" ? "Testing..." : "Проверяем...",
+      valid: lang === "en" ? "Key works" : "Ключ работает",
       invalidFormat:
         lang === "en"
           ? "Invalid key format. Expected: base64(Client_ID:Client_Secret)."
           : "Неверный формат ключа. Нужен base64(Client_ID:Client_Secret).",
       validKey:
         lang === "en"
-          ? "Key is valid. Access token received."
-          : "Ключ работает. Access token получен.",
-      invalidKey: lang === "en" ? "Invalid key" : "Ключ не прошел проверку",
+          ? "Key is valid. Connection established."
+          : "Ключ работает. Подключение установлено.",
+      invalidKey: lang === "en" ? "Invalid key" : "Ключ не прошёл проверку",
       note:
         lang === "en"
           ? "For the demo, the key is stored only locally. Do not enter a personal key on shared devices."
@@ -68,31 +100,68 @@ export function ApiKeyManager({ lang, provider, onKeyChange }: ApiKeyManagerProp
         lang === "en"
           ? "Test the key before using the prototype."
           : "Проверьте ключ перед запуском прототипа.",
+      storageLabel:
+        lang === "en"
+          ? "Save for this session only"
+          : "Сохранить только на эту сессию",
+      storageHint:
+        lang === "en"
+          ? "Session storage: key is cleared when you close the browser tab"
+          : "На сессию: ключ удалится при закрытии вкладки",
+      notTested: lang === "en" ? "not tested" : "не проверен",
+      autoTest: lang === "en" ? "Auto-verifying..." : "Автопроверка...",
+      testFailed: lang === "en" ? "Test failed" : "Ошибка проверки",
     }),
     [lang, provider],
   );
 
-  const syncFromStorage = () => {
-    const nextKey = readSavedKey(provider);
-    setKey(nextKey);
-    setIsSaved(Boolean(nextKey));
-    setIsValid(provider !== "gigachat" || !nextKey || validateGigaChatKey(nextKey));
-    setTestStatus(null);
-    onKeyChange(nextKey);
-  };
+  // Auto-test saved key on mount
+  useEffect(() => {
+    if (saved.key && provider !== "mock") {
+      setTestStatus(ui.autoTest);
+      setIsTesting(true);
+      performKeyTest(saved.key)
+        .then((ok) => {
+          setIsValid(ok);
+          setTestStatus(ok ? ui.validKey : `${ui.testFailed}: ${ui.invalidKey}`);
+        })
+        .catch(() => {
+          setIsValid(false);
+          setTestStatus(`${ui.testFailed}: ${ui.invalidKey}`);
+        })
+        .finally(() => setIsTesting(false));
+    }
+    // Only run on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const handleExpand = () => {
+  // Notify parent of key status changes
+  useEffect(() => {
+    onStatusChange?.({ isValid, isTesting, hasSavedKey: isSaved });
+  }, [isValid, isTesting, isSaved, onStatusChange]);
+
+  const syncFromStorage = useCallback(() => {
+    const next = readSavedKey(provider);
+    setKey(next.key);
+    setStorage(next.storage);
+    setIsSaved(Boolean(next.key));
+    setIsValid(null);
+    setTestStatus(null);
+    onKeyChange(next.key);
+  }, [provider, onKeyChange]);
+
+  const handleExpand = useCallback(() => {
     syncFromStorage();
     setIsExpanded(true);
-  };
+  }, [syncFromStorage]);
 
-  const handleSave = () => {
+  const handleSave = useCallback(() => {
     const trimmedKey = key.trim();
 
     if (!trimmedKey) {
-      localStorage.removeItem(`api_key_${provider}`);
+      removeKey(provider);
       setIsSaved(false);
-      setIsValid(true);
+      setIsValid(null);
       setTestStatus(null);
       onKeyChange("");
       setIsExpanded(false);
@@ -105,61 +174,109 @@ export function ApiKeyManager({ lang, provider, onKeyChange }: ApiKeyManagerProp
       return;
     }
 
-    localStorage.setItem(`api_key_${provider}`, trimmedKey);
+    saveKey(provider, trimmedKey, storage);
     setIsSaved(true);
-    setIsValid(true);
+    setIsValid(null);
     setTestStatus(null);
     onKeyChange(trimmedKey);
     setIsExpanded(false);
-  };
+  }, [key, provider, storage, ui.invalidFormat, onKeyChange]);
 
-  const handleClear = () => {
+  const handleClear = useCallback(() => {
     setKey("");
-    localStorage.removeItem(`api_key_${provider}`);
+    removeKey(provider);
     setIsSaved(false);
-    setIsValid(true);
+    setIsValid(null);
     setTestStatus(null);
     onKeyChange("");
-  };
+  }, [provider, onKeyChange]);
 
-  const handleTestKey = async () => {
+  async function performKeyTest(keyToTest: string): Promise<boolean> {
+    try {
+      if (provider === "gigachat") {
+        if (!validateGigaChatKey(keyToTest)) return false;
+        await getGigaChatAccessToken(keyToTest);
+        return true;
+      }
+
+      const response = await fetch("/api/provider-check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider,
+          userApiKey: keyToTest,
+          lang,
+        }),
+      });
+      const data = await response.json();
+      return response.ok && data.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  const handleTestKey = useCallback(async () => {
     const trimmedKey = key.trim();
-    if (!trimmedKey || provider !== "gigachat") return;
+    if (!trimmedKey) return;
 
-    if (!validateGigaChatKey(trimmedKey)) {
+    if (provider === "gigachat" && !validateGigaChatKey(trimmedKey)) {
       setIsValid(false);
       setTestStatus(ui.invalidFormat);
       return;
     }
 
     setTestStatus(ui.testing);
+    setIsTesting(true);
 
     try {
-      await getGigaChatAccessToken(trimmedKey);
-      setTestStatus(ui.validKey);
-      setIsValid(true);
+      const ok = await performKeyTest(trimmedKey);
+      setIsValid(ok);
+      setTestStatus(ok ? ui.validKey : `${ui.invalidKey}: ${ui.testFailed}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : ui.invalidKey;
       setTestStatus(`${ui.invalidKey}: ${message}`);
       setIsValid(false);
+    } finally {
+      setIsTesting(false);
     }
-  };
+  }, [key, provider, lang, ui]);
+
+  const statusColor = isValid === true ? "#d4edda" : isValid === false ? "#f8d7da" : "#fff3cd";
+  const statusTextColor = isValid === true ? "#155724" : isValid === false ? "#721c24" : "#856404";
+  const statusBorderColor = isValid === true ? "#c3e6cb" : isValid === false ? "#f5c6cb" : "#ffeeba";
 
   return (
     <div style={{ marginTop: 12 }}>
       {!isExpanded ? (
-        <button
-          type="button"
-          className="button secondary"
-          onClick={handleExpand}
-          style={{ fontSize: 13, padding: "6px 12px" }}
-        >
-          {isSaved
-            ? isValid
-              ? `API: ${ui.saved}`
-              : `API: ${ui.invalid}`
-            : `API: ${ui.notSet}`}
-        </button>
+        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+          <button
+            type="button"
+            className="button secondary"
+            onClick={handleExpand}
+            style={{ fontSize: 13, padding: "6px 12px" }}
+          >
+            {isSaved
+              ? isValid === true
+                ? `🔑 ${ui.saved} ✓`
+                : isValid === false
+                  ? `🔑 ${ui.invalid}`
+                  : `🔑 ${ui.saved}`
+              : `🔑 ${ui.notSet}`}
+          </button>
+          {isSaved && isValid === null && !isTesting && (
+            <button
+              type="button"
+              className="button secondary"
+              onClick={handleTestKey}
+              style={{ fontSize: 12, padding: "4px 10px" }}
+            >
+              {ui.test}
+            </button>
+          )}
+          {isTesting && (
+            <span style={{ fontSize: 12, color: "var(--muted)" }}>{ui.testing}</span>
+          )}
+        </div>
       ) : (
         <div
           style={{
@@ -180,11 +297,11 @@ export function ApiKeyManager({ lang, provider, onKeyChange }: ApiKeyManagerProp
               style={{
                 fontSize: 12,
                 marginBottom: 12,
-                background: isValid ? "#d4edda" : "#f8d7da",
-                border: `1px solid ${isValid ? "#c3e6cb" : "#f5c6cb"}`,
+                background: isValid === false ? "#f8d7da" : "#d4edda",
+                border: `1px solid ${isValid === false ? "#f5c6cb" : "#c3e6cb"}`,
                 borderRadius: 6,
                 padding: "8px 12px",
-                color: isValid ? "#155724" : "#721c24",
+                color: isValid === false ? "#721c24" : "#155724",
               }}
             >
               {ui.gigachatNote}
@@ -198,7 +315,9 @@ export function ApiKeyManager({ lang, provider, onKeyChange }: ApiKeyManagerProp
               const nextKey = event.target.value;
               setKey(nextKey);
               if (provider === "gigachat") {
-                setIsValid(!nextKey.trim() || validateGigaChatKey(nextKey));
+                setIsValid(!nextKey.trim() || validateGigaChatKey(nextKey) ? null : false);
+              } else {
+                setIsValid(null);
               }
               setTestStatus(null);
             }}
@@ -214,6 +333,29 @@ export function ApiKeyManager({ lang, provider, onKeyChange }: ApiKeyManagerProp
             }}
           />
 
+          {/* Storage toggle */}
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              fontSize: 13,
+              marginBottom: 12,
+              cursor: "pointer",
+              color: "var(--muted)",
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={storage === "session"}
+              onChange={(e) => setStorage(e.target.checked ? "session" : "local")}
+            />
+            <span>{ui.storageLabel}</span>
+            <span style={{ fontSize: 11, color: "var(--muted)" }}>
+              ({ui.storageHint})
+            </span>
+          </label>
+
           {testStatus && (
             <div
               style={{
@@ -221,9 +363,9 @@ export function ApiKeyManager({ lang, provider, onKeyChange }: ApiKeyManagerProp
                 padding: "8px 12px",
                 borderRadius: 6,
                 fontSize: 13,
-                background: isValid ? "#d4edda" : "#fff3cd",
-                border: `1px solid ${isValid ? "#c3e6cb" : "#ffeeba"}`,
-                color: isValid ? "#155724" : "#856404",
+                background: statusColor,
+                border: `1px solid ${statusBorderColor}`,
+                color: statusTextColor,
               }}
             >
               {testStatus}
@@ -235,15 +377,15 @@ export function ApiKeyManager({ lang, provider, onKeyChange }: ApiKeyManagerProp
               {ui.save}
             </button>
 
-            {provider === "gigachat" && (
+            {provider !== "mock" && (
               <button
                 type="button"
                 className="button secondary"
                 onClick={handleTestKey}
-                disabled={!key.trim()}
+                disabled={!key.trim() || isTesting}
                 style={{ fontSize: 13, padding: "6px 12px" }}
               >
-                {ui.test}
+                {isTesting ? ui.testing : ui.test}
               </button>
             )}
 
@@ -269,7 +411,7 @@ export function ApiKeyManager({ lang, provider, onKeyChange }: ApiKeyManagerProp
           <p className="muted" style={{ fontSize: 11, marginTop: 12 }}>
             {ui.note}
           </p>
-          {provider === "gigachat" && (
+          {provider !== "mock" && (
             <p className="muted" style={{ fontSize: 11 }}>
               {ui.testHint}
             </p>
