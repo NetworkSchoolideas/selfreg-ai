@@ -118,18 +118,26 @@ export function ApiKeyManager({ lang, provider, onKeyChange, onStatusChange }: A
   // Auto-test saved key on mount
   useEffect(() => {
     if (saved.key && provider !== "mock") {
-      setTestStatus(ui.autoTest);
-      setIsTesting(true);
+      queueMicrotask(() => {
+        setTestStatus(ui.autoTest);
+        setIsTesting(true);
+      });
       performKeyTest(saved.key)
         .then((ok) => {
-          setIsValid(ok);
-          setTestStatus(ok ? ui.validKey : `${ui.testFailed}: ${ui.invalidKey}`);
+          queueMicrotask(() => {
+            setIsValid(ok);
+            setTestStatus(ok ? ui.validKey : `${ui.testFailed}: ${ui.invalidKey}`);
+          });
         })
         .catch(() => {
-          setIsValid(false);
-          setTestStatus(`${ui.testFailed}: ${ui.invalidKey}`);
+          queueMicrotask(() => {
+            setIsValid(false);
+            setTestStatus(`${ui.testFailed}: ${ui.invalidKey}`);
+          });
         })
-        .finally(() => setIsTesting(false));
+        .finally(() => {
+          queueMicrotask(() => setIsTesting(false));
+        });
     }
     // Only run on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps

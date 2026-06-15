@@ -243,7 +243,7 @@ export function TeacherDashboard() {
 
   const DASHBOARD_STATE_KEY = "selfreg_dashboard_state";
 
-  const ui = {
+  const ui = useMemo(() => ({
     eyebrow: lang === "en" ? "Teacher dashboard" : "Дашборд педагога",
     title: lang === "en" ? "Students overview + infographics" : "Обзор учеников + инфографика",
     intro:
@@ -360,7 +360,7 @@ export function TeacherDashboard() {
       lang === "en" ? "Adolescent feedback" : "Обратная связь подростка",
     usefulness: (rating: number) =>
       lang === "en" ? `(usefulness: ${rating}/5)` : `(полезность: ${rating}/5)`,
-  };
+  }), [lang, serverBackedDashboard]);
 
   // === Используем централизованное хранилище детей ===
   const [children, setChildren] = useState<Child[]>([]);
