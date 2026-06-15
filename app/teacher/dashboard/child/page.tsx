@@ -135,34 +135,18 @@ function ChildDetailContent() {
 
   if (!childId) {
     return (
-      <div style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#f3f4f6",
-        padding: 20,
-      }}>
-        <div style={{
-          background: "white",
-          padding: 32,
-          borderRadius: 12,
-          boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-          textAlign: "center",
-          maxWidth: 500,
-          width: "100%",
-        }}>
-          <h2 style={{ fontSize: 20, marginBottom: 16, color: "#dc2626" }}>{lang === "en" ? "Error" : "Ошибка"}</h2>
-          <p style={{ color: "#6b7280", marginBottom: 24 }}>{t.errorNoId}</p>
+      <div className="centered-message" style={{ background: "#f3f4f6", padding: 20 }}>
+        <div className="bg-white p-32 br-12 text-center" style={{ maxWidth: 500, width: "100%", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
+          <h2 className="fs-20 mb-16" style={{ color: "#dc2626" }}>{lang === "en" ? "Error" : "Ошибка"}</h2>
+          <p className="c-muted mb-24">{t.errorNoId}</p>
           <Link
             href={withLang("/teacher", lang)}
+            className="no-underline fw-500"
             style={{
               padding: "12px 24px",
               background: "#4f46e5",
               color: "white",
               borderRadius: 8,
-              textDecoration: "none",
-              fontWeight: 500,
             }}
           >
             {t.backToList}
@@ -174,48 +158,26 @@ function ChildDetailContent() {
 
   if (loading) {
     return (
-      <div style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#f3f4f6",
-      }}>
-        <div style={{ color: "#6b7280", fontSize: 20 }}>{t.loading}</div>
+      <div className="centered-message" style={{ background: "#f3f4f6" }}>
+        <div className="c-muted fs-20">{t.loading}</div>
       </div>
     );
   }
 
   if (error || !child) {
     return (
-      <div style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#f3f4f6",
-        padding: 20,
-      }}>
-        <div style={{
-          background: "white",
-          padding: 32,
-          borderRadius: 12,
-          boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-          textAlign: "center",
-          maxWidth: 500,
-          width: "100%",
-        }}>
-          <h2 style={{ fontSize: 20, marginBottom: 16, color: "#dc2626" }}>{lang === "en" ? "Error" : "Ошибка"}</h2>
-          <p style={{ color: "#6b7280", marginBottom: 24 }}>{error || t.errorNotFound}</p>
+      <div className="centered-message" style={{ background: "#f3f4f6", padding: 20 }}>
+        <div className="bg-white p-32 br-12 text-center" style={{ maxWidth: 500, width: "100%", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
+          <h2 className="fs-20 mb-16" style={{ color: "#dc2626" }}>{lang === "en" ? "Error" : "Ошибка"}</h2>
+          <p className="c-muted mb-24">{error || t.errorNotFound}</p>
           <Link
             href={withLang("/teacher", lang)}
+            className="no-underline fw-500"
             style={{
               padding: "12px 24px",
               background: "#4f46e5",
               color: "white",
               borderRadius: 8,
-              textDecoration: "none",
-              fontWeight: 500,
             }}
           >
             {t.backToList}
@@ -231,17 +193,13 @@ function ChildDetailContent() {
   const inProgressSessions = child.sessions.filter((s) => !s.finalNote?.trim() && s.status !== "completed" && s.records?.length > 0);
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: "#f3f4f6",
-      padding: 20,
-    }}>
-      <div style={{ maxWidth: 900, margin: "0 auto" }}>
-        <header style={{ marginBottom: 32 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+    <div style={{ minHeight: "100vh", background: "#f3f4f6", padding: 20 }}>
+      <div className="content-container">
+        <header className="section-header">
+          <div className="flex-row justify-between items-start">
             <div>
-              <h1 style={{ fontSize: 28, marginBottom: 8 }}>{displayName}</h1>
-              <p style={{ color: "#6b7280" }}>
+              <h1 className="fs-28 mb-8">{displayName}</h1>
+              <p className="c-muted">
                 {displayClass ? `${displayClass} · ` : ""}
                 {child.sessions.length} {t.sessions}
               </p>
@@ -250,29 +208,27 @@ function ChildDetailContent() {
           </div>
         </header>
 
-        <div style={{ display: "flex", gap: 16, marginBottom: 32 }}>
+        <div className="action-bar">
           <Link
             href={withLang("/teacher", lang)}
+            className="no-underline fw-500"
             style={{
               padding: "12px 24px",
               background: "#4f46e5",
               color: "white",
               borderRadius: 8,
-              textDecoration: "none",
-              fontWeight: 500,
             }}
           >
             {t.backToList}
           </Link>
           <Link
             href={`/adolescent?childId=${childId}&lang=${lang}`}
+            className="no-underline fw-500"
             style={{
               padding: "12px 24px",
               background: "#10b981",
               color: "white",
               borderRadius: 8,
-              textDecoration: "none",
-              fontWeight: 500,
             }}
           >
             {t.openSession}
@@ -280,87 +236,56 @@ function ChildDetailContent() {
         </div>
 
         {/* Статистика */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20, marginBottom: 32 }}>
-          <div style={{ background: "white", padding: 24, borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
-            <div style={{ fontSize: 14, color: "#6b7280", marginBottom: 8 }}>{t.totalSessions}</div>
-            <div style={{ fontSize: 36, fontWeight: "bold" }}>{child.sessions.length}</div>
+        <div className="grid mb-32" style={{ gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
+          <div className="stat-card" style={{ padding: 24, borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
+            <div className="fs-14 c-muted mb-8">{t.totalSessions}</div>
+            <div className="fs-36 fw-700">{child.sessions.length}</div>
           </div>
-          <div style={{ background: "white", padding: 24, borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
-            <div style={{ fontSize: 14, color: "#6b7280", marginBottom: 8 }}>{t.completed}</div>
-            <div style={{ fontSize: 36, fontWeight: "bold", color: "#10b981" }}>{completedSessions.length}</div>
+          <div className="stat-card" style={{ padding: 24, borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
+            <div className="fs-14 c-muted mb-8">{t.completed}</div>
+            <div className="fs-36 fw-700" style={{ color: "#10b981" }}>{completedSessions.length}</div>
           </div>
-          <div style={{ background: "white", padding: 24, borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
-            <div style={{ fontSize: 14, color: "#6b7280", marginBottom: 8 }}>{t.inProgress}</div>
-            <div style={{ fontSize: 36, fontWeight: "bold", color: "#f59e0b" }}>{inProgressSessions.length}</div>
+          <div className="stat-card" style={{ padding: 24, borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
+            <div className="fs-14 c-muted mb-8">{t.inProgress}</div>
+            <div className="fs-36 fw-700" style={{ color: "#f59e0b" }}>{inProgressSessions.length}</div>
           </div>
         </div>
 
         {/* Информация об ученике */}
-        <div style={{
-          background: "white",
-          borderRadius: 12,
-          boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-          padding: 24,
-          marginBottom: 32,
-        }}>
-          <h2 style={{ fontSize: 20, marginBottom: 16 }}>{t.studentInfo}</h2>
+        <div className="bg-white br-12 p-24 mb-32" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
+          <h2 className="fs-20 mb-16">{t.studentInfo}</h2>
 
-          <div style={{ display: "grid", gap: 16 }}>
-            <div style={{
-              padding: 16,
-              background: "#f9fafb",
-              borderRadius: 8,
-              border: "1px solid #e5e7eb",
-            }}>
-              <div style={{ fontSize: 14, color: "#6b7280", marginBottom: 4 }}>{t.name}</div>
-              <div style={{ fontSize: 18, fontWeight: 500 }}>{displayName}</div>
+          <div className="flex-col gap-16">
+            <div className="profile-field">
+              <div className="fs-14 c-muted mb-4">{t.name}</div>
+              <div className="fs-18 fw-500">{displayName}</div>
             </div>
 
             {displayClass && (
-              <div style={{
-                padding: 16,
-                background: "#f9fafb",
-                borderRadius: 8,
-                border: "1px solid #e5e7eb",
-              }}>
-                <div style={{ fontSize: 14, color: "#6b7280", marginBottom: 4 }}>{t.class}</div>
-                <div style={{ fontSize: 18, fontWeight: 500 }}>{displayClass}</div>
+              <div className="profile-field">
+                <div className="fs-14 c-muted mb-4">{t.class}</div>
+                <div className="fs-18 fw-500">{displayClass}</div>
               </div>
             )}
 
-            <div style={{
-              padding: 16,
-              background: "#f9fafb",
-              borderRadius: 8,
-              border: "1px solid #e5e7eb",
-            }}>
-              <div style={{ fontSize: 14, color: "#6b7280", marginBottom: 4 }}>{t.studentId}</div>
-              <div style={{ fontSize: 14, fontFamily: "monospace", color: "#374151" }}>{child.id}</div>
+            <div className="profile-field">
+              <div className="fs-14 c-muted mb-4">{t.studentId}</div>
+              <div className="fs-14" style={{ fontFamily: "monospace", color: "#374151" }}>{child.id}</div>
             </div>
 
-            <div style={{
-              padding: 16,
-              background: "#f9fafb",
-              borderRadius: 8,
-              border: "1px solid #e5e7eb",
-            }}>
-              <div style={{ fontSize: 14, color: "#6b7280", marginBottom: 4 }}>{t.registrationDate}</div>
-              <div style={{ fontSize: 18, fontWeight: 500 }}>
+            <div className="profile-field">
+              <div className="fs-14 c-muted mb-4">{t.registrationDate}</div>
+              <div className="fs-18 fw-500">
                 {new Date(child.createdAt).toLocaleDateString(lang === "en" ? "en-US" : "ru-RU")}
               </div>
             </div>
 
             {child.teacherId && (
-              <div style={{
-                padding: 16,
-                background: "#ecfdf5",
-                borderRadius: 8,
-                border: "1px solid #10b981",
-              }}>
-                <div style={{ fontSize: 14, color: "#065f46", marginBottom: 4 }}>
+              <div className="profile-field" style={{ background: "#ecfdf5", border: "1px solid #10b981" }}>
+                <div className="fs-14 mb-4" style={{ color: "#065f46" }}>
                   {t.linkedToTeacher}
                 </div>
-                <div style={{ fontSize: 14, color: "#047857" }}>
+                <div className="fs-14" style={{ color: "#047857" }}>
                   ✓ {t.teacherId}: {child.teacherId}
                 </div>
               </div>
@@ -369,23 +294,17 @@ function ChildDetailContent() {
         </div>
 
         {/* История сессий */}
-        <div style={{
-          background: "white",
-          borderRadius: 12,
-          boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-          padding: 24,
-          marginBottom: 32,
-        }}>
-          <h2 style={{ fontSize: 20, marginBottom: 16 }}>{t.sessionHistory}</h2>
+        <div className="bg-white br-12 p-24 mb-32" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
+          <h2 className="fs-20 mb-16">{t.sessionHistory}</h2>
 
           {child.sessions.length === 0 && (
-            <div style={{ textAlign: "center", padding: 40, color: "#6b7280" }}>
+            <div className="text-center c-muted" style={{ padding: 40 }}>
               <p>{t.noSessions}</p>
             </div>
           )}
 
           {child.sessions.length > 0 && (
-            <div style={{ display: "grid", gap: 16 }}>
+            <div className="flex-col gap-16">
               {[...child.sessions]
                 .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
                 .map((session, idx) => {
@@ -394,42 +313,28 @@ function ChildDetailContent() {
                   const stages = session.records?.map((r) => r.stageTitle).filter(Boolean).join(" → ") || "";
 
                   return (
-                    <div
-                      key={session.sessionId || session.updatedAt}
-                      style={{
-                        padding: 16,
-                        background: "#f9fafb",
-                        borderRadius: 8,
-                        border: "1px solid #e5e7eb",
-                      }}
-                    >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                    <div key={session.sessionId || session.updatedAt} className="profile-field">
+                      <div className="flex-row justify-between items-start mb-8">
                         <div>
-                          <div style={{ fontSize: 16, fontWeight: 500, marginBottom: 4 }}>
+                          <div className="fs-16 fw-500 mb-4">
                             {session.context || `${lang === "en" ? "Session" : "Сессия"} #${child.sessions.length - idx}`}
                           </div>
                           {stages && (
-                            <div style={{ fontSize: 12, color: "#9ca3af" }}>
+                            <div className="fs-12" style={{ color: "#9ca3af" }}>
                               {stages}
                             </div>
                           )}
                         </div>
-                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          <span style={{
+                        <div className="flex-row gap-8 items-center">
+                          <span className="br-999 fs-12 fw-500" style={{
                             padding: "4px 12px",
-                            borderRadius: 12,
-                            fontSize: 12,
-                            fontWeight: 500,
                             background: isCompleted ? "#d1fae5" : "#fef3c7",
                             color: isCompleted ? "#065f46" : "#92400e",
                           }}>
                             {isCompleted ? t.completedLabel : t.inProgressLabel}
                           </span>
-                          <span style={{
+                          <span className="br-999 fs-12 fw-500" style={{
                             padding: "4px 12px",
-                            borderRadius: 12,
-                            fontSize: 12,
-                            fontWeight: 500,
                             background: "#e0e7ff",
                             color: "#3730a3",
                           }}>
@@ -439,13 +344,9 @@ function ChildDetailContent() {
                       </div>
 
                       {session.finalNote && (
-                        <div style={{
-                          fontSize: 14,
+                        <div className="fs-14 mb-8 p-8 br-6" style={{
                           color: "#374151",
-                          marginBottom: 8,
-                          padding: 8,
                           background: "#fefce8",
-                          borderRadius: 6,
                           border: "1px solid #fde68a",
                         }}>
                           <strong>{t.summary}:</strong> {session.finalNote}
@@ -453,20 +354,16 @@ function ChildDetailContent() {
                       )}
 
                       {session.historyInsight && (
-                        <div style={{
-                          marginTop: 8,
-                          padding: 8,
+                        <div className="mt-8 p-8 br-6 fs-13" style={{
                           background: "#f0fdf4",
-                          borderRadius: 6,
                           border: "1px solid #bbf7d0",
-                          fontSize: 13,
                           color: "#166534",
                         }}>
                           💡 {session.historyInsight}
                         </div>
                       )}
 
-                      <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 8 }}>
+                      <div className="fs-12 mt-8" style={{ color: "#9ca3af" }}>
                         {new Date(session.updatedAt).toLocaleString(lang === "en" ? "en-US" : "ru-RU")}
                       </div>
                     </div>
@@ -477,9 +374,9 @@ function ChildDetailContent() {
         </div>
 
         {/* Планы на будущее */}
-        <div style={{ padding: 24, background: "white", borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
-          <h3 style={{ fontSize: 18, marginBottom: 16 }}>{t.comingSoon}</h3>
-          <ul style={{ color: "#6b7280", paddingLeft: 20 }}>
+        <div className="p-24 bg-white br-12" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
+          <h3 className="fs-18 mb-16">{t.comingSoon}</h3>
+          <ul className="c-muted" style={{ paddingLeft: 20 }}>
             <li>{t.progressCharts}</li>
             <li>{t.sessionComparison}</li>
             <li>{t.dataExport}</li>

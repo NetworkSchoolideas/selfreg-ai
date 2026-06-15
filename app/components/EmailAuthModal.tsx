@@ -73,63 +73,25 @@ export function EmailAuthModal({ isOpen, onClose, lang }: EmailAuthModalProps) {
   };
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: "rgba(0, 0, 0, 0.5)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 9999,
-      }}
-      onClick={onClose}
-    >
-      <div
-        style={{
-          background: "white",
-          borderRadius: 12,
-          padding: 24,
-          width: "100%",
-          maxWidth: 400,
-          maxHeight: "90vh",
-          overflow: "auto",
-          position: "relative",
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         {/* Close button */}
-        <button
-          onClick={onClose}
-          style={{
-            position: "absolute",
-            top: 12,
-            right: 12,
-            background: "transparent",
-            border: "none",
-            fontSize: 24,
-            cursor: "pointer",
-            color: "var(--muted)",
-          }}
-        >
+        <button onClick={onClose} className="modal-close">
           ×
         </button>
 
-        <h2 style={{ margin: "0 0 16px 0", fontSize: 20 }}>{ui.title}</h2>
+        <h2 className="m-0 mb-16 fs-20">{ui.title}</h2>
 
         {/* Success message */}
         {success && (
-          <div style={{ background: "#d4edda", border: "1px solid #c3e6cb", borderRadius: 6, padding: "8px 12px", marginBottom: 16, fontSize: 13, color: "#155724" }}>
+          <div className="success-box-sm">
             {success}
           </div>
         )}
 
         {/* Error message */}
         {error && (
-          <div style={{ background: "#f8d7da", border: "1px solid #f5c6cb", borderRadius: 6, padding: "8px 12px", marginBottom: 16, fontSize: 13, color: "#721c24" }}>
+          <div className="error-box-sm">
             {error}
           </div>
         )}
@@ -137,8 +99,8 @@ export function EmailAuthModal({ isOpen, onClose, lang }: EmailAuthModalProps) {
         {/* Form */}
         <form onSubmit={handleSubmit}>
           {!isLogin && (
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: "block", marginBottom: 6, fontSize: 14, fontWeight: 500 }}>
+            <div className="modal-form-group">
+              <label className="modal-form-label">
                 {ui.fullName}
               </label>
               <input
@@ -146,20 +108,13 @@ export function EmailAuthModal({ isOpen, onClose, lang }: EmailAuthModalProps) {
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder={ui.fullNamePlaceholder}
-                style={{
-                  width: "100%",
-                  padding: "8px 12px",
-                  borderRadius: 6,
-                  border: "1px solid var(--line)",
-                  fontSize: 14,
-                  boxSizing: "border-box",
-                }}
+                className="modal-form-input"
               />
             </div>
           )}
 
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", marginBottom: 6, fontSize: 14, fontWeight: 500 }}>
+          <div className="modal-form-group">
+            <label className="modal-form-label">
               {ui.email}
             </label>
             <input
@@ -168,19 +123,12 @@ export function EmailAuthModal({ isOpen, onClose, lang }: EmailAuthModalProps) {
               onChange={(e) => setEmail(e.target.value)}
               placeholder={ui.emailPlaceholder}
               required
-              style={{
-                width: "100%",
-                padding: "8px 12px",
-                borderRadius: 6,
-                border: "1px solid var(--line)",
-                fontSize: 14,
-                boxSizing: "border-box",
-              }}
+              className="modal-form-input"
             />
           </div>
 
-          <div style={{ marginBottom: 20 }}>
-            <label style={{ display: "block", marginBottom: 6, fontSize: 14, fontWeight: 500 }}>
+          <div className="modal-form-group" style={{ marginBottom: 20 }}>
+            <label className="modal-form-label">
               {ui.password}
             </label>
             <input
@@ -190,29 +138,22 @@ export function EmailAuthModal({ isOpen, onClose, lang }: EmailAuthModalProps) {
               placeholder={ui.passwordPlaceholder}
               minLength={6}
               required
-              style={{
-                width: "100%",
-                padding: "8px 12px",
-                borderRadius: 6,
-                border: "1px solid var(--line)",
-                fontSize: 14,
-                boxSizing: "border-box",
-              }}
+              className="modal-form-input"
             />
           </div>
 
           <button
             type="submit"
-            className="button"
+            className="button w-full"
             disabled={isLoading}
-            style={{ width: "100%", padding: "10px", fontSize: 14 }}
+            style={{ padding: "10px", fontSize: 14 }}
           >
             {isLoading ? ui.loading : ui.submit}
           </button>
         </form>
 
         {/* Switch mode */}
-        <div style={{ marginTop: 16, textAlign: "center", fontSize: 13 }}>
+        <div className="mt-16 text-center fs-13">
           <button
             type="button"
             onClick={() => {
@@ -220,14 +161,7 @@ export function EmailAuthModal({ isOpen, onClose, lang }: EmailAuthModalProps) {
               setError(null);
               setSuccess(null);
             }}
-            style={{
-              background: "transparent",
-              border: "none",
-              color: "var(--accent)",
-              cursor: "pointer",
-              fontSize: 13,
-              textDecoration: "underline",
-            }}
+            className="switch-mode-btn"
           >
             {isLogin ? ui.switchToSignup : ui.switchToLogin}
           </button>

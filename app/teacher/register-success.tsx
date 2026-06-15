@@ -15,18 +15,18 @@ export default function TeacherRegisterSuccessPage() {
 
   const texts = {
     ru: {
-      title: "Регистрация успешна!",
-      subtitle: "Ваш код учителя:",
-      code: "Код учителя",
-      copy: "Копировать",
-      copied: "Скопировано!",
-      saveCode: "Сохраните этот код - он понадобится для привязки учеников",
-      nextSteps: "Следующие шаги:",
-      step1: "Поделитесь кодом с учениками",
-      step2: "Ученики вводят код при регистрации",
-      step3: "Доступ к дашборду и аналитике",
-      goToDashboard: "Перейти к входу",
-      autoRedirect: "Перенаправление через",
+      title: "Р РµРіРёСЃС‚СЂР°С†РёСЏ СѓСЃРїРµС€РЅР°!",
+      subtitle: "Р’Р°С€ РєРѕРґ СѓС‡РёС‚РµР»СЏ:",
+      code: "РљРѕРґ СѓС‡РёС‚РµР»СЏ",
+      copy: "РљРѕРїРёСЂРѕРІР°С‚СЊ",
+      copied: "РЎРєРѕРїРёСЂРѕРІР°РЅРѕ!",
+      saveCode: "РЎРѕС…СЂР°РЅРёС‚Рµ СЌС‚РѕС‚ РєРѕРґ вЂ” РѕРЅ РїРѕРЅР°РґРѕР±РёС‚СЃСЏ СѓС‡РµРЅРёРєР°Рј РґР»СЏ РїСЂРёРІСЏР·РєРё Рє РІР°С€РµРјСѓ Р°РєРєР°СѓРЅС‚Сѓ",
+      nextSteps: "Р”Р°Р»СЊРЅРµР№С€РёРµ С€Р°РіРё:",
+      step1: "РџРѕРґРµР»РёС‚РµСЃСЊ РєРѕРґРѕРј СЃ СѓС‡РµРЅРёРєР°РјРё",
+      step2: "РЈС‡РµРЅРёРєРё РІРІРѕРґСЏС‚ РєРѕРґ РїСЂРё СЂРµРіРёСЃС‚СЂР°С†РёРё",
+      step3: "РћС‚СЃР»РµР¶РёРІР°Р№С‚Рµ РїСЂРѕРіСЂРµСЃСЃ РІ РґР°С€Р±РѕСЂРґРµ",
+      goToDashboard: "РџРµСЂРµР№С‚Рё Рє РІС…РѕРґСѓ",
+      autoRedirect: "РђРІС‚РѕРјР°С‚РёС‡РµСЃРєРѕРµ РїРµСЂРµРЅР°РїСЂР°РІР»РµРЅРёРµ С‡РµСЂРµР·",
     },
     en: {
       title: "Registration successful!",
@@ -59,7 +59,7 @@ export default function TeacherRegisterSuccessPage() {
   const copyToClipboard = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(teacherCode);
-      alert(lang === "en" ? "Code copied!" : "Код скопирован!");
+      alert(lang === "en" ? "Code copied!" : "РљРѕРґ СЃРєРѕРїРёСЂРѕРІР°РЅ!");
     } catch (err) {
       console.error("Failed to copy:", err);
     }
@@ -67,112 +67,63 @@ export default function TeacherRegisterSuccessPage() {
 
   if (!teacherCode) {
     return (
-      <div style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-      }}>
-        <div style={{ color: "white", fontSize: 20 }}>Загрузка...</div>
+      <div className="gradient-bg-teacher centered-message">
+        <div className="loading-text">Р—Р°РіСЂСѓР·РєР°...</div>
       </div>
     );
   }
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-      padding: 20,
-    }}>
-      <div style={{
-        background: "white",
-        borderRadius: 16,
-        padding: 40,
-        maxWidth: 500,
-        width: "100%",
-        boxShadow: "0 10px 40px rgba(0, 0, 0, 0.2)",
-        textAlign: "center",
-      }}>
-        <div style={{ fontSize: 64, marginBottom: 16 }}>?</div>
+    <div className="gradient-bg-teacher">
+      <div className="white-card text-center">
+        <div className="fs-64 mb-16">вњ…</div>
         
-        <h1 style={{ marginTop: 0, marginBottom: 8, fontSize: 28, color: "#1f2937" }}>
+        <h1 className="mt-0 mb-8 fs-28" style={{ color: "#1f2937" }}>
           {t.title}
         </h1>
         
-        <p style={{ color: "#6b7280", marginBottom: 24, fontSize: 14 }}>
+        <p className="c-muted mb-24 fs-14">
           {t.subtitle}
         </p>
 
-        <div style={{
-          background: "#f0fdf4",
-          border: "2px solid #10b981",
-          borderRadius: 12,
-          padding: 20,
-          marginBottom: 24,
-        }}>
-          <div style={{ fontSize: 14, color: "#6b7280", marginBottom: 8 }}>{t.code}</div>
-          <div style={{ fontSize: 32, fontWeight: "bold", color: "#059669", letterSpacing: 2, marginBottom: 12 }}>
+        <div className="code-box">
+          <div className="fs-14 c-muted mb-8">{t.code}</div>
+          <div className="code-value">
             {teacherCode}
           </div>
-          <button
-            onClick={copyToClipboard}
-            style={{
-              padding: "8px 16px",
-              borderRadius: 6,
-              border: "1px solid #10b981",
-              background: "white",
-              color: "#10b981",
-              cursor: "pointer",
-              fontSize: 14,
-            }}
-          >
+          <button onClick={copyToClipboard} className="copy-btn">
             {t.copy}
           </button>
         </div>
 
-        <div style={{
-          background: "#fef3c7",
-          border: "1px solid #f59e0b",
-          padding: 12,
-          borderRadius: 8,
-          marginBottom: 24,
-          fontSize: 13,
-          color: "#92400e",
-        }}>
+        <div className="warning-box mb-24">
           {t.saveCode}
         </div>
 
-        <div style={{ textAlign: "left", marginBottom: 24 }}>
-          <h3 style={{ fontSize: 16, color: "#1f2937", marginBottom: 12 }}>{t.nextSteps}</h3>
-          <ol style={{ color: "#6b7280", fontSize: 14, paddingLeft: 20, margin: 0 }}>
-            <li style={{ marginBottom: 8 }}>{t.step1}</li>
-            <li style={{ marginBottom: 8 }}>{t.step2}</li>
+        <div className="text-left mb-24">
+          <h3 className="fs-16 mb-12" style={{ color: "#1f2937" }}>{t.nextSteps}</h3>
+          <ol className="c-muted fs-14 p-0 m-0" style={{ paddingLeft: 20 }}>
+            <li className="mb-8">{t.step1}</li>
+            <li className="mb-8">{t.step2}</li>
             <li>{t.step3}</li>
           </ol>
         </div>
 
         <Link
           href={`/api/auth/callback?provider=login&lang=${lang}`}
+          className="no-underline fs-16 fw-500"
           style={{
             display: "block",
             padding: 14,
             borderRadius: 8,
             background: "#10b981",
             color: "white",
-            textDecoration: "none",
-            fontSize: 16,
-            fontWeight: 500,
           }}
         >
           {t.goToDashboard}
         </Link>
 
-        <div style={{ marginTop: 16, fontSize: 13, color: "#9ca3af" }}>
+        <div className="mt-16 fs-13" style={{ color: "#9ca3af" }}>
           {t.autoRedirect} {countdown}...
         </div>
       </div>

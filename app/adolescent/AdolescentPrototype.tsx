@@ -409,65 +409,21 @@ export function AdolescentPrototype() {
               onStatusChange={handleKeyStatusChange}
             />
 
-            <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginTop: 8 }}>
+            <div className="flex-row gap-6 items-center flex-wrap mt-8">
               {keyStatus.isTesting ? (
-                <span
-                  style={{
-                    display: "inline-block",
-                    padding: "2px 8px",
-                    borderRadius: 4,
-                    fontSize: 11,
-                    fontWeight: 600,
-                    background: "#cce5ff",
-                    color: "#004085",
-                    border: "1px solid #b8daff",
-                  }}
-                >
+                <span className="badge-status-testing">
                   {lang === "en" ? "Testing key..." : "Проверка ключа..."}
                 </span>
               ) : keyStatus.isValid === true ? (
-                <span
-                  style={{
-                    display: "inline-block",
-                    padding: "2px 8px",
-                    borderRadius: 4,
-                    fontSize: 11,
-                    fontWeight: 600,
-                    background: "#d4edda",
-                    color: "#155724",
-                    border: "1px solid #c3e6cb",
-                  }}
-                >
+                <span className="badge-status-valid">
                   ✓ {lang === "en" ? "Key valid" : "Ключ работает"}
                 </span>
               ) : keyStatus.isValid === false ? (
-                <span
-                  style={{
-                    display: "inline-block",
-                    padding: "2px 8px",
-                    borderRadius: 4,
-                    fontSize: 11,
-                    fontWeight: 600,
-                    background: "#f8d7da",
-                    color: "#721c24",
-                    border: "1px solid #f5c6cb",
-                  }}
-                >
+                <span className="badge-status-invalid">
                   ✗ {lang === "en" ? "Key invalid" : "Ключ не работает"}
                 </span>
               ) : keyStatus.hasSavedKey ? (
-                <span
-                  style={{
-                    display: "inline-block",
-                    padding: "2px 8px",
-                    borderRadius: 4,
-                    fontSize: 11,
-                    fontWeight: 600,
-                    background: "#fff3cd",
-                    color: "#856404",
-                    border: "1px solid #ffeeba",
-                  }}
-                >
+                <span className="badge-status-saved">
                   {lang === "en" ? "Key saved, not tested" : "Ключ сохранён, не проверен"}
                 </span>
               ) : null}
@@ -477,9 +433,9 @@ export function AdolescentPrototype() {
 
           {/* Registration form */}
           {!isRegistered && (!childIdFromUrl || childLookupFailed) && (
-            <div className="panel" style={{ marginBottom: 24 }}>
-              <h3 style={{ marginTop: 0 }}>{ui.registrationTitle}</h3>
-              <p className="muted" style={{ marginBottom: 16 }}>{ui.registrationText}</p>
+            <div className="panel mb-24">
+              <h3 className="mt-0">{ui.registrationTitle}</h3>
+              <p className="muted mb-16">{ui.registrationText}</p>
               <form onSubmit={handleRegister}>
                 <label className="field">
                   <span>{ui.fullName}</span>
@@ -507,7 +463,7 @@ export function AdolescentPrototype() {
                   />
                   <span>{ui.consentText}</span>
                 </label>
-                <div className="action-row" style={{ marginTop: 12 }}>
+                <div className="action-row mt-12">
                   <button type="submit" className="button" disabled={!consentGiven || isRegistering}>
                     {isRegistering ? (lang === "en" ? "Saving..." : "Сохраняю...") : ui.startSession}
                   </button>
@@ -518,8 +474,8 @@ export function AdolescentPrototype() {
 
           {childIdFromUrl && childLookupAttempted && childLookupFailed && !hasActiveChild && (
             <div className="panel" style={{ marginBottom: 24, borderColor: "#e8b4b4", background: "#fff7f7" }}>
-              <h3 style={{ marginTop: 0 }}>{lang === "en" ? "Link needs attention" : "Нужно проверить ссылку"}</h3>
-              <p className="muted" style={{ marginBottom: 0 }}>
+              <h3 className="mt-0">{lang === "en" ? "Link needs attention" : "Нужно проверить ссылку"}</h3>
+              <p className="muted mb-0">
                 {lang === "en"
                   ? "We could not find a saved participant for this child link. You can register again below or ask the teacher for an updated link."
                   : "Мы не нашли сохраненного участника по этой ссылке. Можно зарегистрироваться заново ниже или запросить у педагога новую ссылку."}
@@ -558,7 +514,7 @@ export function AdolescentPrototype() {
               <div className="stage-pill">{lang === "en" ? `Step ${stage.id} of 5` : `Шаг ${stage.id} из 5`}: {stage.title}</div>
 
               {currentChildName && (
-                <div style={{ background: 'var(--soft)', border: '1px solid var(--line)', borderRadius: 6, padding: '6px 10px', fontSize: 13, marginBottom: 12 }}>
+                <div className="bg-soft b-line br-6 p-10 fs-13 mb-12">
                   👤 Сессия для: <strong>{currentChildName}</strong>
                 </div>
               )}
@@ -694,29 +650,29 @@ function HistoryReviewPanel({
   lang: AppLang;
 }) {
   return (
-    <div className="panel" style={{ marginBottom: 24, background: 'var(--soft)' }}>
-      <h3 style={{ marginTop: 0 }}>{ui.historyTitle}</h3>
-      <p className="muted" style={{ marginBottom: 12 }}>
+    <div className="panel mb-24 bg-soft">
+      <h3 className="mt-0">{ui.historyTitle}</h3>
+      <p className="muted mb-12">
         {lang === "en" ? "Completed " : "Пройдено "}<strong>{pastSessions.length}</strong>
         {lang === "en" ? (pastSessions.length === 1 ? " session" : " sessions") : pastSessions.length === 1 ? " сессия" : pastSessions.length < 5 ? " сессии" : " сессий"}
       </p>
 
       {pastSessions[0] && (
-        <div style={{ border: '1px solid var(--line)', borderRadius: 6, padding: 12, marginBottom: 16, background: 'white' }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)', marginBottom: 4 }}>{ui.historyLatestLabel}</div>
-          <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>{new Date(pastSessions[0].updatedAt).toLocaleDateString(lang === 'en' ? 'en-US' : 'ru-RU')}</div>
-          <div style={{ fontWeight: 600, marginBottom: 6 }}>{pastSessions[0].context}</div>
+        <div className="b-line br-6 p-12 mb-16 bg-white">
+          <div className="fs-11 fw-600 c-accent mb-4">{ui.historyLatestLabel}</div>
+          <div className="fs-12 c-muted mb-4">{new Date(pastSessions[0].updatedAt).toLocaleDateString(lang === 'en' ? 'en-US' : 'ru-RU')}</div>
+          <div className="fw-600 mb-6">{pastSessions[0].context}</div>
           <div style={{ fontSize: 13, lineHeight: 1.4 }}>{pastSessions[0].finalNote}</div>
         </div>
       )}
 
-      <div style={{ marginTop: 12 }}>
+      <div className="mt-12">
         {provider !== 'mock' ? (
           <button className="button" disabled={isLoadingHistoryAI} onClick={onGenerateInsight}>
             {isLoadingHistoryAI ? ui.historyAiGenerating : ui.historyAiButton}
           </button>
         ) : (
-          <div style={{ padding: 12, background: 'white', border: '1px dashed var(--line)', borderRadius: 6, fontSize: 13, color: 'var(--muted)' }}>
+          <div className="p-12 bg-white b-dashed br-6 fs-13 c-muted">
             {lang === "en" ? "Connect a provider to get AI insights" : "Подключите провайдера для AI-комментариев"}
           </div>
         )}
@@ -724,12 +680,12 @@ function HistoryReviewPanel({
 
       {historyAIComment && (
         <div style={{ marginTop: 12, padding: 12, background: '#f0f7ff', border: '1px solid var(--accent)', borderRadius: 6, fontSize: 13, lineHeight: 1.45 }}>
-          <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--accent)' }}>{ui.historyAiLabel}</div>
-          <p style={{ margin: 0 }}>{historyAIComment}</p>
+          <div className="fw-600 mb-4 c-accent">{ui.historyAiLabel}</div>
+          <p className="m-0">{historyAIComment}</p>
         </div>
       )}
 
-      <div style={{ marginTop: 16 }}>
+      <div className="mt-16">
         <button className="button secondary" onClick={onStartNew}>{ui.historyStartNew}</button>
       </div>
     </div>
@@ -755,16 +711,16 @@ function CompletionView({
       <h3>{ui.doneTitle}</h3>
       <p>{finalNote}</p>
       <p className="muted">{ui.doneText}</p>
-      <div className="action-row" style={{ marginTop: 16 }}>
+      <div className="action-row mt-16">
         <button className="button secondary" type="button" onClick={onRestart}>{ui.restart}</button>
       </div>
       {effectiveChildId ? (
-        <p className="muted" style={{ fontSize: 13, marginTop: 12 }}>{lang === "en" ? "Results saved for teacher." : "Результаты сохранены для педагога."}</p>
+        <p className="muted fs-13 mt-12">{lang === "en" ? "Results saved for teacher." : "Результаты сохранены для педагога."}</p>
       ) : (
-        <p className="muted" style={{ fontSize: 13, marginTop: 12 }}>{lang === "en" ? "You can start over anytime." : "Можно начать заново в любое время."}</p>
+        <p className="muted fs-13 mt-12">{lang === "en" ? "You can start over anytime." : "Можно начать заново в любое время."}</p>
       )}
       {!feedbackSubmitted && effectiveChildId && <AdolescentFeedbackForm lang={lang} childIdFromUrl={childIdFromUrl} currentChildId={currentChildId} onSubmitted={onFeedbackSubmitted} />}
-      {feedbackSubmitted && <p style={{ fontSize: 13, color: 'var(--accent)', marginTop: 8 }}>{lang === "en" ? "Feedback saved." : "Обратная связь сохранена."}</p>}
+      {feedbackSubmitted && <p className="fs-13 c-accent mt-8">{lang === "en" ? "Feedback saved." : "Обратная связь сохранена."}</p>}
     </div>
   );
 }
@@ -818,14 +774,14 @@ function SessionForm({
       )}
 
       {justClearedClarify && (
-        <div style={{ fontSize: 12, color: 'var(--accent)', marginBottom: 8 }}>
+        <div className="fs-12 c-accent mb-8">
           {lang === "en" ? "Recommendation cleared. Write your answer and submit." : "Рекомендация убрана. Напиши ответ и нажми «Ответить»."}
         </div>
       )}
 
-      <div className="action-row" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      <div className="action-row">
         {/* Secondary actions on the left */}
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div className="flex-row gap-6">
           <button className="button secondary" type="button" onClick={onNeedClarification} disabled={isSending || Boolean(lastClarificationFeedback)}>
             💬 {ui.clarifyBtn}
           </button>

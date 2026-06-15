@@ -134,66 +134,33 @@ function TeacherRegisterContent() {
   }, [email, password, confirmPassword, name, school, agreeToTerms, lang, router, t]);
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-      padding: 20,
-    }}>
-      <div style={{ position: "absolute", top: 20, left: 20 }}>
-        <Link
-          href={`/?lang=${lang}`}
-          style={{
-            color: "white",
-            textDecoration: "none",
-            fontSize: 14,
-            background: "rgba(255, 255, 255, 0.2)",
-            padding: "8px 16px",
-            borderRadius: 6,
-          }}
-        >
+    <div className="gradient-bg-teacher">
+      <div className="absolute" style={{ top: 20, left: 20 }}>
+        <Link href={`/?lang=${lang}`} className="back-link">
           ← {t.back}
         </Link>
       </div>
 
-      <div style={{
-        background: "white",
-        borderRadius: 16,
-        padding: 40,
-        maxWidth: 500,
-        width: "100%",
-        boxShadow: "0 10px 40px rgba(0, 0, 0, 0.2)",
-      }}>
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>👨‍🏫</div>
-          <h1 style={{ marginTop: 0, marginBottom: 8, fontSize: 28, color: "#1f2937" }}>
+      <div className="white-card">
+        <div className="text-center mb-32">
+          <div className="fs-48 mb-16">👨‍🏫</div>
+          <h1 className="mt-0 mb-8 fs-28" style={{ color: "#1f2937" }}>
             {t.title}
           </h1>
-          <p style={{ margin: 0, color: "#6b7280", fontSize: 14 }}>
+          <p className="m-0 c-muted fs-14">
             {t.subtitle}
           </p>
         </div>
 
         {error && (
-          <div style={{
-            background: "#fee2e2",
-            border: "1px solid #ef4444",
-            padding: 12,
-            borderRadius: 8,
-            marginBottom: 20,
-            fontSize: 14,
-            color: "#b91c1c",
-          }}>
+          <div className="error-box">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleRegister} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <form className="flex-col gap-16">
           <div>
-            <label style={{ display: "block", marginBottom: 6, fontWeight: 500, fontSize: 14, color: "#374151" }}>
+            <label className="form-label">
               {t.name} *
             </label>
             <input
@@ -202,12 +169,12 @@ function TeacherRegisterContent() {
               onChange={(e) => setName(e.target.value)}
               placeholder={t.namePlaceholder}
               required
-              style={{ width: "100%", padding: 12, borderRadius: 8, border: "1px solid #d1d5db", fontSize: 14, boxSizing: "border-box" }}
+              className="form-input"
             />
           </div>
 
           <div>
-            <label style={{ display: "block", marginBottom: 6, fontWeight: 500, fontSize: 14, color: "#374151" }}>
+            <label className="form-label">
               {t.email} *
             </label>
             <input
@@ -216,12 +183,12 @@ function TeacherRegisterContent() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder={t.emailPlaceholder}
               required
-              style={{ width: "100%", padding: 12, borderRadius: 8, border: "1px solid #d1d5db", fontSize: 14, boxSizing: "border-box" }}
+              className="form-input"
             />
           </div>
 
           <div>
-            <label style={{ display: "block", marginBottom: 6, fontWeight: 500, fontSize: 14, color: "#374151" }}>
+            <label className="form-label">
               {t.school} *
             </label>
             <input
@@ -230,12 +197,12 @@ function TeacherRegisterContent() {
               onChange={(e) => setSchool(e.target.value)}
               placeholder={t.schoolPlaceholder}
               required
-              style={{ width: "100%", padding: 12, borderRadius: 8, border: "1px solid #d1d5db", fontSize: 14, boxSizing: "border-box" }}
+              className="form-input"
             />
           </div>
 
           <div>
-            <label style={{ display: "block", marginBottom: 6, fontWeight: 500, fontSize: 14, color: "#374151" }}>
+            <label className="form-label">
               {t.password} *
             </label>
             <input
@@ -244,12 +211,12 @@ function TeacherRegisterContent() {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
-              style={{ width: "100%", padding: 12, borderRadius: 8, border: "1px solid #d1d5db", fontSize: 14, boxSizing: "border-box" }}
+              className="form-input"
             />
           </div>
 
           <div>
-            <label style={{ display: "block", marginBottom: 6, fontWeight: 500, fontSize: 14, color: "#374151" }}>
+            <label className="form-label">
               {t.confirmPassword} *
             </label>
             <input
@@ -258,37 +225,29 @@ function TeacherRegisterContent() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
               minLength={6}
-              style={{ width: "100%", padding: 12, borderRadius: 8, border: "1px solid #d1d5db", fontSize: 14, boxSizing: "border-box" }}
+              className="form-input"
             />
           </div>
 
-          <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", fontSize: 13 }}>
+          <label className="checkbox-field">
             <input type="checkbox" checked={agreeToTerms} onChange={(e) => setAgreeToTerms(e.target.checked)} required style={{ marginTop: 2 }} />
-            <span style={{ color: "#6b7280" }}>{t.agree}</span>
+            <span className="c-muted">{t.agree}</span>
           </label>
 
           <button
             type="submit"
             disabled={isLoading}
-            style={{
-              padding: 14,
-              borderRadius: 8,
-              border: "none",
-              background: isLoading ? "#9ca3af" : "#10b981",
-              color: "white",
-              fontSize: 16,
-              fontWeight: 500,
-              cursor: isLoading ? "not-allowed" : "pointer",
-              marginTop: 8,
-            }}
+            className="submit-btn"
+            style={{ background: isLoading ? "#9ca3af" : "#10b981" }}
+            onClick={handleRegister}
           >
             {isLoading ? (lang === "en" ? "Creating account..." : "Создание учётной записи...") : t.register}
           </button>
         </form>
 
-        <div style={{ textAlign: "center", marginTop: 20, fontSize: 14, color: "#6b7280" }}>
+        <div className="auth-footer c-muted">
           {t.haveAccount}{" "}
-          <Link href={`/api/auth/callback?provider=login&lang=${lang}`} style={{ color: "#059669", textDecoration: "none", fontWeight: 500 }}>
+          <Link href={`/api/auth/callback?provider=login&lang=${lang}`} className="no-underline fw-500" style={{ color: "#059669" }}>
             {t.login}
           </Link>
         </div>

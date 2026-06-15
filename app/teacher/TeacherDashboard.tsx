@@ -793,7 +793,7 @@ export function TeacherDashboard() {
           <p className="eyebrow">{ui.eyebrow}</p>
           <h1>{ui.title}</h1>
           <p className="muted">{ui.intro}</p>
-          <p style={{ marginTop: 8, fontSize: 13, color: "var(--muted)" }}>
+          <p className="mt-8 fs-13 c-muted">
             {ui.introSubtitle}
           </p>
         </div>
@@ -812,14 +812,14 @@ export function TeacherDashboard() {
       </div>
 
       {/* === NEW COHERENT DASHBOARD: left children + main (header + infographics + sessions + detail) === */}
-      <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
+      <div className="dashboard-layout">
         {/* LEFT SIDEBAR — Children as first-class citizens */}
-        <aside style={{ width: 288, flex: "0 0 288px" }}>
-          <div className="panel" style={{ position: "sticky", top: 24 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <aside className="dashboard-sidebar">
+          <div className="panel sidebar-sticky">
+            <div className="flex-row items-center justify-between mb-10">
               <div>
-                <strong style={{ fontSize: 15 }}>{ui.students}</strong>
-                <span className="muted" style={{ fontSize: 12, marginLeft: 6 }}>({children.length})</span>
+                <strong className="fs-15">{ui.students}</strong>
+                <span className="muted fs-12 ml-6">({children.length})</span>
               </div>
               <button className="button secondary" onClick={copyAllLinks} style={{ fontSize: 11, padding: "4px 9px" }} title={ui.copyAllLinks}>
                 {ui.copyAllLinks}
@@ -832,20 +832,13 @@ export function TeacherDashboard() {
               placeholder={ui.searchPlaceholder}
               value={childSearch}
               onChange={(e) => setChildSearch(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "7px 10px",
-                borderRadius: 6,
-                border: "1px solid var(--line)",
-                fontSize: 13,
-                marginBottom: 10
-              }}
+              className="w-full fs-13 mb-10 sidebar-search"
             />
 
             {/* Children list */}
-            <div style={{ maxHeight: "calc(100vh - 340px)", overflowY: "auto", marginBottom: 12, paddingRight: 4 }}>
+            <div className="children-list-scroll">
               {visibleChildren.length === 0 && (
-                <div className="muted" style={{ fontSize: 13, padding: "12px 0" }}>Ничего не найдено</div>
+                <div className="muted fs-13" style={{ padding: "12px 0" }}>Ничего не найдено</div>
               )}
 
               {visibleChildren.map((child) => {
@@ -857,35 +850,31 @@ export function TeacherDashboard() {
                   <div
                     key={child.id}
                     onClick={() => selectChild(child.id)}
+                    className="child-item-card"
                     style={{
-                      padding: "9px 10px",
-                      marginBottom: 6,
-                      borderRadius: 7,
                       border: isActive ? "1.5px solid var(--accent)" : "1px solid var(--line)",
                       background: isActive ? "var(--soft)" : "white",
-                      cursor: "pointer",
-                      transition: "all 0.1s ease"
                     }}
                   >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <div className="child-item-top">
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontFamily: "monospace", fontSize: 12, fontWeight: 600, color: isActive ? "var(--accent)" : "var(--text)" }}>
+                        <div className="child-item-id" style={{ color: isActive ? "var(--accent)" : "var(--text)" }}>
                           {child.id}
                         </div>
-                        <div style={{ fontSize: 12, marginTop: 1, color: "var(--muted)" }}>
+                        <div className="child-item-meta">
                           {sessCount} {sessCount === 1 ? ui.session : ui.sessions} · {last}
                         </div>
 
                         {/* Real data hint (no full reveal in list for privacy) */}
                         {child.realData && (
-                          <div style={{ fontSize: 11, marginTop: 3, color: "var(--green)" }}>
+                          <div className="child-item-realdata">
                             {revealIdentity ? `${child.realData.fio} · ${child.realData.klass}` : ui.hasRealData}
                           </div>
                         )}
                       </div>
 
                       {/* Per-child quick actions (do not bubble) */}
-                      <div style={{ display: "flex", gap: 4 }} onClick={(e) => e.stopPropagation()}>
+                      <div className="child-item-actions" onClick={(e) => e.stopPropagation()}>
                         <Link
                           href={buildPrototypeHref(child)}
                           className="button"
@@ -964,43 +953,43 @@ export function TeacherDashboard() {
                   })();
                 }
               }}
-              style={{ display: "flex", gap: 6, flexWrap: 'wrap' }}
+              className="flex-row gap-6 flex-wrap"
             >
               <input
                 name="childName"
                 type="text"
                 placeholder={ui.addNamePlaceholder}
-                style={{ flex: '1 1 140px', minWidth: 0, padding: "6px 9px", borderRadius: 6, border: "1px solid var(--line)", fontSize: 13 }}
+                className="fs-13 add-child-input"
               />
-              <button type="submit" className="button secondary" style={{ padding: "6px 10px", fontSize: 12, whiteSpace: 'nowrap' }}>
+              <button type="submit" className="button secondary fs-12 whitespace-nowrap" style={{ padding: "6px 10px" }}>
                 {ui.addChild}
               </button>
             </form>
-            <div className="muted" style={{ fontSize: 11, marginTop: 6, textAlign: "center" }}>
+            <div className="muted fs-11 mt-6 text-center">
               {ui.storageLabel}
             </div>
           </div>
         </aside>
 
         {/* MAIN AREA */}
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="dashboard-main">
           {!selectedChild ? (
-            <div className="panel" style={{ textAlign: "center", padding: "60px 20px" }}>
-              <h3 style={{ marginTop: 0 }}>{ui.selectStudentLeft}</h3>
+            <div className="panel text-center no-selection-panel">
+              <h3 className="mt-0">{ui.selectStudentLeft}</h3>
               <p className="muted">{ui.selectStudentLeftDesc}</p>
             </div>
           ) : (
             <>
               {/* CHILD HEADER + QUICK ACTIONS */}
-              <div className="panel" style={{ marginBottom: 16, padding: 14 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+              <div className="panel mb-16 child-header-panel">
+                <div className="flex-row justify-between items-start gap-12 flex-wrap">
                   <div>
-                    <div style={{ fontSize: 11, color: "var(--muted)", letterSpacing: "0.5px" }}>{ui.studentIdLabel}</div>
-                    <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "monospace", marginTop: 1 }}>{selectedChild.id}</div>
+                    <div className="fs-11 c-muted tracking-wide">{ui.studentIdLabel}</div>
+                    <div className="fs-18 fw-700 font-mono mt-1">{selectedChild.id}</div>
 
                     {/* Real identity reveal (privacy-first) */}
                     {selectedChild.realData && (
-                      <div style={{ marginTop: 6, fontSize: 13 }}>
+                      <div className="mt-6 fs-13">
                         {revealIdentity ? (
                           <span>
                             <strong>{selectedChild.realData.fio}</strong> · класс {selectedChild.realData.klass}
@@ -1015,22 +1004,22 @@ export function TeacherDashboard() {
                         )}
                       </div>
                     )}
-                    <div style={{ marginTop: 4, fontSize: 13, color: "var(--muted)" }}>
+                    <div className="mt-4 fs-13 c-muted">
                       {selectedChild.sessions.length} {selectedChild.sessions.length === 1 ? ui.session : ui.sessions} · {ui.lastUpdate}{" "}
                       {selectedChild.updatedAt ? new Date(selectedChild.updatedAt).toLocaleDateString(locale) : "—"}
                     </div>
                   </div>
 
                   {/* Quick actions bar */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}>
-                    <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                  <div className="flex-col gap-6 items-end">
+                    <div className="flex-row gap-6 items-center flex-wrap">
                       <input
                         type="text"
                         value={newSessionContextInput}
                         onChange={(e) => setNewSessionContextInput(e.target.value)}
                         onKeyDown={(e) => { if (e.key === "Enter") createNewSessionFromInput(); }}
                         placeholder="Контекст новой сессии (учёба, спорт...)"
-                        style={{ width: 210, fontSize: 13, padding: "7px 9px", borderRadius: 6, border: "1px solid var(--line)" }}
+                        className="fs-13 session-context-input"
                       />
                       <button className="button" onClick={createNewSessionFromInput} style={{ padding: "7px 14px" }}>
                         + Новая сессия
@@ -1050,8 +1039,7 @@ export function TeacherDashboard() {
 
                       <button
                         onClick={deleteCurrentChild}
-                        className="button secondary"
-                        style={{ fontSize: 12, color: "#b44", borderColor: "#e8b4b4", padding: "4px 9px" }}
+                        className="button secondary delete-student-btn"
                       >
                         {ui.deleteStudent}
                       </button>
@@ -1060,44 +1048,44 @@ export function TeacherDashboard() {
               </div>
 
               {/* AGGREGATED INFOGRAPHICS */}
-              <div className="panel" style={{ marginBottom: 16 }}>
-                <h3 style={{ margin: "0 0 10px 0", fontSize: 15 }}>{ui.analyticsTitle}</h3>
+              <div className="panel mb-16">
+                <h3 className="fs-15 analytics-section-title">{ui.analyticsTitle}</h3>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1.05fr 1fr", gap: 18 }}>
+                <div className="analytics-inner-grid">
                   {/* Scenario distribution */}
                   <div>
-                    <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>{ui.scenarioDistribution}</div>
-                    <div style={{ height: 22, background: "#f0f0f0", borderRadius: 999, overflow: "hidden", display: "flex" }}>
+                    <div className="fs-12 c-muted mb-6">{ui.scenarioDistribution}</div>
+                    <div className="progress-track">
                       <div style={{ width: `${distribution.a}%`, background: "var(--accent)" }} title={`${ui.scenarioA}: ${distribution.a}%`} />
                       <div style={{ width: `${distribution.b}%`, background: "var(--orange)" }} title={`${ui.scenarioB}: ${distribution.b}%`} />
                     </div>
-                    <div style={{ display: "flex", gap: 14, marginTop: 6, fontSize: 13 }}>
-                      <span><span style={{ color: "var(--accent)" }}>●</span> {ui.scenarioA}: <strong>{distribution.a}%</strong> ({distribution.raw.a})</span>
-                      <span><span style={{ color: "var(--orange)" }}>●</span> {ui.scenarioB}: <strong>{distribution.b}%</strong> ({distribution.raw.b})</span>
+                    <div className="flex-row gap-14 mt-6 fs-13">
+                      <span><span className="c-accent">●</span> {ui.scenarioA}: <strong>{distribution.a}%</strong> ({distribution.raw.a})</span>
+                      <span><span className="c-orange">●</span> {ui.scenarioB}: <strong>{distribution.b}%</strong> ({distribution.raw.b})</span>
                       {distribution.raw.skipped > 0 && (
-                        <span style={{ color: "var(--muted)" }}>{ui.skipped}: <strong>{distribution.raw.skipped}</strong></span>
+                        <span className="c-muted">{ui.skipped}: <strong>{distribution.raw.skipped}</strong></span>
                       )}
                     </div>
-                    <div style={{ display: "flex", gap: 10, marginTop: 8, fontSize: 12, color: "var(--muted)", flexWrap: "wrap" }}>
+                    <div className="flex-row gap-10 mt-8 fs-12 c-muted flex-wrap">
                       <span>{ui.processEvents}:</span>
                       <span>{ui.clarification}: <strong>{distribution.raw.clarify}</strong></span>
                     </div>
-                    <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{ui.totalRecords} {totalRecords}</div>
+                    <div className="muted fs-11 mt-2">{ui.totalRecords} {totalRecords}</div>
                   </div>
 
                   {/* Per-stage support */}
                   <div>
-                    <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>{ui.stageSupportTitle}</div>
+                    <div className="fs-12 c-muted mb-6">{ui.stageSupportTitle}</div>
                     {stageSupport.length > 0 ? (
                       stageSupport.map((s) => {
                         const sum = (s.A + s.B + s.clarify) || 1;
                         return (
-                          <div key={s.stageId} style={{ marginBottom: 5 }}>
-                            <div style={{ fontSize: 12, marginBottom: 1, display: "flex", justifyContent: "space-between" }}>
+                          <div key={s.stageId} className="mb-5">
+                            <div className="fs-12 mb-1 flex-row justify-between">
                               <span>{ui.stage} {s.stageId}</span>
-                              <span className="muted" style={{ fontSize: 11 }}>{s.A + s.B + s.clarify} {ui.records}</span>
+                              <span className="muted fs-11">{s.A + s.B + s.clarify} {ui.records}</span>
                             </div>
-                            <div style={{ height: 11, background: "#eee", borderRadius: 999, display: "flex", overflow: "hidden" }}>
+                            <div className="stage-bar-track">
                               <div style={{ width: `${(s.A / sum) * 100}%`, background: "var(--accent)" }} />
                               <div style={{ width: `${(s.B / sum) * 100}%`, background: "var(--orange)" }} />
                             </div>
@@ -1110,7 +1098,7 @@ export function TeacherDashboard() {
                         );
                       })
                     ) : (
-                      <div className="muted" style={{ fontSize: 13 }}>{ui.noStageData}</div>
+                      <div className="muted no-stage-data">{ui.noStageData}</div>
                     )}
                   </div>
                 </div>
@@ -1118,49 +1106,43 @@ export function TeacherDashboard() {
 
               {/* SERVER ANALYTICS PANEL (only when server-backed) */}
               {serverBackedDashboard && analytics && (
-                <div style={{ marginBottom: 16 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                <div className="analytics-panel">
+                  <div className="analytics-grid-2col">
                     <ClassStats
                       data={analytics.classDistribution}
                       title={lang === "en" ? "Class Distribution" : "Распределение по классам"}
                     />
                     <div>
-                      <div style={{
-                        padding: 24,
-                        background: "white",
-                        borderRadius: 12,
-                        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                        marginBottom: 16,
-                      }}>
-                        <h3 style={{ fontSize: 18, marginBottom: 16 }}>
+                      <div className="stat-card-white">
+                        <h3 className="stat-card-title">
                           {lang === "en" ? "Overall Statistics" : "Общая статистика"}
                         </h3>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                          <div style={{ padding: 16, background: "#f0f7ff", borderRadius: 8, textAlign: "center" }}>
-                            <div style={{ fontSize: 28, fontWeight: 700, color: "var(--accent)" }}>{analytics.totalChildren}</div>
-                            <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>
+                        <div className="stat-grid-2col">
+                          <div className="stat-item" style={{ background: "#f0f7ff" }}>
+                            <div className="stat-value" style={{ color: "var(--accent)" }}>{analytics.totalChildren}</div>
+                            <div className="stat-label">
                               {lang === "en" ? "Students" : "Учеников"}
                             </div>
                           </div>
-                          <div style={{ padding: 16, background: "#f0fdf4", borderRadius: 8, textAlign: "center" }}>
-                            <div style={{ fontSize: 28, fontWeight: 700, color: "#10b981" }}>{analytics.totalSessions}</div>
-                            <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>
+                          <div className="stat-item" style={{ background: "#f0fdf4" }}>
+                            <div className="stat-value" style={{ color: "#10b981" }}>{analytics.totalSessions}</div>
+                            <div className="stat-label">
                               {lang === "en" ? "Sessions" : "Сессий"}
                             </div>
                           </div>
-                          <div style={{ padding: 16, background: "#fffbeb", borderRadius: 8, textAlign: "center" }}>
-                            <div style={{ fontSize: 28, fontWeight: 700, color: "#f59e0b" }}>{analytics.totalCompletedSessions}</div>
-                            <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>
+                          <div className="stat-item" style={{ background: "#fffbeb" }}>
+                            <div className="stat-value" style={{ color: "#f59e0b" }}>{analytics.totalCompletedSessions}</div>
+                            <div className="stat-label">
                               {lang === "en" ? "Completed" : "Завершено"}
                             </div>
                           </div>
-                          <div style={{ padding: 16, background: "#f5f3ff", borderRadius: 8, textAlign: "center" }}>
-                            <div style={{ fontSize: 28, fontWeight: 700, color: "#8b5cf6" }}>
+                          <div className="stat-item" style={{ background: "#f5f3ff" }}>
+                            <div className="stat-value" style={{ color: "#8b5cf6" }}>
                               {analytics.totalSessions > 0
                                 ? Math.round((analytics.totalCompletedSessions / analytics.totalSessions) * 100)
                                 : 0}%
                             </div>
-                            <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>
+                            <div className="stat-label">
                               {lang === "en" ? "Completion rate" : "Завершение"}
                             </div>
                           </div>
@@ -1180,13 +1162,13 @@ export function TeacherDashboard() {
               )}
 
               {/* SESSIONS LIST */}
-              <div className="panel" style={{ marginBottom: 16 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <div className="panel mb-16">
+                <div className="sessions-header">
                   <div>
-                    <strong style={{ fontSize: 15 }}>{ui.sessionsLabel}</strong>
-                    <span className="muted" style={{ marginLeft: 8, fontSize: 13 }}>({sortedSessions.length})</span>
+                    <strong className="fs-15">{ui.sessionsLabel}</strong>
+                    <span className="muted sessions-count">({sortedSessions.length})</span>
                   </div>
-                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <div className="session-actions">
                     <button className="button" onClick={createNewSessionFromInput} style={{ fontSize: 13, padding: "6px 12px" }}>{ui.createNewSession}</button>
                     {currentSession && (
                       <button className="button secondary" onClick={deleteSelectedSession} style={{ fontSize: 13, padding: "6px 12px" }}>
@@ -1198,7 +1180,7 @@ export function TeacherDashboard() {
 
                 {/* New session hint */}
                 {newSessionHint && (
-                  <div style={{ background: "var(--soft)", borderRadius: 6, padding: "8px 12px", marginBottom: 10, fontSize: 13, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div className="hint-bar">
                     <span>{ui.newSessionHint.replace("{context}", newSessionHint.context)}</span>
                     <Link href={buildPrototypeHref(selectedChild)} className="button" target="_blank" style={{ fontSize: 12, padding: "3px 9px" }} onClick={() => setNewSessionHint(null)}>
                       {ui.openPrototype}
@@ -1208,7 +1190,7 @@ export function TeacherDashboard() {
 
                 {/* Undo bar */}
                 {lastDeleted && (
-                  <div style={{ background: "#fff8e1", border: "1px solid #ffeaa7", borderRadius: 6, padding: "8px 12px", marginBottom: 10, fontSize: 13, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div className="undo-bar">
                     <span>{ui.sessionDeleted}</span>
                     <button className="button secondary" onClick={undoLastDelete} style={{ fontSize: 12, padding: "3px 10px" }}>
                       {ui.undoDelete}
@@ -1218,14 +1200,14 @@ export function TeacherDashboard() {
 
                 {/* Sessions grid / empty state */}
                 {sortedSessions.length === 0 ? (
-                  <div style={{ textAlign: "center", padding: "28px 12px", border: "1px dashed var(--line)", borderRadius: 8 }}>
-                    <p className="muted" style={{ marginBottom: 10 }}>{ui.noSessions}</p>
+                  <div className="empty-state-dashed">
+                    <p className="muted mb-10">{ui.noSessions}</p>
                     <button className="button" onClick={() => createNewSessionForChild()} style={{ padding: "8px 18px" }}>
                       {ui.createFirstSession}
                     </button>
                   </div>
                 ) : (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  <div className="sessions-grid">
                     {sortedSessions.map((sess, idx) => {
                       const isSel = idx === selectedSessionIdx;
                       const isNew = sess.updatedAt === highlightedSessionUpdatedAt;
@@ -1252,26 +1234,21 @@ export function TeacherDashboard() {
                             setNewSessionHint(null);
                             setLastDeleted(null);
                           }}
+                          className="session-card-btn"
                           style={{
-                            flex: "1 1 240px",
-                            minWidth: 220,
-                            textAlign: "left",
-                            padding: "9px 11px",
-                            borderRadius: 7,
                             border: isSel ? "2px solid var(--accent)" : "1px solid var(--line)",
                             background: isSel ? "var(--soft)" : "white",
                             boxShadow: isNew ? "0 0 0 3px #f2c94c" : undefined,
-                            cursor: "pointer"
                           }}
                           title={sess.context}
                         >
-                          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 2, display: "flex", justifyContent: "space-between" }}>
+                          <div className="session-card-title">
                             <span>{sess.context.length > 38 ? sess.context.slice(0, 35) + "..." : sess.context}</span>
-                            <span style={{ fontSize: 11, color: "var(--muted)" }}>{new Date(sess.updatedAt).toLocaleDateString(locale)}</span>
+                            <span className="session-card-date">{new Date(sess.updatedAt).toLocaleDateString(locale)}</span>
                           </div>
-                          <div style={{ fontSize: 12, color: "var(--muted)" }}>
+                          <div className="session-card-subtitle">
                             {recs} {ui.stepsShort}
-                            <span style={{ marginLeft: 8 }}>
+                            <span className="ml-8">
                               {processBits}
                             </span>
                           </div>
@@ -1288,37 +1265,37 @@ export function TeacherDashboard() {
                   <div className="muted">{ui.selectSessionAbove}</div>
                 ) : (
                   <>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
+                    <div className="session-detail-header">
                       <div>
-                        <strong style={{ fontSize: 15 }}>{currentSession.context}</strong>
-                        <span className="muted" style={{ marginLeft: 10, fontSize: 12 }}>
+                        <strong className="session-context-title">{currentSession.context}</strong>
+                        <span className="muted session-detail-date">
                           {new Date(currentSession.updatedAt).toLocaleString(locale)}
                         </span>
                       </div>
-                      <div className="muted" style={{ fontSize: 12 }}>{currentSession.records.length} {ui.records}</div>
+                      <div className="muted session-records-count">{currentSession.records.length} {ui.records}</div>
                     </div>
 
                     {currentSession.records.length === 0 && (
-                      <div style={{ padding: "16px 0", color: "var(--muted)", fontSize: 14 }}>
+                      <div className="empty-session-placeholder">
                         {ui.emptySession}
                       </div>
                     )}
 
                     {currentSession.records.length > 0 && (
-                      <div style={{ display: "grid", gap: 10 }}>
-                        <div style={{ padding: 12, background: "var(--soft)", borderRadius: 8, border: "1px solid var(--line)" }}>
-                          <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8 }}>{ui.sessionSignals}</div>
+                      <div className="records-grid">
+                        <div className="signals-box">
+                          <div className="signals-box-title">{ui.sessionSignals}</div>
                           {currentSessionSignals.clarifications === 0 && currentSessionSignals.returns === 0 && currentSessionSignals.retries === 0 ? (
-                            <div style={{ fontSize: 13, color: "var(--muted)" }}>{ui.noSpecialSignals}</div>
+                            <div className="no-special-signals">{ui.noSpecialSignals}</div>
                           ) : (
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                            <div className="signals-row">
                               {currentSessionSignals.clarifications > 0 && (
                                 <span className="badge badge-green">
                                   {ui.signalCount(ui.clarificationQuestion, currentSessionSignals.clarifications)}
                                 </span>
                               )}
                               {currentSessionSignals.returns > 0 && (
-                                <span className="badge" style={{ background: "#fff3e8", color: "#a65300", border: "1px solid #ffd3a8" }}>
+                                <span className="badge return-badge">
                                   {ui.signalCount(ui.returnToQuestion, currentSessionSignals.returns)}
                                 </span>
                               )}
@@ -1329,7 +1306,7 @@ export function TeacherDashboard() {
                               )}
                             </div>
                           )}
-                          <div style={{ fontSize: 13, color: "#334455", marginTop: 8 }}>
+                          <div className="trajectory-note">
                             {ui.trajectoryNote(currentSessionSignals)}
                           </div>
                         </div>
@@ -1338,23 +1315,17 @@ export function TeacherDashboard() {
                           const isProcessOnly = eventType === "clarify_request" || eventType === "back";
 
                           return (
-                          <div key={`${rec.stageId}-${i}-${rec.timestamp || ''}`} style={{ borderLeft: `4px solid ${getScenarioColor(rec.scenario)}`, paddingLeft: 12, paddingTop: 2, paddingBottom: 2 }}>
-                            <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 1 }}>
+                          <div key={`${rec.stageId}-${i}-${rec.timestamp || ''}`} className="record-item" style={{ borderLeft: `4px solid ${getScenarioColor(rec.scenario)}` }}>
+                            <div className="record-meta">
                               {ui.stage} {rec.stageId} · {rec.stageTitle}
                             </div>
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6 }}>
+                            <div className="record-tags">
                               <span className="badge" style={getEventBadgeStyle(rec)}>
                                 {ui.eventLabel(rec)}
                               </span>
                               {!isProcessOnly && (
-                              <span style={{
-                                display: "inline-block",
+                              <span className="scenario-badge" style={{
                                 background: rec.scenario === "skipped" ? "var(--muted)" : getScenarioColor(rec.scenario),
-                                color: "white",
-                                fontSize: 11,
-                                padding: "1px 7px",
-                                borderRadius: 999,
-                                fontWeight: 600
                               }}>
                                 {ui.scenarioLabel(rec.scenario)}
                               </span>
@@ -1363,16 +1334,16 @@ export function TeacherDashboard() {
                                 <span className="badge badge-blue">{ui.retryAnswer}</span>
                               )}
                               {rec.timestamp && (
-                                <span className="muted" style={{ fontSize: 11 }}>
+                                <span className="muted record-timestamp">
                                   {new Date(rec.timestamp).toLocaleString(locale)}
                                 </span>
                               )}
                             </div>
-                            <div style={{ fontSize: 13, marginBottom: 2 }}><strong>{ui.questionLabel}</strong> {rec.question}</div>
-                            <div style={{ fontSize: 13, marginBottom: 2 }}><strong>{ui.answerLabel}</strong> {rec.answer}</div>
-                            <div style={{ fontSize: 13, color: "#334455" }}><strong>{ui.supportLabel}</strong> {rec.feedback}</div>
+                            <div className="record-field"><strong>{ui.questionLabel}</strong> {rec.question}</div>
+                            <div className="record-field"><strong>{ui.answerLabel}</strong> {rec.answer}</div>
+                            <div className="support-label-text"><strong>{ui.supportLabel}</strong> {rec.feedback}</div>
                             {(rec.responseMode || rec.provider || rec.model) && (
-                              <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+                              <div className="muted record-source">
                                 <strong>{ui.aiSourceLabel}</strong>{" "}
                                 {[rec.provider, rec.model, ui.responseModeLabel(rec.responseMode)].filter(Boolean).join(" · ")}
                               </div>
@@ -1384,35 +1355,35 @@ export function TeacherDashboard() {
                     )}
 
                     {currentSession.finalNote && (
-                      <div style={{ marginTop: 14, padding: 12, background: "var(--soft)", borderRadius: 6, fontSize: 13 }}>
+                      <div className="final-note-box">
                         <strong>{ui.finalInterpretation}</strong>
-                        <p style={{ marginTop: 6, lineHeight: 1.45 }}>{currentSession.finalNote}</p>
+                        <p className="p-line" style={{ marginTop: 6 }}>{currentSession.finalNote}</p>
                       </div>
                     )}
 
                     {/* LLM-комментарий из истории (то, что видел подросток перед стартом этой сессии) */}
                     {currentSession.historyInsight && (
-                      <div style={{ marginTop: 14, padding: 12, background: '#f0f7ff', border: '1px solid var(--accent)', borderRadius: 6, fontSize: 13 }}>
-                        <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--accent)' }}>
+                      <div className="insight-box">
+                        <div className="insight-title">
                           {ui.aiInsightTitle}
                         </div>
-                        <p style={{ margin: 0, lineHeight: 1.45 }}>{currentSession.historyInsight}</p>
+                        <p className="p-line" style={{ margin: 0 }}>{currentSession.historyInsight}</p>
                       </div>
                     )}
 
                     {/* Обратная связь подростка (новая) */}
                     {currentSession.adolescentFeedback && (
-                      <div style={{ marginTop: 14, padding: 12, background: '#f8f1e3', border: '1px solid #e8b86d', borderRadius: 6, fontSize: 13 }}>
-                        <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                      <div className="feedback-box">
+                        <div className="feedback-title">
                           {ui.adolescentFeedback}
                           {currentSession.adolescentFeedback.rating && (
-                            <span style={{ marginLeft: 8, fontSize: 12 }}>{ui.usefulness(currentSession.adolescentFeedback.rating)}</span>
+                            <span className="feedback-rating">{ui.usefulness(currentSession.adolescentFeedback.rating)}</span>
                           )}
                         </div>
                         {currentSession.adolescentFeedback.comment && (
-                          <p style={{ margin: 0, lineHeight: 1.45 }}>{currentSession.adolescentFeedback.comment}</p>
+                          <p className="p-line" style={{ margin: 0 }}>{currentSession.adolescentFeedback.comment}</p>
                         )}
-                        <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>
+                        <div className="feedback-timestamp">
                           {new Date(currentSession.adolescentFeedback.timestamp).toLocaleString(locale)}
                         </div>
                       </div>

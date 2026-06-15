@@ -98,42 +98,26 @@ function RegisterContent() {
 
   return (
     <main className="shell">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 32 }}>
-        <Link href="/" style={{ fontSize: 14, color: "var(--muted)" }}>
+      <div className="auth-header-row">
+        <Link href="/" className="fs-14 c-muted no-underline">
           ← {ui.back}
         </Link>
         <LanguageToggle />
       </div>
 
-      <div style={{ maxWidth: 400, margin: "0 auto" }}>
-        <div className="panel" style={{ padding: 32 }}>
-          <h1 style={{ margin: "0 0 4px", fontSize: 24 }}>{ui.title}</h1>
-          <p className="muted" style={{ margin: "0 0 24px", fontSize: 14 }}>{ui.subtitle}</p>
+      <div className="auth-container">
+        <div className="panel auth-panel">
+          <h1 className="m-0 mb-4 fs-24">{ui.title}</h1>
+          <p className="muted m-0 mb-24 fs-14">{ui.subtitle}</p>
 
           {error && (
-            <div style={{
-              background: "#f8d7da",
-              border: "1px solid #f5c6cb",
-              borderRadius: 6,
-              padding: "8px 12px",
-              marginBottom: 16,
-              fontSize: 13,
-              color: "#721c24",
-            }}>
+            <div className="error-box-sm">
               {error}
             </div>
           )}
 
           {success && (
-            <div style={{
-              background: "#d4edda",
-              border: "1px solid #c3e6cb",
-              borderRadius: 6,
-              padding: "8px 12px",
-              marginBottom: 16,
-              fontSize: 13,
-              color: "#155724",
-            }}>
+            <div className="success-box-sm">
               {success}
             </div>
           )}
@@ -141,18 +125,8 @@ function RegisterContent() {
           {/* Google Sign Up */}
           <button
             onClick={handleGoogleRegister}
-            className="button"
+            className="button google-btn"
             disabled={isLoading || !!success}
-            style={{
-              width: "100%",
-              padding: "10px",
-              fontSize: 14,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              marginBottom: 16,
-            }}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -163,22 +137,15 @@ function RegisterContent() {
             {ui.google}
           </button>
 
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            marginBottom: 16,
-            color: "var(--muted)",
-            fontSize: 13,
-          }}>
-            <div style={{ flex: 1, height: 1, background: "var(--line)" }} />
+          <div className="divider">
+            <div className="divider-line" />
             <span>{ui.or}</span>
-            <div style={{ flex: 1, height: 1, background: "var(--line)" }} />
+            <div className="divider-line" />
           </div>
 
           {/* Email/Password Form */}
           <form onSubmit={handleEmailRegister}>
-            <label className="field" style={{ marginBottom: 16 }}>
+            <label className="field mb-16">
               {ui.fullNameLabel}
               <input
                 type="text"
@@ -189,7 +156,7 @@ function RegisterContent() {
               />
             </label>
 
-            <label className="field" style={{ marginBottom: 16 }}>
+            <label className="field mb-16">
               {ui.emailLabel}
               <input
                 type="email"
@@ -201,7 +168,7 @@ function RegisterContent() {
               />
             </label>
 
-            <label className="field" style={{ marginBottom: 16 }}>
+            <label className="field mb-16">
               {ui.passwordLabel}
               <input
                 type="password"
@@ -215,17 +182,16 @@ function RegisterContent() {
             </label>
 
             {/* Role Selection */}
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ display: "block", marginBottom: 8, fontSize: 14, fontWeight: 800 }}>
+            <div className="mb-20">
+              <label className="field" style={{ marginBottom: 8 }}>
                 {ui.roleLabel}
               </label>
-              <div style={{ display: "flex", gap: 8 }}>
+              <div className="role-toggle-group">
                 <button
                   type="button"
                   onClick={() => setRole("teacher")}
                   disabled={isLoading || !!success}
-                  className={role === "teacher" ? "button" : "button secondary"}
-                  style={{ flex: 1, padding: "8px", fontSize: 13 }}
+                  className={role === "teacher" ? "button role-toggle-btn" : "button secondary role-toggle-btn"}
                 >
                   👨‍🏫 {ui.roleTeacher}
                 </button>
@@ -233,8 +199,7 @@ function RegisterContent() {
                   type="button"
                   onClick={() => setRole("student")}
                   disabled={isLoading || !!success}
-                  className={role === "student" ? "button" : "button secondary"}
-                  style={{ flex: 1, padding: "8px", fontSize: 13 }}
+                  className={role === "student" ? "button role-toggle-btn" : "button secondary role-toggle-btn"}
                 >
                   🧑‍🎓 {ui.roleStudent}
                 </button>
@@ -243,19 +208,19 @@ function RegisterContent() {
 
             <button
               type="submit"
-              className="button"
+              className="button w-full"
               disabled={isLoading || !!success}
-              style={{ width: "100%", padding: "10px", fontSize: 14 }}
+              style={{ padding: "10px", fontSize: 14 }}
             >
               {isLoading ? ui.loading : ui.submit}
             </button>
           </form>
 
-          <div style={{ marginTop: 20, textAlign: "center", fontSize: 13 }}>
+          <div className="auth-footer">
             <span className="muted">{ui.hasAccount}</span>{" "}
             <Link
               href={withLang(`/auth/login${preselectedRole ? `?role=${preselectedRole}` : ""}`, lang)}
-              style={{ color: "var(--accent)", textDecoration: "underline" }}
+              className="c-accent underline"
             >
               {ui.login}
             </Link>

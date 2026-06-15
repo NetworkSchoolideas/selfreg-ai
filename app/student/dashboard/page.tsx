@@ -128,48 +128,26 @@ function StudentDashboardContent() {
 
   if (loading) {
     return (
-      <div style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#f3f4f6",
-      }}>
-        <div style={{ color: "#6b7280", fontSize: 20 }}>{t.loading}</div>
+      <div className="centered-message" style={{ background: "#f3f4f6" }}>
+        <div className="c-muted fs-20">{t.loading}</div>
       </div>
     );
   }
 
   if (error || !profile) {
     return (
-      <div style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#f3f4f6",
-        padding: 20,
-      }}>
-        <div style={{
-          background: "white",
-          padding: 32,
-          borderRadius: 12,
-          boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-          textAlign: "center",
-          maxWidth: 500,
-          width: "100%",
-        }}>
-          <h2 style={{ fontSize: 20, marginBottom: 16, color: "#dc2626" }}>{t.errorTitle}</h2>
-          <p style={{ color: "#6b7280", marginBottom: 24 }}>{error || t.errorNotFound}</p>
+      <div className="centered-message" style={{ background: "#f3f4f6", padding: 20 }}>
+        <div className="bg-white p-32 br-12 text-center" style={{ maxWidth: 500, width: "100%", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
+          <h2 className="fs-20 mb-16" style={{ color: "#dc2626" }}>{t.errorTitle}</h2>
+          <p className="c-muted mb-24">{error || t.errorNotFound}</p>
           <Link
             href={`/adolescent?childId=${childId || ""}&lang=${lang}`}
+            className="no-underline fw-500"
             style={{
               padding: "12px 24px",
               background: "#4f46e5",
               color: "white",
               borderRadius: 8,
-              textDecoration: "none",
-              fontWeight: 500,
             }}
           >
             {lang === "en" ? "Back to session" : "Вернуться к сессии"}
@@ -183,17 +161,13 @@ function StudentDashboardContent() {
   const displayClass = profile.realData?.klass || "";
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: "#f3f4f6",
-      padding: 20,
-    }}>
-      <div style={{ maxWidth: 1000, margin: "0 auto" }}>
-        <header style={{ marginBottom: 32 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+    <div style={{ minHeight: "100vh", background: "#f3f4f6", padding: 20 }}>
+      <div className="content-container-wide">
+        <header className="section-header">
+          <div className="flex-row justify-between items-start">
             <div>
-              <h1 style={{ fontSize: 28, marginBottom: 8 }}>{t.title}</h1>
-              <p style={{ color: "#6b7280" }}>
+              <h1 className="fs-28 mb-8">{t.title}</h1>
+              <p className="c-muted">
                 {displayName}{displayClass ? `, ${displayClass}` : ""}
               </p>
             </div>
@@ -201,100 +175,78 @@ function StudentDashboardContent() {
           </div>
         </header>
 
-        <div style={{ display: "flex", gap: 16, marginBottom: 32 }}>
+        <div className="action-bar">
           <Link
             href={`/adolescent?childId=${childId}&lang=${lang}`}
+            className="no-underline fw-500"
             style={{
               padding: "12px 24px",
               background: "#4f46e5",
               color: "white",
               borderRadius: 8,
-              textDecoration: "none",
-              fontWeight: 500,
             }}
           >
             {t.newSession}
           </Link>
           <Link
             href={withLang("/", lang)}
+            className="no-underline fw-500"
             style={{
               padding: "12px 24px",
               background: "#6b7280",
               color: "white",
               borderRadius: 8,
-              textDecoration: "none",
-              fontWeight: 500,
             }}
           >
             {t.home}
           </Link>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20, marginBottom: 32 }}>
-          <div style={{ background: "white", padding: 24, borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
-            <div style={{ fontSize: 14, color: "#6b7280", marginBottom: 8 }}>{t.totalSessions}</div>
-            <div style={{ fontSize: 36, fontWeight: "bold" }}>{totalSessions}</div>
+        <div className="grid mb-32" style={{ gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
+          <div className="stat-card" style={{ padding: 24, borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
+            <div className="fs-14 c-muted mb-8">{t.totalSessions}</div>
+            <div className="fs-36 fw-700">{totalSessions}</div>
           </div>
-          <div style={{ background: "white", padding: 24, borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
-            <div style={{ fontSize: 14, color: "#6b7280", marginBottom: 8 }}>{t.completed}</div>
-            <div style={{ fontSize: 36, fontWeight: "bold", color: "#10b981" }}>{completedSessions.length}</div>
+          <div className="stat-card" style={{ padding: 24, borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
+            <div className="fs-14 c-muted mb-8">{t.completed}</div>
+            <div className="fs-36 fw-700" style={{ color: "#10b981" }}>{completedSessions.length}</div>
           </div>
-          <div style={{ background: "white", padding: 24, borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
-            <div style={{ fontSize: 14, color: "#6b7280", marginBottom: 8 }}>{t.inProgress}</div>
-            <div style={{ fontSize: 36, fontWeight: "bold", color: "#f59e0b" }}>{inProgressSessions.length}</div>
+          <div className="stat-card" style={{ padding: 24, borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
+            <div className="fs-14 c-muted mb-8">{t.inProgress}</div>
+            <div className="fs-36 fw-700" style={{ color: "#f59e0b" }}>{inProgressSessions.length}</div>
           </div>
         </div>
 
-        <div style={{ display: "grid", gap: 24 }}>
-          <div style={{ background: "white", borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.1)", padding: 24 }}>
-            <h2 style={{ fontSize: 20, marginBottom: 16 }}>{t.profile}</h2>
+        <div className="flex-col gap-24">
+          <div className="bg-white br-12 p-24" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
+            <h2 className="fs-20 mb-16">{t.profile}</h2>
 
-            <div style={{ display: "grid", gap: 16 }}>
-              <div style={{
-                padding: 16,
-                background: "#f9fafb",
-                borderRadius: 8,
-                border: "1px solid #e5e7eb",
-              }}>
-                <div style={{ fontSize: 14, color: "#6b7280", marginBottom: 4 }}>{t.fio}</div>
-                <div style={{ fontSize: 18, fontWeight: 500 }}>{displayName}</div>
+            <div className="flex-col gap-16">
+              <div className="profile-field">
+                <div className="fs-14 c-muted mb-4">{t.fio}</div>
+                <div className="fs-18 fw-500">{displayName}</div>
               </div>
 
               {displayClass && (
-                <div style={{
-                  padding: 16,
-                  background: "#f9fafb",
-                  borderRadius: 8,
-                  border: "1px solid #e5e7eb",
-                }}>
-                  <div style={{ fontSize: 14, color: "#6b7280", marginBottom: 4 }}>{t.class}</div>
-                  <div style={{ fontSize: 18, fontWeight: 500 }}>{displayClass}</div>
+                <div className="profile-field">
+                  <div className="fs-14 c-muted mb-4">{t.class}</div>
+                  <div className="fs-18 fw-500">{displayClass}</div>
                 </div>
               )}
 
-              <div style={{
-                padding: 16,
-                background: "#f9fafb",
-                borderRadius: 8,
-                border: "1px solid #e5e7eb",
-              }}>
-                <div style={{ fontSize: 14, color: "#6b7280", marginBottom: 4 }}>{t.registrationDate}</div>
-                <div style={{ fontSize: 18, fontWeight: 500 }}>
+              <div className="profile-field">
+                <div className="fs-14 c-muted mb-4">{t.registrationDate}</div>
+                <div className="fs-18 fw-500">
                   {new Date(profile.createdAt).toLocaleDateString(lang === "en" ? "en-US" : "ru-RU")}
                 </div>
               </div>
 
               {profile.teacherId && (
-                <div style={{
-                  padding: 16,
-                  background: "#ecfdf5",
-                  borderRadius: 8,
-                  border: "1px solid #10b981",
-                }}>
-                  <div style={{ fontSize: 14, color: "#065f46", marginBottom: 4 }}>
+                <div className="profile-field" style={{ background: "#ecfdf5", border: "1px solid #10b981" }}>
+                  <div className="fs-14 mb-4" style={{ color: "#065f46" }}>
                     {t.linkedToTeacher}
                   </div>
-                  <div style={{ fontSize: 14, color: "#047857" }}>
+                  <div className="fs-14" style={{ color: "#047857" }}>
                     ✓ {t.connectedToSystem}
                   </div>
                 </div>
@@ -302,20 +254,20 @@ function StudentDashboardContent() {
             </div>
           </div>
 
-          <div style={{ background: "white", borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.1)", padding: 24 }}>
-            <h2 style={{ fontSize: 20, marginBottom: 16 }}>{t.sessionHistory}</h2>
+          <div className="bg-white br-12 p-24" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
+            <h2 className="fs-20 mb-16">{t.sessionHistory}</h2>
 
             {totalSessions === 0 && (
-              <div style={{ textAlign: "center", padding: 40, color: "#6b7280" }}>
+              <div className="text-center c-muted" style={{ padding: 40 }}>
                 <p>{t.noSessions}</p>
-                <p style={{ fontSize: 14, marginTop: 8 }}>
+                <p className="fs-14 mt-8">
                   {t.startHint}
                 </p>
               </div>
             )}
 
             {totalSessions > 0 && (
-              <div style={{ display: "grid", gap: 16 }}>
+              <div className="flex-col gap-16">
                 {[...profile.sessions]
                   .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
                   .map((session) => {
@@ -323,20 +275,12 @@ function StudentDashboardContent() {
                     return (
                       <div
                         key={session.sessionId || session.updatedAt}
-                        style={{
-                          padding: 16,
-                          background: "#f9fafb",
-                          borderRadius: 8,
-                          border: "1px solid #e5e7eb",
-                        }}
+                        className="profile-field"
                       >
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                          <div style={{ fontSize: 16, fontWeight: 500 }}>{session.context || `${t.sessionLabel}`}</div>
-                          <span style={{
+                        <div className="flex-row justify-between items-center mb-8">
+                          <div className="fs-16 fw-500">{session.context || `${t.sessionLabel}`}</div>
+                          <span className="br-999 fs-12 fw-500" style={{
                             padding: "4px 12px",
-                            borderRadius: 12,
-                            fontSize: 12,
-                            fontWeight: 500,
                             background: isCompleted ? "#d1fae5" : "#fef3c7",
                             color: isCompleted ? "#065f46" : "#92400e",
                           }}>
@@ -344,21 +288,17 @@ function StudentDashboardContent() {
                           </span>
                         </div>
                         {session.finalNote && (
-                          <div style={{ fontSize: 14, color: "#6b7280", marginBottom: 8 }}>
+                          <div className="fs-14 c-muted mb-8">
                             {session.finalNote}
                           </div>
                         )}
-                        <div style={{ fontSize: 12, color: "#9ca3af" }}>
+                        <div className="fs-12" style={{ color: "#9ca3af" }}>
                           {new Date(session.updatedAt).toLocaleString(lang === "en" ? "en-US" : "ru-RU")}
                         </div>
                         {session.historyInsight && (
-                          <div style={{
-                            marginTop: 12,
-                            padding: 12,
+                          <div className="mt-12 p-12 br-8 fs-13" style={{
                             background: "#f0fdf4",
-                            borderRadius: 8,
                             border: "1px solid #bbf7d0",
-                            fontSize: 13,
                             color: "#166534",
                           }}>
                             💡 {session.historyInsight}
@@ -371,9 +311,9 @@ function StudentDashboardContent() {
             )}
           </div>
 
-          <div style={{ marginTop: 32, padding: 24, background: "white", borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
-            <h3 style={{ fontSize: 18, marginBottom: 16 }}>{t.comingSoon}</h3>
-            <ul style={{ color: "#6b7280", paddingLeft: 20 }}>
+          <div className="mt-32 p-24 bg-white br-12" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
+            <h3 className="fs-18 mb-16">{t.comingSoon}</h3>
+            <ul className="c-muted" style={{ paddingLeft: 20 }}>
               <li>{t.progressCharts}</li>
               <li>{t.sessionFeedback}</li>
               <li>{t.achievements}</li>

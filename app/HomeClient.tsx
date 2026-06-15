@@ -33,7 +33,7 @@ export function HomeClient() {
         </div>
       </div>
 
-      <section className="grid" style={{ marginTop: 24 }}>
+      <section className="grid mt-24">
         <article className="panel">
           <h2>{lang === "en" ? "Adolescent" : "Подросток"}</h2>
           <p>
