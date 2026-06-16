@@ -8,13 +8,12 @@ import { OnboardingModal } from "@/app/components/OnboardingModal";
 import { normalizeAppLang, withLang } from "@/lib/app-i18n";
 import { createChildId, type Child, type Session, type RecordItem } from "@/lib/children-storage";
 import { DataService } from "@/lib/data-service";
-import { inferRecordEventType } from "@/lib/session-helpers";
-import { isRetryRecord } from "@/lib/selfreg-flow-machine";
 import ClassStats from "@/components/analytics/ClassStats";
 import ProgressChart from "@/components/analytics/ProgressChart";
 import type { TeacherAnalytics } from "@/lib/server-storage";
 import { TeacherSidebar } from "@/app/teacher/TeacherSidebar";
 import { TeacherSessionsPanel } from "@/app/teacher/TeacherSessionsPanel";
+import { TeacherSessionDetail } from "@/app/teacher/TeacherSessionDetail";
 import {
   createSampleSession,
   getRecordEventLabel,
@@ -424,24 +423,6 @@ export function TeacherDashboard() {
     }, 12000);
   }
 
-  // === UI helpers for the new coherent dashboard ===
-  const getScenarioColor = (s: "A" | "B" | "clarify" | "skipped") =>
-    s === "A" ? "var(--accent)" : s === "B" ? "var(--orange)" : s === "clarify" ? "var(--green)" : "var(--muted)";
-
-  const getEventBadgeStyle = (record: RecordItem) => {
-    const eventType = inferRecordEventType(record);
-    if (eventType === "clarify_request") {
-      return { background: "#ecfdf5", color: "#047857", border: "1px solid #a7f3d0" };
-    }
-    if (eventType === "back") {
-      return { background: "#fff7ed", color: "#c2410c", border: "1px solid #fed7aa" };
-    }
-    if (eventType === "skip") {
-      return { background: "#f3f4f6", color: "#4b5563", border: "1px solid #d1d5db" };
-    }
-    return { background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe" };
-  };
-
   // Recompute derived data (safe even if no child)
   const distribution = selectedChild
     ? getScenarioDistribution(selectedChild.sessions)
@@ -473,9 +454,6 @@ export function TeacherDashboard() {
     ? [...selectedChild.sessions].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
     : [];
   const currentSession = sortedSessions[selectedSessionIdx] || null;
-  const currentSessionSignals = currentSession
-    ? getSessionSignals(currentSession.records)
-    : { clarifications: 0, returns: 0, retries: 0, skips: 0, progress: 0, completedStages: 0, isComplete: false };
 
   // === Handlers for the new layout ===
   function selectChild(id: string) {
@@ -927,138 +905,11 @@ export function TeacherDashboard() {
                 }}
               />
 
-              {/* DETAILED SESSION VIEWER */}
-              <div className="panel">
-                {!currentSession ? (
-                  <div className="muted">{ui.selectSessionAbove}</div>
-                ) : (
-                  <>
-                    <div className="session-detail-header">
-                      <div>
-                        <strong className="session-context-title">{currentSession.context}</strong>
-                        <span className="muted session-detail-date">
-                          {new Date(currentSession.updatedAt).toLocaleString(locale)}
-                        </span>
-                      </div>
-                      <div className="muted session-records-count">{currentSession.records.length} {ui.records}</div>
-                    </div>
-
-                    {currentSession.records.length === 0 && (
-                      <div className="empty-session-placeholder">
-                        {ui.emptySession}
-                      </div>
-                    )}
-
-                    {currentSession.records.length > 0 && (
-                      <div className="records-grid">
-                        <div className="signals-box">
-                          <div className="signals-box-title">{ui.sessionSignals}</div>
-                          {currentSessionSignals.clarifications === 0 && currentSessionSignals.returns === 0 && currentSessionSignals.retries === 0 ? (
-                            <div className="no-special-signals">{ui.noSpecialSignals}</div>
-                          ) : (
-                            <div className="signals-row">
-                              {currentSessionSignals.clarifications > 0 && (
-                                <span className="badge badge-green">
-                                  {ui.signalCount(ui.clarificationQuestion, currentSessionSignals.clarifications)}
-                                </span>
-                              )}
-                              {currentSessionSignals.returns > 0 && (
-                                <span className="badge return-badge">
-                                  {ui.signalCount(ui.returnToQuestion, currentSessionSignals.returns)}
-                                </span>
-                              )}
-                              {currentSessionSignals.retries > 0 && (
-                                <span className="badge badge-blue">
-                                  {ui.signalCount(ui.retryAnswer, currentSessionSignals.retries)}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                          <div className="trajectory-note">
-                            {ui.trajectoryNote(currentSessionSignals)}
-                          </div>
-                        </div>
-                        {currentSession.records.map((rec, i) => {
-                          const eventType = inferRecordEventType(rec);
-                          const isProcessOnly = eventType === "clarify_request" || eventType === "back";
-
-                          return (
-                          <div key={`${rec.stageId}-${i}-${rec.timestamp || ''}`} className="record-item" style={{ borderLeft: `4px solid ${getScenarioColor(rec.scenario)}` }}>
-                            <div className="record-meta">
-                              {ui.stage} {rec.stageId} · {rec.stageTitle}
-                            </div>
-                            <div className="record-tags">
-                              <span className="badge" style={getEventBadgeStyle(rec)}>
-                                {ui.eventLabel(rec)}
-                              </span>
-                              {!isProcessOnly && (
-                              <span className="scenario-badge" style={{
-                                background: rec.scenario === "skipped" ? "var(--muted)" : getScenarioColor(rec.scenario),
-                              }}>
-                                {ui.scenarioLabel(rec.scenario)}
-                              </span>
-                              )}
-                              {isRetryRecord(currentSession.records, i) && (
-                                <span className="badge badge-blue">{ui.retryAnswer}</span>
-                              )}
-                              {rec.timestamp && (
-                                <span className="muted record-timestamp">
-                                  {new Date(rec.timestamp).toLocaleString(locale)}
-                                </span>
-                              )}
-                            </div>
-                            <div className="record-field"><strong>{ui.questionLabel}</strong> {rec.question}</div>
-                            <div className="record-field"><strong>{ui.answerLabel}</strong> {rec.answer}</div>
-                            <div className="support-label-text"><strong>{ui.supportLabel}</strong> {rec.feedback}</div>
-                            {(rec.responseMode || rec.provider || rec.model) && (
-                              <div className="muted record-source">
-                                <strong>{ui.aiSourceLabel}</strong>{" "}
-                                {[rec.provider, rec.model, ui.responseModeLabel(rec.responseMode)].filter(Boolean).join(" · ")}
-                              </div>
-                            )}
-                          </div>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {currentSession.finalNote && (
-                      <div className="final-note-box">
-                        <strong>{ui.finalInterpretation}</strong>
-                        <p className="p-line" style={{ marginTop: 6 }}>{currentSession.finalNote}</p>
-                      </div>
-                    )}
-
-                    {/* LLM-комментарий из истории (то, что видел подросток перед стартом этой сессии) */}
-                    {currentSession.historyInsight && (
-                      <div className="insight-box">
-                        <div className="insight-title">
-                          {ui.aiInsightTitle}
-                        </div>
-                        <p className="p-line" style={{ margin: 0 }}>{currentSession.historyInsight}</p>
-                      </div>
-                    )}
-
-                    {/* Обратная связь подростка (новая) */}
-                    {currentSession.adolescentFeedback && (
-                      <div className="feedback-box">
-                        <div className="feedback-title">
-                          {ui.adolescentFeedback}
-                          {currentSession.adolescentFeedback.rating && (
-                            <span className="feedback-rating">{ui.usefulness(currentSession.adolescentFeedback.rating)}</span>
-                          )}
-                        </div>
-                        {currentSession.adolescentFeedback.comment && (
-                          <p className="p-line" style={{ margin: 0 }}>{currentSession.adolescentFeedback.comment}</p>
-                        )}
-                        <div className="feedback-timestamp">
-                          {new Date(currentSession.adolescentFeedback.timestamp).toLocaleString(locale)}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
+              <TeacherSessionDetail
+                currentSession={currentSession}
+                locale={locale}
+                ui={ui}
+              />
             </>
           )}
         </div>
