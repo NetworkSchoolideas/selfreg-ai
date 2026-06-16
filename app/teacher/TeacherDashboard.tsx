@@ -14,13 +14,13 @@ import ClassStats from "@/components/analytics/ClassStats";
 import ProgressChart from "@/components/analytics/ProgressChart";
 import type { TeacherAnalytics } from "@/lib/server-storage";
 import { TeacherSidebar } from "@/app/teacher/TeacherSidebar";
+import { TeacherSessionsPanel } from "@/app/teacher/TeacherSessionsPanel";
 import {
   createSampleSession,
   getRecordEventLabel,
   getResponseModeLabel,
   getScenarioDistribution,
   getSessionSignals,
-  getSessionStatus,
   getStageSupport,
   getTrajectoryNote,
 } from "@/lib/teacher-dashboard-analytics";
@@ -905,103 +905,27 @@ export function TeacherDashboard() {
                 </div>
               )}
 
-              {/* SESSIONS LIST */}
-              <div className="panel mb-16">
-                <div className="sessions-header">
-                  <div>
-                    <strong className="fs-15">{ui.sessionsLabel}</strong>
-                    <span className="muted sessions-count">({sortedSessions.length})</span>
-                  </div>
-                  <div className="session-actions">
-                    <button className="button" onClick={createNewSessionFromInput} style={{ fontSize: 13, padding: "6px 12px" }}>{ui.createNewSession}</button>
-                    {currentSession && (
-                      <button className="button secondary" onClick={deleteSelectedSession} style={{ fontSize: 13, padding: "6px 12px" }}>
-                        {ui.deleteSelected}
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* New session hint */}
-                {newSessionHint && (
-                  <div className="hint-bar">
-                    <span>{ui.newSessionHint.replace("{context}", newSessionHint.context)}</span>
-                    <Link href={buildPrototypeHref(selectedChild)} className="button" target="_blank" style={{ fontSize: 12, padding: "3px 9px" }} onClick={() => setNewSessionHint(null)}>
-                      {ui.openPrototype}
-                    </Link>
-                  </div>
-                )}
-
-                {/* Undo bar */}
-                {lastDeleted && (
-                  <div className="undo-bar">
-                    <span>{ui.sessionDeleted}</span>
-                    <button className="button secondary" onClick={undoLastDelete} style={{ fontSize: 12, padding: "3px 10px" }}>
-                      {ui.undoDelete}
-                    </button>
-                  </div>
-                )}
-
-                {/* Sessions grid / empty state */}
-                {sortedSessions.length === 0 ? (
-                  <div className="empty-state-dashed">
-                    <p className="muted mb-10">{ui.noSessions}</p>
-                    <button className="button" onClick={() => createNewSessionForChild()} style={{ padding: "8px 18px" }}>
-                      {ui.createFirstSession}
-                    </button>
-                  </div>
-                ) : (
-                  <div className="sessions-grid">
-                    {sortedSessions.map((sess, idx) => {
-                      const isSel = idx === selectedSessionIdx;
-                      const isNew = sess.updatedAt === highlightedSessionUpdatedAt;
-                      const recs = sess.records.length;
-                      const answerRecords = sess.records.filter(r => inferRecordEventType(r) === "answer");
-                      const aCnt = answerRecords.filter(r => r.scenario === "A").length;
-                      const bCnt = answerRecords.filter(r => r.scenario === "B").length;
-                      const flowSignals = getSessionSignals(sess.records);
-                      const sessionStatus = getSessionStatus(sess);
-                      const processBits = [
-                        `A:${aCnt}`,
-                        `B:${bCnt}`,
-                        flowSignals.clarifications > 0 ? `${ui.clarification}:${flowSignals.clarifications}` : null,
-                        flowSignals.returns > 0 ? `${ui.returnToQuestion}:${flowSignals.returns}` : null,
-                        flowSignals.skips > 0 ? `${ui.skipped}:${flowSignals.skips}` : null,
-                        flowSignals.retries > 0 ? `${ui.retryAnswer}:${flowSignals.retries}` : null,
-                      ].filter(Boolean).join(" · ");
-
-                      return (
-                        <button
-                          key={`${sess.updatedAt}-${idx}`}
-                          onClick={() => {
-                            setSelectedSessionIdx(idx);
-                            setNewSessionHint(null);
-                            setLastDeleted(null);
-                          }}
-                          className="session-card-btn"
-                          style={{
-                            border: isSel ? "2px solid var(--accent)" : "1px solid var(--line)",
-                            background: isSel ? "var(--soft)" : "white",
-                            boxShadow: isNew ? "0 0 0 3px #f2c94c" : undefined,
-                          }}
-                          title={sess.context}
-                        >
-                          <div className="session-card-title">
-                            <span>{sess.context.length > 38 ? sess.context.slice(0, 35) + "..." : sess.context}</span>
-                            <span className="session-card-date">{new Date(sess.updatedAt).toLocaleDateString(locale)}</span>
-                          </div>
-                          <div className="session-card-subtitle">
-                            {recs} {ui.stepsShort}
-                            <span className="ml-8">
-                              {processBits}
-                            </span>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+              <TeacherSessionsPanel
+                ui={ui}
+                locale={locale}
+                sortedSessions={sortedSessions}
+                selectedSessionIdx={selectedSessionIdx}
+                highlightedSessionUpdatedAt={highlightedSessionUpdatedAt}
+                currentSession={currentSession}
+                newSessionHint={newSessionHint}
+                hasDeletedSession={Boolean(lastDeleted)}
+                prototypeHref={buildPrototypeHref(selectedChild)}
+                onCreateNewSession={createNewSessionFromInput}
+                onCreateFirstSession={() => createNewSessionForChild()}
+                onDeleteSelected={deleteSelectedSession}
+                onUndoDelete={undoLastDelete}
+                onDismissHint={() => setNewSessionHint(null)}
+                onSelectSession={(index) => {
+                  setSelectedSessionIdx(index);
+                  setNewSessionHint(null);
+                  setLastDeleted(null);
+                }}
+              />
 
               {/* DETAILED SESSION VIEWER */}
               <div className="panel">
