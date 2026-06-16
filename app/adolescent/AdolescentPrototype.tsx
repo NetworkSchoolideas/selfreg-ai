@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { LanguageToggle } from "@/app/components/LanguageToggle";
 import { AuthButton } from "@/app/components/AuthButton";
@@ -80,6 +80,7 @@ export function AdolescentPrototype() {
   const [childLookupAttempted, setChildLookupAttempted] = useState(false);
   const [childLookupFailed, setChildLookupFailed] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const clarifyResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasActiveChild = isRegistered || Boolean(currentChildId);
 
   // Onboarding check on first visit
@@ -171,7 +172,7 @@ export function AdolescentPrototype() {
     return () => {
       active = false;
     };
-  }, [childIdFromUrl]);
+  }, [childIdFromUrl, teacherCode]);
 
   // Restore pending history insight after refresh
   useEffect(() => {
@@ -332,6 +333,29 @@ export function AdolescentPrototype() {
     setAnswerQualityWarning(null);
     setSuppressClarifyForNextStage(false);
   }, [lastClarificationFeedback, addClarificationRequest, currentQuestion, stage.title, saveSessionSnapshot, setAnswerQualityWarning, setSuppressClarifyForNextStage]);
+
+  const handleClearClarificationAndRetry = useCallback(() => {
+    if (clarifyResetTimeoutRef.current) {
+      clearTimeout(clarifyResetTimeoutRef.current);
+    }
+
+    setLastClarificationFeedback(null);
+    updateAnswer("");
+    setSuppressClarifyForNextStage(false);
+    setJustClearedClarify(true);
+    clarifyResetTimeoutRef.current = setTimeout(() => {
+      setJustClearedClarify(false);
+      clarifyResetTimeoutRef.current = null;
+    }, 4000);
+  }, [setLastClarificationFeedback, setSuppressClarifyForNextStage, updateAnswer]);
+
+  useEffect(() => {
+    return () => {
+      if (clarifyResetTimeoutRef.current) {
+        clearTimeout(clarifyResetTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleGoBack = useCallback(() => {
     const result = goBackOneStep();
@@ -561,7 +585,7 @@ export function AdolescentPrototype() {
                   isSending={isSending}
                   answerQualityWarning={answerQualityWarning}
                   justClearedClarify={justClearedClarify}
-                  onClearAndRetry={() => { setLastClarificationFeedback(null); updateAnswer(""); setSuppressClarifyForNextStage(false); setJustClearedClarify(true); setTimeout(() => setJustClearedClarify(false), 4000); }}
+                  onClearAndRetry={handleClearClarificationAndRetry}
                   onSkip={handleSkipClarification}
                   onSubmit={handleSubmit}
                   onRestart={handleRestart}

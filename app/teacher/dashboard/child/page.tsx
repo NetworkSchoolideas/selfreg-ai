@@ -131,7 +131,7 @@ function ChildDetailContent() {
     return () => {
       active = false;
     };
-  }, [childId, lang]);
+  }, [childId, lang, t.errorConnection, t.errorNotFound]);
 
   if (!childId) {
     return (

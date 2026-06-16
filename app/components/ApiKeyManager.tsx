@@ -115,40 +115,12 @@ export function ApiKeyManager({ lang, provider, onKeyChange, onStatusChange }: A
     [lang, provider],
   );
 
-  // Auto-test saved key on mount
-  useEffect(() => {
-    if (saved.key && provider !== "mock") {
-      queueMicrotask(() => {
-        setTestStatus(ui.autoTest);
-        setIsTesting(true);
-      });
-      performKeyTest(saved.key)
-        .then((ok) => {
-          queueMicrotask(() => {
-            setIsValid(ok);
-            setTestStatus(ok ? ui.validKey : `${ui.testFailed}: ${ui.invalidKey}`);
-          });
-        })
-        .catch(() => {
-          queueMicrotask(() => {
-            setIsValid(false);
-            setTestStatus(`${ui.testFailed}: ${ui.invalidKey}`);
-          });
-        })
-        .finally(() => {
-          queueMicrotask(() => setIsTesting(false));
-        });
-    }
-    // Only run on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // Notify parent of key status changes
   useEffect(() => {
     onStatusChange?.({ isValid, isTesting, hasSavedKey: isSaved });
   }, [isValid, isTesting, isSaved, onStatusChange]);
 
-  const syncFromStorage = useCallback(() => {
+  function syncFromStorage() {
     const next = readSavedKey(provider);
     setKey(next.key);
     setStorage(next.storage);
@@ -156,14 +128,14 @@ export function ApiKeyManager({ lang, provider, onKeyChange, onStatusChange }: A
     setIsValid(null);
     setTestStatus(null);
     onKeyChange(next.key);
-  }, [provider, onKeyChange]);
+  }
 
-  const handleExpand = useCallback(() => {
+  function handleExpand() {
     syncFromStorage();
     setIsExpanded(true);
-  }, [syncFromStorage]);
+  }
 
-  const handleSave = useCallback(() => {
+  function handleSave() {
     const trimmedKey = key.trim();
 
     if (!trimmedKey) {
@@ -188,18 +160,18 @@ export function ApiKeyManager({ lang, provider, onKeyChange, onStatusChange }: A
     setTestStatus(null);
     onKeyChange(trimmedKey);
     setIsExpanded(false);
-  }, [key, provider, storage, ui.invalidFormat, onKeyChange]);
+  }
 
-  const handleClear = useCallback(() => {
+  function handleClear() {
     setKey("");
     removeKey(provider);
     setIsSaved(false);
     setIsValid(null);
     setTestStatus(null);
     onKeyChange("");
-  }, [provider, onKeyChange]);
+  }
 
-  async function performKeyTest(keyToTest: string): Promise<boolean> {
+  const performKeyTest = useCallback(async (keyToTest: string): Promise<boolean> => {
     try {
       if (provider === "gigachat") {
         if (!validateGigaChatKey(keyToTest)) return false;
@@ -221,9 +193,35 @@ export function ApiKeyManager({ lang, provider, onKeyChange, onStatusChange }: A
     } catch {
       return false;
     }
-  }
+  }, [lang, provider]);
 
-  const handleTestKey = useCallback(async () => {
+  // Auto-test saved key when the selected provider has a saved key.
+  useEffect(() => {
+    if (!saved.key || provider === "mock") return;
+
+    queueMicrotask(() => {
+      setTestStatus(ui.autoTest);
+      setIsTesting(true);
+    });
+    performKeyTest(saved.key)
+      .then((ok) => {
+        queueMicrotask(() => {
+          setIsValid(ok);
+          setTestStatus(ok ? ui.validKey : `${ui.testFailed}: ${ui.invalidKey}`);
+        });
+      })
+      .catch(() => {
+        queueMicrotask(() => {
+          setIsValid(false);
+          setTestStatus(`${ui.testFailed}: ${ui.invalidKey}`);
+        });
+      })
+      .finally(() => {
+        queueMicrotask(() => setIsTesting(false));
+      });
+  }, [performKeyTest, provider, saved.key, ui.autoTest, ui.invalidKey, ui.testFailed, ui.validKey]);
+
+  async function handleTestKey() {
     const trimmedKey = key.trim();
     if (!trimmedKey) return;
 
@@ -247,7 +245,7 @@ export function ApiKeyManager({ lang, provider, onKeyChange, onStatusChange }: A
     } finally {
       setIsTesting(false);
     }
-  }, [key, provider, lang, ui]);
+  }
 
   const statusColor = isValid === true ? "#d4edda" : isValid === false ? "#f8d7da" : "#fff3cd";
   const statusTextColor = isValid === true ? "#155724" : isValid === false ? "#721c24" : "#856404";

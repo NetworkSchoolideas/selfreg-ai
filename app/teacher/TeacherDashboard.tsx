@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { LanguageToggle } from "@/app/components/LanguageToggle";
 import { OnboardingModal } from "@/app/components/OnboardingModal";
@@ -372,8 +372,24 @@ export function TeacherDashboard() {
   const [copiedChildId, setCopiedChildId] = useState<string | null>(null);
   const [lastDeleted, setLastDeleted] = useState<{ childId: string; session: Session } | null>(null);
   const [analytics, setAnalytics] = useState<TeacherAnalytics | null>(null);
+  const dashboardTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const selectedChild = children.find(c => c.id === selectedChildId) || children[0];
+
+  function scheduleDashboardTimeout(callback: () => void, delay: number) {
+    const timeoutId = setTimeout(() => {
+      dashboardTimeoutsRef.current = dashboardTimeoutsRef.current.filter((id) => id !== timeoutId);
+      callback();
+    }, delay);
+    dashboardTimeoutsRef.current.push(timeoutId);
+  }
+
+  useEffect(() => {
+    return () => {
+      dashboardTimeoutsRef.current.forEach((timeoutId) => clearTimeout(timeoutId));
+      dashboardTimeoutsRef.current = [];
+    };
+  }, []);
 
   // После того как выбран ребёнок, убеждаемся что индекс сессии валиден
   useEffect(() => {
@@ -585,7 +601,7 @@ export function TeacherDashboard() {
     setHighlightedSessionUpdatedAt(newUpdatedAt);
 
     // Автоматически убираем подсветку через 2.5 секунды
-    setTimeout(() => {
+    scheduleDashboardTimeout(() => {
       setHighlightedSessionUpdatedAt(null);
     }, 2500);
 
@@ -594,7 +610,7 @@ export function TeacherDashboard() {
     setLastDeleted(null); // скрываем undo при создании новой
 
     // Авто-скрытие подсказки через 12 секунд
-    setTimeout(() => {
+    scheduleDashboardTimeout(() => {
       setNewSessionHint(null);
     }, 12000);
   }
@@ -709,7 +725,7 @@ export function TeacherDashboard() {
     const link = `${window.location.origin}${buildPrototypeHref(child)}`;
     navigator.clipboard.writeText(link).then(() => {
       setCopiedChildId(child.id);
-      setTimeout(() => setCopiedChildId(null), 1400);
+      scheduleDashboardTimeout(() => setCopiedChildId(null), 1400);
     });
   }
 
@@ -732,7 +748,7 @@ export function TeacherDashboard() {
       setSelectedSessionIdx(0);
     })();
 
-    setTimeout(() => setLastDeleted(null), 12000);
+    scheduleDashboardTimeout(() => setLastDeleted(null), 12000);
   }
 
   function undoLastDelete() {

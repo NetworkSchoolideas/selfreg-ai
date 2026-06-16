@@ -120,7 +120,7 @@ function StudentDashboardContent() {
     return () => {
       active = false;
     };
-  }, [childId, lang]);
+  }, [childId, lang, t.errorConnection, t.errorNoId, t.errorNotFound]);
 
   const completedSessions = profile?.sessions.filter((s) => s.status === "completed" || s.finalNote) || [];
   const inProgressSessions = profile?.sessions.filter((s) => s.status === "in_progress" || (!s.finalNote && s.records?.length > 0)) || [];
