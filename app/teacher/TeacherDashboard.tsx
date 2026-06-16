@@ -9,215 +9,22 @@ import { normalizeAppLang, withLang } from "@/lib/app-i18n";
 import { createChildId, type Child, type Session, type RecordItem } from "@/lib/children-storage";
 import { DataService } from "@/lib/data-service";
 import { inferRecordEventType } from "@/lib/session-helpers";
-import { isRetryRecord, reduceFlowState } from "@/lib/selfreg-flow-machine";
+import { isRetryRecord } from "@/lib/selfreg-flow-machine";
 import ClassStats from "@/components/analytics/ClassStats";
 import ProgressChart from "@/components/analytics/ProgressChart";
 import type { TeacherAnalytics } from "@/lib/server-storage";
+import {
+  createSampleSession,
+  getRecordEventLabel,
+  getResponseModeLabel,
+  getScenarioDistribution,
+  getSessionSignals,
+  getSessionStatus,
+  getStageSupport,
+  getTrajectoryNote,
+} from "@/lib/teacher-dashboard-analytics";
 
 // Устаревший ключ — оставлен только для совместимости при миграции
-
-// Простая инфографика без внешних библиотек
-function getScenarioDistribution(sessions: Session[]) {
-  const allRecords = sessions.flatMap(s => s.records);
-  const supportRecords = allRecords.filter(r => {
-    const eventType = inferRecordEventType(r);
-    return eventType === "answer" || eventType === "skip";
-  });
-  const total = supportRecords.length || 1;
-  const a = supportRecords.filter(r => r.scenario === "A").length;
-  const b = supportRecords.filter(r => r.scenario === "B").length;
-  const clarify = allRecords.filter(r => inferRecordEventType(r) === "clarify_request").length;
-  const skipped = supportRecords.filter(r => r.scenario === "skipped").length;
-
-  // Percentages are calculated on non-skipped records for visual stability
-  const nonSkipped = total - skipped;
-  const base = nonSkipped || 1;
-
-  return {
-    a: Math.round((a / base) * 100),
-    b: Math.round((b / base) * 100),
-    clarify: Math.round((clarify / base) * 100),
-    skipped,
-    raw: { a, b, clarify, skipped, total }
-  };
-}
-
-function getStageSupport(sessions: Session[]) {
-  const allRecords = sessions.flatMap(s => s.records);
-  const stages: Record<string, { A: number; B: number; clarify: number; skipped: number }> = {};
-
-  allRecords.forEach(r => {
-    const eventType = inferRecordEventType(r);
-    if (!stages[r.stageId]) stages[r.stageId] = { A: 0, B: 0, clarify: 0, skipped: 0 };
-    if (eventType === "clarify_request") {
-      stages[r.stageId].clarify++;
-    } else if (eventType === "answer" || eventType === "skip") {
-      const key = (r.scenario === "skipped" ? "skipped" : r.scenario) as "A" | "B" | "clarify" | "skipped";
-      stages[r.stageId][key]++;
-    }
-  });
-
-  return Object.entries(stages).map(([stageId, counts]) => ({
-    stageId,
-    ...counts
-  }));
-}
-
-function getSessionSignals(records: RecordItem[]) {
-  const flow = reduceFlowState(records);
-
-  return {
-    clarifications: flow.clarifyCount,
-    returns: flow.backCount,
-    retries: flow.retryCount,
-    skips: flow.skipCount,
-    progress: flow.progressCount,
-    completedStages: flow.completedStageIds.size,
-    isComplete: flow.isComplete,
-  };
-}
-
-function getSessionStatus(session: Session): "in_progress" | "completed" {
-  if (session.status) return session.status;
-  return session.finalNote?.trim() ? "completed" : "in_progress";
-}
-
-function getRecordEventLabel(record: RecordItem, lang: "ru" | "en") {
-  const eventType = inferRecordEventType(record);
-
-  if (eventType === "clarify_request") {
-    return lang === "en" ? "Question was unclear" : "Вопрос был непонятен";
-  }
-  if (eventType === "back") {
-    return lang === "en" ? "Returned to revise" : "Возврат к вопросу";
-  }
-  if (eventType === "skip") {
-    return lang === "en" ? "Step skipped" : "Шаг пропущен";
-  }
-  return lang === "en" ? "Answer accepted" : "Ответ принят";
-}
-
-function getResponseModeLabel(mode: RecordItem["responseMode"], lang: "ru" | "en") {
-  if (mode === "llm-json") {
-    return lang === "en" ? "external AI, structured" : "внешний ИИ, структурированный ответ";
-  }
-  if (mode === "llm-text") {
-    return lang === "en" ? "external AI, normalized text" : "внешний ИИ, текст нормализован";
-  }
-  if (mode === "llm-fallback") {
-    return lang === "en" ? "external AI with local fallback" : "внешний ИИ + локальная страховка";
-  }
-  if (mode === "mock") {
-    return lang === "en" ? "local safe mode" : "локальный безопасный режим";
-  }
-  return lang === "en" ? "source not recorded" : "источник не зафиксирован";
-}
-
-function getTrajectoryNote(
-  signals: ReturnType<typeof getSessionSignals>,
-  lang: "ru" | "en"
-) {
-  if (signals.clarifications === 0 && signals.returns === 0 && signals.retries === 0) {
-    return lang === "en"
-      ? "The session moved through the stages without recorded repairs."
-      : "Сессия прошла без зафиксированных уточнений и возвратов.";
-  }
-
-  const parts: string[] = [];
-  if (signals.clarifications > 0) {
-    parts.push(
-      lang === "en"
-        ? "the wording needed clarification"
-        : "формулировку пришлось уточнять"
-    );
-  }
-  if (signals.returns > 0) {
-    parts.push(
-      lang === "en"
-        ? "the adolescent returned to revise an answer"
-        : "подросток возвращался к вопросу"
-    );
-  }
-  if (signals.retries > 0) {
-    parts.push(
-      lang === "en"
-        ? "a revised attempt appeared after support"
-        : "после поддержки появилась повторная попытка"
-    );
-  }
-
-  return lang === "en"
-    ? `Trajectory: ${parts.join("; ")}. This is useful process data, not a failure marker.`
-    : `Траектория: ${parts.join("; ")}. Это данные о процессе, а не признак неуспеха.`;
-}
-
-function createSampleSession(lang: "ru" | "en", locale: string): Session {
-  return lang === "en"
-    ? {
-        context: "study project",
-        updatedAt: new Date().toISOString(),
-        lang,
-        finalNote: "The adolescent benefits more from one small first step and a calm check of the result than from a generic call to try harder.",
-        historyInsight: "You have already done good work in previous cycles. The latest session showed you can break big tasks into tiny steps. Keep that momentum — one concrete action today will build real confidence.",
-        adolescentFeedback: {
-          rating: 4,
-          comment: "Было полезно понять, что нужно начинать с маленького шага, а не с идеального плана.",
-          timestamp: new Date().toISOString()
-        },
-        records: [
-          {
-            stageId: "1",
-            stageTitle: "Goal",
-            scenario: "A",
-            question: "What matters most to improve right now?",
-            answer: "I want to finish the project, but I do not know where to start.",
-            feedback: "The goal is visible, but it will help to narrow it down to one concrete result for the near future.",
-            timestamp: new Date().toLocaleString(locale)
-          },
-          {
-            stageId: "2",
-            stageTitle: "Move to action",
-            scenario: "A",
-            question: "What small step can you do today?",
-            answer: "I can make the structure and write the first paragraph.",
-            feedback: "A workable first step has appeared. Now it is important to keep the plan simple and not overload it.",
-            timestamp: new Date().toLocaleString(locale)
-          }
-        ]
-      }
-    : {
-        context: "учебный проект",
-        updatedAt: new Date().toISOString(),
-        lang,
-        finalNote: "Подростку полезнее один посильный первый шаг и спокойная проверка результата, чем общий призыв «стараться сильнее».",
-        historyInsight: "Ты уже проделал хорошую работу в прошлых циклах. Последняя сессия показала, что ты умеешь разбивать большие задачи на крошечные шаги. Сохраняй этот импульс — одно конкретное действие сегодня сильно поднимет уверенность.",
-        adolescentFeedback: {
-          rating: 4,
-          comment: "Было полезно понять, что нужно начинать с маленького шага, а не с идеального плана.",
-          timestamp: new Date().toISOString()
-        },
-        records: [
-          {
-            stageId: "1",
-            stageTitle: "Цель",
-            scenario: "A",
-            question: "Что сейчас важнее всего улучшить?",
-            answer: "Хочу закончить проект, но пока не понимаю, с чего начать.",
-            feedback: "Цель уже видна, но ее стоит сузить до одного ближайшего результата.",
-            timestamp: new Date().toLocaleString(locale)
-          },
-          {
-            stageId: "2",
-            stageTitle: "Переход к действию",
-            scenario: "A",
-            question: "Какой маленький шаг можно сделать сегодня?",
-            answer: "Могу сделать структуру и написать первый абзац.",
-            feedback: "Появился рабочий первый шаг. Дальше важно не перегрузить план.",
-            timestamp: new Date().toLocaleString(locale)
-          }
-        ]
-      };
-}
 
 export function TeacherDashboard() {
   const searchParams = useSearchParams();
