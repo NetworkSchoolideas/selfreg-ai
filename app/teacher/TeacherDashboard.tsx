@@ -13,6 +13,7 @@ import { isRetryRecord } from "@/lib/selfreg-flow-machine";
 import ClassStats from "@/components/analytics/ClassStats";
 import ProgressChart from "@/components/analytics/ProgressChart";
 import type { TeacherAnalytics } from "@/lib/server-storage";
+import { TeacherSidebar } from "@/app/teacher/TeacherSidebar";
 import {
   createSampleSession,
   getRecordEventLabel,
@@ -79,6 +80,7 @@ export function TeacherDashboard() {
     addNamePlaceholder:
       lang === "en" ? "Name / alias" : "Имя / псевдоним",
     addChild: lang === "en" ? "+ Add" : "+ Добавить",
+    noResults: lang === "en" ? "Nothing found" : "Ничего не найдено",
     storageLabel: serverBackedDashboard
       ? (lang === "en" ? "Supabase · server sync active" : "Supabase · серверная синхронизация активна")
       : (lang === "en" ? "localStorage · ready for migration" : "localStorage · готово к миграции"),
@@ -536,6 +538,47 @@ export function TeacherDashboard() {
     });
   }
 
+  async function addChild(name: string) {
+    let newChild: Child;
+
+    if (serverBackedDashboard) {
+      try {
+        const response = await fetch("/api/children", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name,
+            teacherId: teacherIdFromUrl,
+          }),
+        });
+
+        if (response.ok) {
+          const payload = await response.json();
+          if (payload?.child) {
+            newChild = payload.child as Child;
+            await DataService.saveChild(newChild);
+            const updated = await DataService.getChildren();
+            setChildren(updated);
+            selectChild(newChild.id);
+            return;
+          }
+        }
+      } catch {}
+    }
+
+    newChild = {
+      id: createChildId(),
+      name,
+      sessions: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    } as Child;
+    await DataService.saveChild(newChild);
+    const updated = await DataService.getChildren();
+    setChildren(updated);
+    selectChild(newChild.id);
+  }
+
   function createNewSessionFromInput() {
     createNewSessionForChild(newSessionContextInput);
     setNewSessionContextInput("");
@@ -655,163 +698,22 @@ export function TeacherDashboard() {
 
       {/* === NEW COHERENT DASHBOARD: left children + main (header + infographics + sessions + detail) === */}
       <div className="dashboard-layout">
-        {/* LEFT SIDEBAR — Children as first-class citizens */}
-        <aside className="dashboard-sidebar">
-          <div className="panel sidebar-sticky">
-            <div className="flex-row items-center justify-between mb-10">
-              <div>
-                <strong className="fs-15">{ui.students}</strong>
-                <span className="muted fs-12 ml-6">({children.length})</span>
-              </div>
-              <button className="button secondary" onClick={copyAllLinks} style={{ fontSize: 11, padding: "4px 9px" }} title={ui.copyAllLinks}>
-                {ui.copyAllLinks}
-              </button>
-            </div>
-
-            {/* Search */}
-            <input
-              type="text"
-              placeholder={ui.searchPlaceholder}
-              value={childSearch}
-              onChange={(e) => setChildSearch(e.target.value)}
-              className="w-full fs-13 mb-10 sidebar-search"
-            />
-
-            {/* Children list */}
-            <div className="children-list-scroll">
-              {visibleChildren.length === 0 && (
-                <div className="muted fs-13" style={{ padding: "12px 0" }}>Ничего не найдено</div>
-              )}
-
-              {visibleChildren.map((child) => {
-                const isActive = selectedChildId === child.id;
-                const sessCount = child.sessions?.length || 0;
-                const last = child.updatedAt ? new Date(child.updatedAt).toLocaleDateString(locale) : "—";
-
-                return (
-                  <div
-                    key={child.id}
-                    onClick={() => selectChild(child.id)}
-                    className="child-item-card"
-                    style={{
-                      border: isActive ? "1.5px solid var(--accent)" : "1px solid var(--line)",
-                      background: isActive ? "var(--soft)" : "white",
-                    }}
-                  >
-                    <div className="child-item-top">
-                      <div style={{ minWidth: 0 }}>
-                        <div className="child-item-id" style={{ color: isActive ? "var(--accent)" : "var(--text)" }}>
-                          {child.id}
-                        </div>
-                        <div className="child-item-meta">
-                          {sessCount} {sessCount === 1 ? ui.session : ui.sessions} · {last}
-                        </div>
-
-                        {/* Real data hint (no full reveal in list for privacy) */}
-                        {child.realData && (
-                          <div className="child-item-realdata">
-                            {revealIdentity ? `${child.realData.fio} · ${child.realData.klass}` : ui.hasRealData}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Per-child quick actions (do not bubble) */}
-                      <div className="child-item-actions" onClick={(e) => e.stopPropagation()}>
-                        <Link
-                          href={buildPrototypeHref(child)}
-                          className="button"
-                          target="_blank"
-                          style={{ fontSize: 10, padding: "1px 6px", minHeight: 24 }}
-                          title={ui.openPrototype}
-                        >
-                          {ui.start}
-                        </Link>
-                        <button
-                          className="button secondary"
-                          onClick={() => copyChildLink(child)}
-                          style={{ fontSize: 11, padding: "1px 6px", minHeight: 24 }}
-                          title={ui.copyLink}
-                        >
-                          {copiedChildId === child.id ? ui.copied : "📋"}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Add new child (manual, for teacher) */}
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const form = e.currentTarget;
-                const nameInput = form.elements.namedItem("childName") as HTMLInputElement;
-                if (nameInput?.value.trim()) {
-                  const name = nameInput.value.trim();
-
-                  void (async () => {
-                    let newChild: Child;
-
-                    if (serverBackedDashboard) {
-                      try {
-                        const response = await fetch("/api/children", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({
-                            name,
-                            teacherId: teacherIdFromUrl,
-                          }),
-                        });
-
-                        if (response.ok) {
-                          const payload = await response.json();
-                          if (payload?.child) {
-                            newChild = payload.child as Child;
-                            await DataService.saveChild(newChild);
-                            const updated = await DataService.getChildren();
-                            setChildren(updated);
-                            selectChild(newChild.id);
-                            nameInput.value = "";
-                            return;
-                          }
-                        }
-                      } catch {}
-                    }
-
-                    // Fallback: create via DataService (localStorage)
-                    newChild = {
-                      id: createChildId(),
-                      name,
-                      sessions: [],
-                      createdAt: new Date().toISOString(),
-                      updatedAt: new Date().toISOString(),
-                    } as Child;
-                    await DataService.saveChild(newChild);
-                    const updated = await DataService.getChildren();
-                    setChildren(updated);
-                    selectChild(newChild.id);
-                    nameInput.value = "";
-                  })();
-                }
-              }}
-              className="flex-row gap-6 flex-wrap"
-            >
-              <input
-                name="childName"
-                type="text"
-                placeholder={ui.addNamePlaceholder}
-                className="fs-13 add-child-input"
-              />
-              <button type="submit" className="button secondary fs-12 whitespace-nowrap" style={{ padding: "6px 10px" }}>
-                {ui.addChild}
-              </button>
-            </form>
-            <div className="muted fs-11 mt-6 text-center">
-              {ui.storageLabel}
-            </div>
-          </div>
-        </aside>
+        <TeacherSidebar
+          childItems={children}
+          visibleChildren={visibleChildren}
+          selectedChildId={selectedChildId}
+          copiedChildId={copiedChildId}
+          revealIdentity={revealIdentity}
+          childSearch={childSearch}
+          locale={locale}
+          ui={ui}
+          onSearchChange={setChildSearch}
+          onCopyAllLinks={copyAllLinks}
+          onSelectChild={selectChild}
+          onCopyChildLink={copyChildLink}
+          onAddChild={addChild}
+          buildPrototypeHref={buildPrototypeHref}
+        />
 
         {/* MAIN AREA */}
         <div className="dashboard-main">
