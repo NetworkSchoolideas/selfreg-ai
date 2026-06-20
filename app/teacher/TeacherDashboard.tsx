@@ -14,6 +14,7 @@ import type { TeacherAnalytics } from "@/lib/server-storage";
 import { TeacherSidebar } from "@/app/teacher/TeacherSidebar";
 import { TeacherSessionsPanel } from "@/app/teacher/TeacherSessionsPanel";
 import { TeacherSessionDetail } from "@/app/teacher/TeacherSessionDetail";
+import { TeacherChildHeader } from "@/app/teacher/TeacherChildHeader";
 import {
   createSampleSession,
   getRecordEventLabel,
@@ -93,6 +94,9 @@ export function TeacherDashboard() {
     revealIdentity: lang === "en" ? "Reveal name and class" : "Раскрыть ФИО и класс",
     hide: lang === "en" ? "Hide" : "Скрыть",
     newSession: lang === "en" ? "+ New session" : "+ Новая сессия",
+    quickCreatePlaceholder:
+      lang === "en" ? "Context for a new session (study, sport...)" : "Контекст новой сессии (учёба, спорт...)",
+    quickCreateButton: lang === "en" ? "+ New session" : "+ Новая сессия",
     openPrototype: lang === "en" ? "Open prototype" : "Открыть прототип",
     copyLinkBtn: lang === "en" ? "📋 Link" : "📋 Ссылка",
     deleteStudent: lang === "en" ? "Delete student" : "Удалить ученика",
@@ -702,72 +706,19 @@ export function TeacherDashboard() {
             </div>
           ) : (
             <>
-              {/* CHILD HEADER + QUICK ACTIONS */}
-              <div className="panel mb-16 child-header-panel">
-                <div className="flex-row justify-between items-start gap-12 flex-wrap">
-                  <div>
-                    <div className="fs-11 c-muted tracking-wide">{ui.studentIdLabel}</div>
-                    <div className="fs-18 fw-700 font-mono mt-1">{selectedChild.id}</div>
-
-                    {/* Real identity reveal (privacy-first) */}
-                    {selectedChild.realData && (
-                      <div className="mt-6 fs-13">
-                        {revealIdentity ? (
-                          <span>
-                            <strong>{selectedChild.realData.fio}</strong> · класс {selectedChild.realData.klass}
-                            <button className="button secondary" onClick={() => setRevealIdentity(false)} style={{ marginLeft: 10, fontSize: 11, padding: "1px 7px" }}>
-                              {ui.hide}
-                            </button>
-                          </span>
-                        ) : (
-                          <button className="button secondary" onClick={() => setRevealIdentity(true)} style={{ fontSize: 12, padding: "2px 9px" }}>
-                            {ui.revealIdentity}
-                          </button>
-                        )}
-                      </div>
-                    )}
-                    <div className="mt-4 fs-13 c-muted">
-                      {selectedChild.sessions.length} {selectedChild.sessions.length === 1 ? ui.session : ui.sessions} · {ui.lastUpdate}{" "}
-                      {selectedChild.updatedAt ? new Date(selectedChild.updatedAt).toLocaleDateString(locale) : "—"}
-                    </div>
-                  </div>
-
-                  {/* Quick actions bar */}
-                  <div className="flex-col gap-6 items-end">
-                    <div className="flex-row gap-6 items-center flex-wrap">
-                      <input
-                        type="text"
-                        value={newSessionContextInput}
-                        onChange={(e) => setNewSessionContextInput(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === "Enter") createNewSessionFromInput(); }}
-                        placeholder="Контекст новой сессии (учёба, спорт...)"
-                        className="fs-13 session-context-input"
-                      />
-                      <button className="button" onClick={createNewSessionFromInput} style={{ padding: "7px 14px" }}>
-                        + Новая сессия
-                      </button>
-                      <Link
-                        href={buildPrototypeHref(selectedChild)}
-                        className="button secondary"
-                        target="_blank"
-                        style={{ padding: "7px 12px" }}
-                      >
-                        Открыть прототип
-                      </Link>
-                      <button className="button secondary" onClick={() => copyChildLink(selectedChild)} style={{ padding: "7px 10px" }}>
-                        📋 Ссылка
-                      </button>
-                    </div>
-
-                      <button
-                        onClick={deleteCurrentChild}
-                        className="button secondary delete-student-btn"
-                      >
-                        {ui.deleteStudent}
-                      </button>
-                  </div>
-                </div>
-              </div>
+              <TeacherChildHeader
+                selectedChild={selectedChild}
+                locale={locale}
+                revealIdentity={revealIdentity}
+                newSessionContextInput={newSessionContextInput}
+                ui={ui}
+                prototypeHref={buildPrototypeHref(selectedChild)}
+                onToggleIdentity={setRevealIdentity}
+                onSessionContextChange={setNewSessionContextInput}
+                onCreateNewSession={createNewSessionFromInput}
+                onCopyLink={() => copyChildLink(selectedChild)}
+                onDeleteChild={deleteCurrentChild}
+              />
 
               {/* AGGREGATED INFOGRAPHICS */}
               <div className="panel mb-16">
