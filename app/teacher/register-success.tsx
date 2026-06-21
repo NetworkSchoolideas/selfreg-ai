@@ -10,9 +10,12 @@ function TeacherRegisterSuccessPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const lang = (searchParams.get("lang") === "en" ? "en" : "ru") as AppLang;
-  
-  const [teacherCode, setTeacherCode] = useState("");
+
   const [countdown, setCountdown] = useState(10);
+  const [copied, setCopied] = useState(false);
+  const teacherCode =
+    searchParams.get("teacherCode") ||
+    (typeof window !== "undefined" ? sessionStorage.getItem("teacher_code") || "" : "");
 
   const texts = {
     ru: {
@@ -21,55 +24,64 @@ function TeacherRegisterSuccessPage() {
       code: "Код учителя",
       copy: "Копировать",
       copied: "Скопировано!",
-      saveCode: "Сохраните этот код — он понадобится ученикам для привязки к вашему аккаунту",
+      saveCode: "Сохраните этот код: ученикам он понадобится, чтобы привязаться к вашему аккаунту.",
       nextSteps: "Дальнейшие шаги:",
       step1: "Поделитесь кодом с учениками",
       step2: "Ученики вводят код при регистрации",
       step3: "Отслеживайте прогресс в дашборде",
-      goToDashboard: "Перейти к входу",
+      goToLogin: "Перейти ко входу",
       autoRedirect: "Автоматическое перенаправление через",
+      loading: "Загрузка...",
+      copiedAlert: "Код скопирован!",
     },
     en: {
       title: "Registration successful!",
       subtitle: "Your teacher code:",
-      code: "Teacher Code",
+      code: "Teacher code",
       copy: "Copy",
       copied: "Copied!",
-      saveCode: "Save this code - students will need it to link to your account",
+      saveCode: "Save this code: students will need it to link to your account.",
       nextSteps: "Next steps:",
       step1: "Share the code with students",
       step2: "Students enter the code during registration",
-      step3: "Access dashboard and analytics",
-      goToDashboard: "Go to login",
-      autoRedirect: "Redirecting in",
+      step3: "Track progress in the dashboard",
+      goToLogin: "Go to login",
+      autoRedirect: "Automatic redirect in",
+      loading: "Loading...",
+      copiedAlert: "Code copied!",
     },
   };
 
   const t = texts[lang];
 
-
   useEffect(() => {
+    if (!teacherCode) {
+      return;
+    }
+
     if (countdown > 0) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
       return () => clearTimeout(timer);
-    } else {
-      router.push(`/api/auth/callback?provider=login&lang=${lang}`);
     }
-  }, [countdown, lang, router]);
+
+    router.push(`/auth/login?role=teacher&lang=${lang}`);
+  }, [countdown, lang, router, teacherCode]);
 
   const copyToClipboard = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(teacherCode);
-      alert(lang === "en" ? "Code copied!" : "Код скопирован!");
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1400);
+      alert(t.copiedAlert);
     } catch (err) {
       console.error("Failed to copy:", err);
     }
-  }, [teacherCode, lang]);
+  }, [teacherCode, t.copiedAlert]);
 
   if (!teacherCode) {
     return (
       <div className="gradient-bg-teacher centered-message">
-        <div className="loading-text">Загрузка...</div>
+        <div className="loading-text">{t.loading}</div>
       </div>
     );
   }
@@ -77,29 +89,23 @@ function TeacherRegisterSuccessPage() {
   return (
     <div className="gradient-bg-teacher">
       <div className="white-card text-center">
-        <div className="fs-64 mb-16">✅</div>
-        
+        <div className="fs-64 mb-16">OK</div>
+
         <h1 className="mt-0 mb-8 fs-28" style={{ color: "#1f2937" }}>
           {t.title}
         </h1>
-        
-        <p className="c-muted mb-24 fs-14">
-          {t.subtitle}
-        </p>
+
+        <p className="c-muted mb-24 fs-14">{t.subtitle}</p>
 
         <div className="code-box">
           <div className="fs-14 c-muted mb-8">{t.code}</div>
-          <div className="code-value">
-            {teacherCode}
-          </div>
+          <div className="code-value">{teacherCode}</div>
           <button onClick={copyToClipboard} className="copy-btn">
-            {t.copy}
+            {copied ? t.copied : t.copy}
           </button>
         </div>
 
-        <div className="warning-box mb-24">
-          {t.saveCode}
-        </div>
+        <div className="warning-box mb-24">{t.saveCode}</div>
 
         <div className="text-left mb-24">
           <h3 className="fs-16 mb-12" style={{ color: "#1f2937" }}>{t.nextSteps}</h3>
@@ -111,7 +117,7 @@ function TeacherRegisterSuccessPage() {
         </div>
 
         <Link
-          href={`/api/auth/callback?provider=login&lang=${lang}`}
+          href={`/auth/login?role=teacher&lang=${lang}`}
           className="no-underline fs-16 fw-500"
           style={{
             display: "block",
@@ -121,7 +127,7 @@ function TeacherRegisterSuccessPage() {
             color: "white",
           }}
         >
-          {t.goToDashboard}
+          {t.goToLogin}
         </Link>
 
         <div className="mt-16 fs-13" style={{ color: "#9ca3af" }}>

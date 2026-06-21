@@ -3,7 +3,7 @@
 import { useSearchParams, useRouter } from "next/navigation";
 import { useCallback, useState, Suspense } from "react";
 import Link from "next/link";
-import { normalizeAppLang, withLang, type AppLang } from "@/lib/app-i18n";
+import { normalizeAppLang, withLang } from "@/lib/app-i18n";
 import { LanguageToggle } from "@/app/components/LanguageToggle";
 import { ErrorBoundary } from "@/app/components/ErrorBoundary";
 import { signUpWithEmail, signInWithGoogle } from "@/lib/supabase-auth";
@@ -12,7 +12,7 @@ function RegisterContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const lang = normalizeAppLang(searchParams.get("lang"));
-  const preselectedRole = searchParams.get("role"); // "teacher" | "student" | null
+  const preselectedRole = searchParams.get("role");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -27,8 +27,8 @@ function RegisterContent() {
   const ui: Record<string, string> = {
     title: lang === "en" ? "Create account" : "Регистрация",
     subtitle: lang === "en" ? "Join SelfReg AI" : "Присоединиться к SelfReg AI",
-    emailLabel: lang === "en" ? "Email" : "Email",
-    emailPlaceholder: lang === "en" ? "you@example.com" : "you@example.com",
+    emailLabel: "Email",
+    emailPlaceholder: "you@example.com",
     passwordLabel: lang === "en" ? "Password" : "Пароль",
     passwordPlaceholder: lang === "en" ? "Min. 6 characters" : "Мин. 6 символов",
     fullNameLabel: lang === "en" ? "Full name" : "ФИО",
@@ -44,30 +44,30 @@ function RegisterContent() {
     or: lang === "en" ? "or" : "или",
     back: lang === "en" ? "Back to home" : "На главную",
     errorGeneric: lang === "en" ? "Registration failed" : "Ошибка регистрации",
-    successMessage: lang === "en"
-      ? "Account created! Check your email for verification."
-      : "Аккаунт создан! Проверьте email для подтверждения.",
+    successMessage:
+      lang === "en"
+        ? "Account created! Check your email for verification."
+        : "Аккаунт создан. Проверьте email для подтверждения.",
   };
 
-  const handleEmailRegister = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleEmailRegister = useCallback(async (event: React.FormEvent) => {
+    event.preventDefault();
     setError(null);
     setSuccess(null);
     setIsLoading(true);
 
     try {
       const { error } = await signUpWithEmail(email, password, fullName || undefined);
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
-      // Save role preference — will be stored in profiles table via DB trigger or API
-      // For now, we store it in localStorage as a fallback
       try {
         localStorage.setItem("selfreg_pending_role", role);
       } catch {}
 
       setSuccess(ui.successMessage);
 
-      // Redirect to login after short delay
       setTimeout(() => {
         router.push(withLang(`/auth/login?role=${role}`, lang));
       }, 2000);
@@ -83,7 +83,6 @@ function RegisterContent() {
     setIsLoading(true);
 
     try {
-      // Save role preference before OAuth redirect
       try {
         localStorage.setItem("selfreg_pending_role", role);
       } catch {}
@@ -110,19 +109,9 @@ function RegisterContent() {
           <h1 className="m-0 mb-4 fs-24">{ui.title}</h1>
           <p className="muted m-0 mb-24 fs-14">{ui.subtitle}</p>
 
-          {error && (
-            <div className="error-box-sm">
-              {error}
-            </div>
-          )}
+          {error && <div className="error-box-sm">{error}</div>}
+          {success && <div className="success-box-sm">{success}</div>}
 
-          {success && (
-            <div className="success-box-sm">
-              {success}
-            </div>
-          )}
-
-          {/* Google Sign Up */}
           <button
             onClick={handleGoogleRegister}
             className="button google-btn"
@@ -143,14 +132,13 @@ function RegisterContent() {
             <div className="divider-line" />
           </div>
 
-          {/* Email/Password Form */}
           <form onSubmit={handleEmailRegister}>
             <label className="field mb-16">
               {ui.fullNameLabel}
               <input
                 type="text"
                 value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
+                onChange={(event) => setFullName(event.target.value)}
                 placeholder={ui.fullNamePlaceholder}
                 disabled={isLoading || !!success}
               />
@@ -161,7 +149,7 @@ function RegisterContent() {
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(event) => setEmail(event.target.value)}
                 placeholder={ui.emailPlaceholder}
                 required
                 disabled={isLoading || !!success}
@@ -173,7 +161,7 @@ function RegisterContent() {
               <input
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(event) => setPassword(event.target.value)}
                 placeholder={ui.passwordPlaceholder}
                 minLength={6}
                 required
@@ -181,7 +169,6 @@ function RegisterContent() {
               />
             </label>
 
-            {/* Role Selection */}
             <div className="mb-20">
               <label className="field" style={{ marginBottom: 8 }}>
                 {ui.roleLabel}
@@ -193,7 +180,7 @@ function RegisterContent() {
                   disabled={isLoading || !!success}
                   className={role === "teacher" ? "button role-toggle-btn" : "button secondary role-toggle-btn"}
                 >
-                  👨‍🏫 {ui.roleTeacher}
+                  {lang === "en" ? "Teacher" : "Педагог"}
                 </button>
                 <button
                   type="button"
@@ -201,7 +188,7 @@ function RegisterContent() {
                   disabled={isLoading || !!success}
                   className={role === "student" ? "button role-toggle-btn" : "button secondary role-toggle-btn"}
                 >
-                  🧑‍🎓 {ui.roleStudent}
+                  {lang === "en" ? "Student" : "Ученик"}
                 </button>
               </div>
             </div>

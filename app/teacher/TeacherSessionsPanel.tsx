@@ -65,7 +65,9 @@ export function TeacherSessionsPanel({
           <span className="muted sessions-count">({sortedSessions.length})</span>
         </div>
         <div className="session-actions">
-          <button className="button" onClick={onCreateNewSession} style={{ fontSize: 13, padding: "6px 12px" }}>{ui.createNewSession}</button>
+          <button className="button" onClick={onCreateNewSession} style={{ fontSize: 13, padding: "6px 12px" }}>
+            {ui.createNewSession}
+          </button>
           {currentSession && (
             <button className="button secondary" onClick={onDeleteSelected} style={{ fontSize: 13, padding: "6px 12px" }}>
               {ui.deleteSelected}
@@ -136,9 +138,7 @@ export function TeacherSessionsPanel({
                 </div>
                 <div className="session-card-subtitle">
                   {recordCount} {ui.stepsShort}
-                  <span className="ml-8">
-                    {processBits}
-                  </span>
+                  <span className="ml-8">{processBits}</span>
                 </div>
               </button>
             );

@@ -1,8 +1,7 @@
 "use client";
 
 import { Suspense, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { signUpWithEmail } from "@/lib/supabase-auth";
 import { supabase } from "@/lib/supabase";
@@ -43,7 +42,8 @@ function TeacherRegisterContent() {
       errorPasswordMismatch: "Пароли не совпадают",
       errorEmptyFields: "Заполните все обязательные поля",
       errorRegistration: "Ошибка регистрации",
-      success: "Регистрация успешна! Перенаправление...",
+      errorAgreement: "Пожалуйста, согласитесь с политикой обработки данных",
+      creating: "Создание учётной записи...",
     },
     en: {
       title: "Teacher Registration",
@@ -64,14 +64,15 @@ function TeacherRegisterContent() {
       errorPasswordMismatch: "Passwords do not match",
       errorEmptyFields: "Fill in all required fields",
       errorRegistration: "Registration error",
-      success: "Registration successful! Redirecting...",
+      errorAgreement: "Please agree to the data processing policy",
+      creating: "Creating account...",
     },
   };
 
   const t = texts[lang];
 
-  const handleRegister = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleRegister = useCallback(async (event: React.FormEvent) => {
+    event.preventDefault();
     setError(null);
 
     if (!email || !password || !confirmPassword || !name || !school) {
@@ -85,23 +86,21 @@ function TeacherRegisterContent() {
     }
 
     if (!agreeToTerms) {
-      setError(lang === "en" ? "Please agree to the data processing policy" : "Пожалуйста, согласитесь с политикой обработки данных");
+      setError(t.errorAgreement);
       return;
     }
 
     setIsLoading(true);
 
     try {
-      // Sign up with email/password
       const result = await signUpWithEmail(email, password, name);
-
-      if (result.error) throw result.error;
+      if (result.error) {
+        throw result.error;
+      }
 
       if (result.data?.user) {
-        // Generate teacher code
         const teacherCode = `${name.split(" ")[0]?.charAt(0).toUpperCase() || "T"}${Date.now().toString().slice(-6)}`;
 
-        // Create profile with role and teacher code
         if (supabase) {
           const profileData: any = {
             id: result.data.user.id,
@@ -109,29 +108,26 @@ function TeacherRegisterContent() {
             role: "teacher",
             teacher_code: teacherCode,
             full_name: name,
-            school: school,
+            school,
             consent_given: true,
             consent_timestamp: new Date().toISOString(),
           };
-          const { error: profileError } = await supabase
-            .from("profiles")
-            .upsert(profileData);
 
-          if (profileError) throw profileError;
+          const { error: profileError } = await supabase.from("profiles").upsert(profileData);
+          if (profileError) {
+            throw profileError;
+          }
         }
 
-        // Store teacher code temporarily
         sessionStorage.setItem("teacher_code", teacherCode);
         sessionStorage.setItem("teacher_id", result.data.user.id);
-
-        // Redirect to success page
         router.push(`/teacher/register-success?lang=${lang}&teacherCode=${teacherCode}`);
       }
     } catch (err: any) {
       setError(err.message || t.errorRegistration);
       setIsLoading(false);
     }
-  }, [email, password, confirmPassword, name, school, agreeToTerms, lang, router, t]);
+  }, [agreeToTerms, confirmPassword, email, lang, name, password, router, school, t]);
 
   return (
     <div className="gradient-bg-teacher">
@@ -143,30 +139,22 @@ function TeacherRegisterContent() {
 
       <div className="white-card">
         <div className="text-center mb-32">
-          <div className="fs-48 mb-16">👨‍🏫</div>
+          <div className="fs-48 mb-16">Teacher</div>
           <h1 className="mt-0 mb-8 fs-28" style={{ color: "#1f2937" }}>
             {t.title}
           </h1>
-          <p className="m-0 c-muted fs-14">
-            {t.subtitle}
-          </p>
+          <p className="m-0 c-muted fs-14">{t.subtitle}</p>
         </div>
 
-        {error && (
-          <div className="error-box">
-            {error}
-          </div>
-        )}
+        {error && <div className="error-box">{error}</div>}
 
         <form className="flex-col gap-16">
           <div>
-            <label className="form-label">
-              {t.name} *
-            </label>
+            <label className="form-label">{t.name} *</label>
             <input
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(event) => setName(event.target.value)}
               placeholder={t.namePlaceholder}
               required
               className="form-input"
@@ -174,13 +162,11 @@ function TeacherRegisterContent() {
           </div>
 
           <div>
-            <label className="form-label">
-              {t.email} *
-            </label>
+            <label className="form-label">{t.email} *</label>
             <input
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(event) => setEmail(event.target.value)}
               placeholder={t.emailPlaceholder}
               required
               className="form-input"
@@ -188,13 +174,11 @@ function TeacherRegisterContent() {
           </div>
 
           <div>
-            <label className="form-label">
-              {t.school} *
-            </label>
+            <label className="form-label">{t.school} *</label>
             <input
               type="text"
               value={school}
-              onChange={(e) => setSchool(e.target.value)}
+              onChange={(event) => setSchool(event.target.value)}
               placeholder={t.schoolPlaceholder}
               required
               className="form-input"
@@ -202,13 +186,11 @@ function TeacherRegisterContent() {
           </div>
 
           <div>
-            <label className="form-label">
-              {t.password} *
-            </label>
+            <label className="form-label">{t.password} *</label>
             <input
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(event) => setPassword(event.target.value)}
               required
               minLength={6}
               className="form-input"
@@ -216,13 +198,11 @@ function TeacherRegisterContent() {
           </div>
 
           <div>
-            <label className="form-label">
-              {t.confirmPassword} *
-            </label>
+            <label className="form-label">{t.confirmPassword} *</label>
             <input
               type="password"
               value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              onChange={(event) => setConfirmPassword(event.target.value)}
               required
               minLength={6}
               className="form-input"
@@ -230,7 +210,13 @@ function TeacherRegisterContent() {
           </div>
 
           <label className="checkbox-field">
-            <input type="checkbox" checked={agreeToTerms} onChange={(e) => setAgreeToTerms(e.target.checked)} required style={{ marginTop: 2 }} />
+            <input
+              type="checkbox"
+              checked={agreeToTerms}
+              onChange={(event) => setAgreeToTerms(event.target.checked)}
+              required
+              style={{ marginTop: 2 }}
+            />
             <span className="c-muted">{t.agree}</span>
           </label>
 
@@ -241,7 +227,7 @@ function TeacherRegisterContent() {
             style={{ background: isLoading ? "#9ca3af" : "#10b981" }}
             onClick={handleRegister}
           >
-            {isLoading ? (lang === "en" ? "Creating account..." : "Создание учётной записи...") : t.register}
+            {isLoading ? t.creating : t.register}
           </button>
         </form>
 

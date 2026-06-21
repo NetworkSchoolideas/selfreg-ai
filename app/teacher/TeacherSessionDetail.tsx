@@ -37,7 +37,13 @@ interface TeacherSessionDetailProps {
 }
 
 function getScenarioColor(scenario: "A" | "B" | "clarify" | "skipped") {
-  return scenario === "A" ? "var(--accent)" : scenario === "B" ? "var(--orange)" : scenario === "clarify" ? "var(--green)" : "var(--muted)";
+  return scenario === "A"
+    ? "var(--accent)"
+    : scenario === "B"
+      ? "var(--orange)"
+      : scenario === "clarify"
+        ? "var(--green)"
+        : "var(--muted)";
 }
 
 function getEventBadgeStyle(record: RecordItem) {
@@ -77,11 +83,7 @@ export function TeacherSessionDetail({ currentSession, locale, ui }: TeacherSess
         <div className="muted session-records-count">{currentSession.records.length} {ui.records}</div>
       </div>
 
-      {currentSession.records.length === 0 && (
-        <div className="empty-session-placeholder">
-          {ui.emptySession}
-        </div>
-      )}
+      {currentSession.records.length === 0 && <div className="empty-session-placeholder">{ui.emptySession}</div>}
 
       {currentSession.records.length > 0 && (
         <div className="records-grid">
@@ -108,9 +110,7 @@ export function TeacherSessionDetail({ currentSession, locale, ui }: TeacherSess
                 )}
               </div>
             )}
-            <div className="trajectory-note">
-              {ui.trajectoryNote(currentSessionSignals)}
-            </div>
+            <div className="trajectory-note">{ui.trajectoryNote(currentSessionSignals)}</div>
           </div>
 
           {currentSession.records.map((record, index) => {
@@ -118,7 +118,11 @@ export function TeacherSessionDetail({ currentSession, locale, ui }: TeacherSess
             const isProcessOnly = eventType === "clarify_request" || eventType === "back";
 
             return (
-              <div key={`${record.stageId}-${index}-${record.timestamp || ""}`} className="record-item" style={{ borderLeft: `4px solid ${getScenarioColor(record.scenario)}` }}>
+              <div
+                key={`${record.stageId}-${index}-${record.timestamp || ""}`}
+                className="record-item"
+                style={{ borderLeft: `4px solid ${getScenarioColor(record.scenario)}` }}
+              >
                 <div className="record-meta">
                   {ui.stage} {record.stageId} · {record.stageTitle}
                 </div>
@@ -127,9 +131,12 @@ export function TeacherSessionDetail({ currentSession, locale, ui }: TeacherSess
                     {ui.eventLabel(record)}
                   </span>
                   {!isProcessOnly && (
-                    <span className="scenario-badge" style={{
-                      background: record.scenario === "skipped" ? "var(--muted)" : getScenarioColor(record.scenario),
-                    }}>
+                    <span
+                      className="scenario-badge"
+                      style={{
+                        background: record.scenario === "skipped" ? "var(--muted)" : getScenarioColor(record.scenario),
+                      }}
+                    >
                       {ui.scenarioLabel(record.scenario)}
                     </span>
                   )}
@@ -166,9 +173,7 @@ export function TeacherSessionDetail({ currentSession, locale, ui }: TeacherSess
 
       {currentSession.historyInsight && (
         <div className="insight-box">
-          <div className="insight-title">
-            {ui.aiInsightTitle}
-          </div>
+          <div className="insight-title">{ui.aiInsightTitle}</div>
           <p className="p-line" style={{ margin: 0 }}>{currentSession.historyInsight}</p>
         </div>
       )}

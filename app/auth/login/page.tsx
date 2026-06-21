@@ -3,7 +3,7 @@
 import { useSearchParams, useRouter } from "next/navigation";
 import { useCallback, useState, Suspense } from "react";
 import Link from "next/link";
-import { normalizeAppLang, withLang, type AppLang } from "@/lib/app-i18n";
+import { normalizeAppLang, withLang } from "@/lib/app-i18n";
 import { LanguageToggle } from "@/app/components/LanguageToggle";
 import { ErrorBoundary } from "@/app/components/ErrorBoundary";
 import { signInWithEmail, signInWithGoogle } from "@/lib/supabase-auth";
@@ -12,7 +12,7 @@ function LoginContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const lang = normalizeAppLang(searchParams.get("lang"));
-  const roleParam = searchParams.get("role"); // "teacher" | "student" | null
+  const roleParam = searchParams.get("role");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,8 +22,8 @@ function LoginContent() {
   const ui: Record<string, string> = {
     title: lang === "en" ? "Sign in" : "Вход",
     subtitle: lang === "en" ? "Welcome back to SelfReg AI" : "С возвращением в SelfReg AI",
-    emailLabel: lang === "en" ? "Email" : "Email",
-    emailPlaceholder: lang === "en" ? "you@example.com" : "you@example.com",
+    emailLabel: "Email",
+    emailPlaceholder: "you@example.com",
     passwordLabel: lang === "en" ? "Password" : "Пароль",
     passwordPlaceholder: lang === "en" ? "Enter your password" : "Введите пароль",
     submit: lang === "en" ? "Sign in" : "Войти",
@@ -36,16 +36,17 @@ function LoginContent() {
     errorGeneric: lang === "en" ? "Authentication failed" : "Ошибка аутентификации",
   };
 
-  const handleEmailLogin = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleEmailLogin = useCallback(async (event: React.FormEvent) => {
+    event.preventDefault();
     setError(null);
     setIsLoading(true);
 
     try {
       const { error } = await signInWithEmail(email, password);
-      if (error) throw error;
-      // After successful login, redirect based on role
-      // The middleware will handle the redirect based on session
+      if (error) {
+        throw error;
+      }
+
       router.push(roleParam === "teacher" ? "/teacher" : roleParam === "student" ? "/student/dashboard" : "/");
       router.refresh();
     } catch (err: any) {
@@ -84,13 +85,8 @@ function LoginContent() {
           <h1 className="m-0 mb-4 fs-24">{ui.title}</h1>
           <p className="muted m-0 mb-24 fs-14">{ui.subtitle}</p>
 
-          {error && (
-            <div className="error-box-sm">
-              {error}
-            </div>
-          )}
+          {error && <div className="error-box-sm">{error}</div>}
 
-          {/* Google Sign In */}
           <button
             onClick={handleGoogleLogin}
             className="button google-btn"
@@ -111,14 +107,13 @@ function LoginContent() {
             <div className="divider-line" />
           </div>
 
-          {/* Email/Password Form */}
           <form onSubmit={handleEmailLogin}>
             <label className="field mb-16">
               {ui.emailLabel}
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(event) => setEmail(event.target.value)}
                 placeholder={ui.emailPlaceholder}
                 required
                 disabled={isLoading}
@@ -130,7 +125,7 @@ function LoginContent() {
               <input
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(event) => setPassword(event.target.value)}
                 placeholder={ui.passwordPlaceholder}
                 minLength={6}
                 required

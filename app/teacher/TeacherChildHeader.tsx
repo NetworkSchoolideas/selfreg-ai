@@ -56,17 +56,26 @@ export function TeacherChildHeader({
               {revealIdentity ? (
                 <span>
                   <strong>{selectedChild.realData.fio}</strong> · класс {selectedChild.realData.klass}
-                  <button className="button secondary" onClick={() => onToggleIdentity(false)} style={{ marginLeft: 10, fontSize: 11, padding: "1px 7px" }}>
+                  <button
+                    className="button secondary"
+                    onClick={() => onToggleIdentity(false)}
+                    style={{ marginLeft: 10, fontSize: 11, padding: "1px 7px" }}
+                  >
                     {ui.hide}
                   </button>
                 </span>
               ) : (
-                <button className="button secondary" onClick={() => onToggleIdentity(true)} style={{ fontSize: 12, padding: "2px 9px" }}>
+                <button
+                  className="button secondary"
+                  onClick={() => onToggleIdentity(true)}
+                  style={{ fontSize: 12, padding: "2px 9px" }}
+                >
                   {ui.revealIdentity}
                 </button>
               )}
             </div>
           )}
+
           <div className="mt-4 fs-13 c-muted">
             {selectedChild.sessions.length} {selectedChild.sessions.length === 1 ? ui.session : ui.sessions} · {ui.lastUpdate}{" "}
             {selectedChild.updatedAt ? new Date(selectedChild.updatedAt).toLocaleDateString(locale) : "—"}
@@ -79,7 +88,11 @@ export function TeacherChildHeader({
               type="text"
               value={newSessionContextInput}
               onChange={(event) => onSessionContextChange(event.target.value)}
-              onKeyDown={(event) => { if (event.key === "Enter") onCreateNewSession(); }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  onCreateNewSession();
+                }
+              }}
               placeholder={ui.quickCreatePlaceholder}
               className="fs-13 session-context-input"
             />
@@ -99,10 +112,7 @@ export function TeacherChildHeader({
             </button>
           </div>
 
-          <button
-            onClick={onDeleteChild}
-            className="button secondary delete-student-btn"
-          >
+          <button onClick={onDeleteChild} className="button secondary delete-student-btn">
             {ui.deleteStudent}
           </button>
         </div>

@@ -59,7 +59,9 @@ export function TeacherSidebar({
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmedName = newChildName.trim();
-    if (!trimmedName) return;
+    if (!trimmedName) {
+      return;
+    }
 
     await onAddChild(trimmedName);
     setNewChildName("");
@@ -73,7 +75,12 @@ export function TeacherSidebar({
             <strong className="fs-15">{ui.students}</strong>
             <span className="muted fs-12 ml-6">({childItems.length})</span>
           </div>
-          <button className="button secondary" onClick={onCopyAllLinks} style={{ fontSize: 11, padding: "4px 9px" }} title={ui.copyAllLinks}>
+          <button
+            className="button secondary"
+            onClick={onCopyAllLinks}
+            style={{ fontSize: 11, padding: "4px 9px" }}
+            title={ui.copyAllLinks}
+          >
             {ui.copyAllLinks}
           </button>
         </div>
@@ -88,7 +95,9 @@ export function TeacherSidebar({
 
         <div className="children-list-scroll">
           {visibleChildren.length === 0 && (
-            <div className="muted fs-13" style={{ padding: "12px 0" }}>{ui.noResults}</div>
+            <div className="muted fs-13" style={{ padding: "12px 0" }}>
+              {ui.noResults}
+            </div>
           )}
 
           {visibleChildren.map((child) => {
@@ -160,9 +169,7 @@ export function TeacherSidebar({
             {ui.addChild}
           </button>
         </form>
-        <div className="muted fs-11 mt-6 text-center">
-          {ui.storageLabel}
-        </div>
+        <div className="muted fs-11 mt-6 text-center">{ui.storageLabel}</div>
       </div>
     </aside>
   );
