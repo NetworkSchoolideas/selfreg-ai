@@ -1,95 +1,105 @@
-﻿/**
- * E2E Test: Teacher Registration Flow
- * 
- * This test verifies the complete teacher registration workflow:
- * 1. Navigate to role selection
- * 2. Select "Teacher" role
- * 3. Complete registration form
- * 4. Verify teacher code generation
- * 5. Access teacher dashboard
- */
+import { test, expect, type Page } from "@playwright/test";
 
-// Mock data for testing
-const testTeacher = {
-  email: `teacher_${Date.now()}@test.com`,
-  password: 'TestPassword123!',
-  expectedCodePrefix: 'T',
-};
+function collectClientErrors(page: Page) {
+  const pageErrors: string[] = [];
+  const consoleErrors: string[] = [];
 
-describe('Teacher Registration Flow', () => {
-  beforeAll(() => {
-    // Setup test environment
-    console.log('Starting teacher registration E2E test...');
+  page.on("pageerror", (error) => {
+    pageErrors.push(error.message);
   });
 
-  it('should navigate to role selection page', async () => {
-    // Mock: Navigate to /role-selection
-    const page = '/role-selection';
-    expect(page).toBe('/role-selection');
-    console.log('✓ Role selection page accessible');
+  page.on("console", (message) => {
+    if (message.type() === "error") {
+      consoleErrors.push(message.text());
+    }
   });
 
-  it('should select teacher role', async () => {
-    // Mock: User selects "Teacher" option
-    const selectedRole = 'teacher';
-    expect(selectedRole).toBe('teacher');
-    console.log('✓ Teacher role selected');
+  return { pageErrors, consoleErrors };
+}
+
+function expectHealthyClient(
+  tracker: { pageErrors: string[]; consoleErrors: string[] },
+  ignoredMessages: string[] = [],
+) {
+  const isIgnored = (message: string) => ignoredMessages.some((ignored) => message.includes(ignored));
+  const pageErrors = tracker.pageErrors.filter((message) => !isIgnored(message));
+  const consoleErrors = tracker.consoleErrors.filter((message) => !isIgnored(message));
+
+  expect(pageErrors, `Unexpected page errors: ${pageErrors.join(" | ")}`).toEqual([]);
+  expect(consoleErrors, `Unexpected console errors: ${consoleErrors.join(" | ")}`).toEqual([]);
+}
+
+test.describe("Public smoke flows", () => {
+  test("role selection routes teacher to registration with preselected role", async ({ page }) => {
+    const tracker = collectClientErrors(page);
+
+    await page.goto("/role-selection?lang=ru");
+
+    await expect(page).toHaveURL(/\/role-selection\?lang=ru$/);
+    await expect(page.getByRole("heading", { name: "Выберите вашу роль" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Я учитель" })).toBeVisible();
+
+    await page.getByRole("button", { name: "Я учитель" }).click();
+
+    await expect(page).toHaveURL(/\/auth\/register\?role=teacher&lang=ru$/);
+    await expect(page.getByRole("heading", { name: "Регистрация" })).toBeVisible();
+    await expect(page.locator('button[type="submit"]')).toContainText("Создать аккаунт");
+
+    expectHealthyClient(tracker);
   });
 
-  it('should show registration form', async () => {
-    // Mock: Registration form displayed
-    const formFields = ['email', 'password', 'confirmPassword'];
-    expect(formFields.length).toBeGreaterThan(0);
-    console.log('✓ Registration form displayed');
+  test("login page renders email auth form", async ({ page }) => {
+    const tracker = collectClientErrors(page);
+
+    await page.goto("/auth/login?lang=ru");
+
+    await expect(page).toHaveURL(/\/auth\/login\?lang=ru$/);
+    await expect(page.getByRole("heading", { name: "Вход" })).toBeVisible();
+    await expect(page.getByPlaceholder("you@example.com")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Войти", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Создать аккаунт" })).toBeVisible();
+
+    expectHealthyClient(tracker);
   });
 
-  it('should validate email format', async () => {
-    // Mock: Email validation
-    const validEmail = 'test@example.com';
-    const invalidEmail = 'invalid-email';
-    
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    expect(emailRegex.test(validEmail)).toBe(true);
-    expect(emailRegex.test(invalidEmail)).toBe(false);
-    console.log('✓ Email validation working');
+  test("teacher register success page shows code and login CTA", async ({ page }) => {
+    const tracker = collectClientErrors(page);
+
+    await page.goto("/teacher/register-success?lang=ru&teacherCode=T123456");
+
+    await expect(page).toHaveURL(/\/teacher\/register-success\?lang=ru&teacherCode=T123456$/);
+    await expect(page.getByRole("heading", { name: "Регистрация успешна!" })).toBeVisible();
+    await expect(page.locator(".code-value")).toHaveText("T123456");
+    await expect(page.getByRole("link", { name: "Перейти ко входу" })).toBeVisible();
+
+    expectHealthyClient(tracker);
   });
 
-  it('should generate teacher code after registration', async () => {
-    // Mock: Teacher code generation
-    const teacherCode = `${testTeacher.expectedCodePrefix}${Date.now().toString().slice(-6)}`;
-    expect(teacherCode).toMatch(/T\d{6}/);
-    console.log('✓ Teacher code generated:', teacherCode);
+  test("student dashboard without childId shows guided error state", async ({ page }) => {
+    const tracker = collectClientErrors(page);
+
+    await page.goto("/student/dashboard?lang=ru");
+
+    await expect(page).toHaveURL(/\/student\/dashboard\?lang=ru$/);
+    await expect(page.getByRole("heading", { name: "Ошибка" })).toBeVisible();
+    await expect(page.getByText("ID ученика не указан")).toBeVisible();
+    await expect(page.getByRole("link", { name: "На главную" })).toBeVisible();
+
+    expectHealthyClient(tracker, [
+      "Failed to load resource: the server responded with a status of 404",
+    ]);
   });
 
-  it('should redirect to dashboard after registration', async () => {
-    // Mock: Dashboard redirect
-    const redirectPath = '/teacher/dashboard';
-    expect(redirectPath).toBe('/teacher/dashboard');
-    console.log('✓ Redirected to teacher dashboard');
-  });
+  test("teacher dashboard entry renders without runtime failure", async ({ page }) => {
+    const tracker = collectClientErrors(page);
 
-  afterAll(() => {
-    console.log('Teacher registration E2E test completed');
-  });
-});
+    await page.goto("/teacher?lang=ru");
 
-describe('Teacher Dashboard', () => {
-  it('should display analytics cards', async () => {
-    const expectedCards = ['Total Students', 'Total Sessions', 'Classes'];
-    expect(expectedCards.length).toBe(3);
-    console.log('✓ Analytics cards displayed');
-  });
+    await expect(page).toHaveURL(/\/teacher\?lang=ru$/);
+    await expect(page.getByText("Дашборд педагога")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Обзор учеников + инфографика" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "📥 CSV экспорт" })).toBeVisible();
 
-  it('should show empty state when no students', async () => {
-    const hasStudents = false;
-    expect(hasStudents).toBe(false);
-    console.log('✓ Empty state shown correctly');
-  });
-
-  it('should load students from API', async () => {
-    // Mock API call
-    const apiEndpoint = '/api/children?teacherId=test-id';
-    expect(apiEndpoint).toContain('/api/children');
-    console.log('✓ API endpoint configured');
+    expectHealthyClient(tracker);
   });
 });
