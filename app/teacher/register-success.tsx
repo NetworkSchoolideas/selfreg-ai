@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { Suspense, useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { AppLang } from "@/lib/app-i18n";
@@ -141,7 +141,9 @@ function TeacherRegisterSuccessPage() {
 function RegisterSuccessWrapper() {
   return (
     <ErrorBoundary>
-      <TeacherRegisterSuccessPage />
+      <Suspense fallback={null}>
+        <TeacherRegisterSuccessPage />
+      </Suspense>
     </ErrorBoundary>
   );
 }

@@ -15,10 +15,12 @@ function StudentDashboardContent() {
   const searchParams = useSearchParams();
   const childId = searchParams.get("childId");
   const lang = normalizeAppLang(searchParams.get("lang"));
+  const hasChildId = Boolean(childId);
+  const missingChildIdError = lang === "en" ? "Student ID not provided" : "ID ученика не указан";
 
   const [profile, setProfile] = useState<ChildProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(hasChildId);
+  const [error, setError] = useState<string | null>(hasChildId ? null : missingChildIdError);
 
   const ui = {
     ru: {
@@ -88,15 +90,15 @@ function StudentDashboardContent() {
   useEffect(() => {
     let active = true;
 
+    if (!childId) {
+      return () => {
+        active = false;
+      };
+    }
+
     const loadProfile = async () => {
       try {
         setLoading(true);
-
-        if (!childId) {
-          if (active) setError(t.errorNoId);
-          setLoading(false);
-          return;
-        }
 
         // Используем DataService: Supabase → localStorage fallback
         const child = await DataService.getChild(childId);
@@ -120,7 +122,7 @@ function StudentDashboardContent() {
     return () => {
       active = false;
     };
-  }, [childId, lang, t.errorConnection, t.errorNoId, t.errorNotFound]);
+  }, [childId, lang, t.errorConnection, t.errorNotFound]);
 
   const completedSessions = profile?.sessions.filter((s) => s.status === "completed" || s.finalNote) || [];
   const inProgressSessions = profile?.sessions.filter((s) => s.status === "in_progress" || (!s.finalNote && s.records?.length > 0)) || [];
@@ -141,7 +143,7 @@ function StudentDashboardContent() {
           <h2 className="fs-20 mb-16" style={{ color: "#dc2626" }}>{t.errorTitle}</h2>
           <p className="c-muted mb-24">{error || t.errorNotFound}</p>
           <Link
-            href={`/adolescent?childId=${childId || ""}&lang=${lang}`}
+            href={childId ? `/adolescent?childId=${childId}&lang=${lang}` : withLang("/", lang)}
             className="no-underline fw-500"
             style={{
               padding: "12px 24px",
@@ -150,7 +152,7 @@ function StudentDashboardContent() {
               borderRadius: 8,
             }}
           >
-            {lang === "en" ? "Back to session" : "Вернуться к сессии"}
+            {childId ? (lang === "en" ? "Back to session" : "Вернуться к сессии") : t.home}
           </Link>
         </div>
       </div>
