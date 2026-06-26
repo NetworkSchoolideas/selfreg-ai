@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { withLang, type AppLang } from "@/lib/app-i18n";
-import { createChildId, type Child, type Session } from "@/lib/children-storage";
+import { ChildrenStorage, createChildId, type Child, type Session } from "@/lib/children-storage";
 import { DataService } from "@/lib/data-service";
 import type { TeacherAnalytics } from "@/lib/server-storage";
 import {
@@ -225,7 +225,9 @@ export function useTeacherData({
       }
 
       queueMicrotask(() => {
-        setChildren(loaded);
+        const latestLoaded = ChildrenStorage.getAll();
+        const resolvedChildren = latestLoaded.length > 0 ? latestLoaded : loaded;
+        setChildren(resolvedChildren);
 
         let restoredChildId: string | null = null;
         let restoredSessionIdx = 0;
@@ -234,7 +236,7 @@ export function useTeacherData({
           if (saved) {
             const parsed = JSON.parse(saved) as { childId?: string; sessionIdx?: number };
             const savedChildId = parsed.childId;
-            const childExists = loaded.some((child: Child) => child.id === savedChildId);
+            const childExists = resolvedChildren.some((child: Child) => child.id === savedChildId);
 
             if (savedChildId && childExists) {
               restoredChildId = savedChildId;
@@ -244,7 +246,7 @@ export function useTeacherData({
         } catch {}
 
         setSelectedChildId((current) => {
-          if (current && loaded.some((child: Child) => child.id === current)) {
+          if (current && resolvedChildren.some((child: Child) => child.id === current)) {
             return current;
           }
 
@@ -254,7 +256,7 @@ export function useTeacherData({
           }
 
           queueMicrotask(() => setSelectedSessionIdx(0));
-          return loaded[0]?.id ?? null;
+          return resolvedChildren[0]?.id ?? null;
         });
       });
     };

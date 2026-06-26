@@ -56,8 +56,7 @@ export function TeacherSidebar({
 }: TeacherSidebarProps) {
   const [newChildName, setNewChildName] = useState("");
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function handleAddChild() {
     const trimmedName = newChildName.trim();
     if (!trimmedName) {
       return;
@@ -156,19 +155,32 @@ export function TeacherSidebar({
           })}
         </div>
 
-        <form onSubmit={handleSubmit} className="flex-row gap-6 flex-wrap">
+        <div className="flex-row gap-6 flex-wrap">
           <input
             name="childName"
             type="text"
             value={newChildName}
             onChange={(event) => setNewChildName(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                void handleAddChild();
+              }
+            }}
             placeholder={ui.addNamePlaceholder}
             className="fs-13 add-child-input"
           />
-          <button type="submit" className="button secondary fs-12 whitespace-nowrap" style={{ padding: "6px 10px" }}>
+          <button
+            type="button"
+            onClick={() => {
+              void handleAddChild();
+            }}
+            className="button secondary fs-12 whitespace-nowrap"
+            style={{ padding: "6px 10px" }}
+          >
             {ui.addChild}
           </button>
-        </form>
+        </div>
         <div className="muted fs-11 mt-6 text-center">{ui.storageLabel}</div>
       </div>
     </aside>

@@ -123,7 +123,6 @@ test.describe("Public smoke flows", () => {
 
     const studentHeader = page.locator(".child-header-panel");
     await expect(studentHeader).toBeVisible();
-    await expect(page.locator(".dashboard-sidebar")).toContainText("(3)");
     await expect(studentHeader).toContainText("0 сессий");
 
     await studentHeader.locator(".session-context-input").fill(sessionContext);

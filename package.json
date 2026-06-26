@@ -14,7 +14,7 @@
     "check:full": "npm run check && npm run build",
     "test": "jest",
     "test:unit": "jest __tests__/unit",
-    "test:e2e": "playwright test",
+    "test:e2e": "node scripts/run-e2e.mjs",
     "test:coverage": "jest --coverage"
   },
   "dependencies": {
