@@ -227,26 +227,35 @@ export function useTeacherData({
       queueMicrotask(() => {
         setChildren(loaded);
 
-        let restored = false;
+        let restoredChildId: string | null = null;
+        let restoredSessionIdx = 0;
         try {
           const saved = localStorage.getItem(DASHBOARD_STATE_KEY);
           if (saved) {
             const parsed = JSON.parse(saved) as { childId?: string; sessionIdx?: number };
             const savedChildId = parsed.childId;
-            const savedSessionIdx = parsed.sessionIdx;
             const childExists = loaded.some((child: Child) => child.id === savedChildId);
 
             if (savedChildId && childExists) {
-              setSelectedChildId(savedChildId);
-              setSelectedSessionIdx(Math.max(0, savedSessionIdx || 0));
-              restored = true;
+              restoredChildId = savedChildId;
+              restoredSessionIdx = Math.max(0, parsed.sessionIdx || 0);
             }
           }
         } catch {}
 
-        if (!restored && loaded.length > 0) {
-          setSelectedChildId(loaded[0].id);
-        }
+        setSelectedChildId((current) => {
+          if (current && loaded.some((child: Child) => child.id === current)) {
+            return current;
+          }
+
+          if (restoredChildId) {
+            queueMicrotask(() => setSelectedSessionIdx(restoredSessionIdx));
+            return restoredChildId;
+          }
+
+          queueMicrotask(() => setSelectedSessionIdx(0));
+          return loaded[0]?.id ?? null;
+        });
       });
     };
 

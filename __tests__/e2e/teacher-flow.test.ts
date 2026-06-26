@@ -102,4 +102,38 @@ test.describe("Public smoke flows", () => {
 
     expectHealthyClient(tracker);
   });
+
+  test("teacher can add a student and create a new local session", async ({ page }) => {
+    const tracker = collectClientErrors(page);
+    const childName = `Автотест ${Date.now()}`;
+    const sessionContext = `Контекст ${Date.now()}`;
+
+    await page.addInitScript(() => {
+      window.localStorage.clear();
+      window.localStorage.setItem("selfreg_onboarding_seen_teacher", "1");
+    });
+
+    await page.goto("/teacher?lang=ru");
+
+    await expect(page).toHaveURL(/\/teacher\?lang=ru$/);
+    await expect(page.locator('input[name="childName"]')).toBeVisible();
+
+    await page.locator('input[name="childName"]').fill(childName);
+    await page.getByRole("button", { name: "+ Добавить" }).click();
+
+    const studentHeader = page.locator(".child-header-panel");
+    await expect(studentHeader).toBeVisible();
+    await expect(page.locator(".dashboard-sidebar")).toContainText("(3)");
+    await expect(studentHeader).toContainText("0 сессий");
+
+    await studentHeader.locator(".session-context-input").fill(sessionContext);
+    await studentHeader.getByRole("button", { name: "+ Новая сессия" }).click();
+
+    await expect(studentHeader).toContainText("1 сессия");
+    await expect(page.locator(".sessions-header")).toContainText("(1)");
+    await expect(page.locator(".sessions-grid")).toContainText(sessionContext);
+    await expect(page.locator("main")).toContainText(sessionContext);
+
+    expectHealthyClient(tracker);
+  });
 });

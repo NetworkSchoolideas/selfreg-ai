@@ -41,6 +41,19 @@ function writeChildren(children: Child[]) {
   log(`Saved ${children.length} children to localStorage`);
 }
 
+function shouldSyncChild(child: Child | undefined): boolean {
+  if (!child) {
+    return false;
+  }
+
+  return Boolean(
+    child.teacherId ||
+    child.consentGiven ||
+    child.consentTimestamp ||
+    child.realData
+  );
+}
+
 /**
  * Проверяет, доступен ли Supabase admin client (серверная сторона).
  * Используется для fire-and-forget синхронизации.
@@ -96,18 +109,20 @@ export const ChildrenStorage = {
   async upsertLocalChildAsync(child: Child): Promise<Child> {
     this.upsertLocalChild(child);
 
-    syncToApi("/api/children", {
-      action: "upsert",
-      child: {
-        id: child.id,
-        name: child.name,
-        className: child.realData?.klass,
-        teacherId: child.teacherId,
-        consentGiven: child.consentGiven,
-        consentTimestamp: child.consentTimestamp,
-        realData: child.realData,
-      },
-    });
+    if (shouldSyncChild(child)) {
+      syncToApi("/api/children", {
+        action: "upsert",
+        child: {
+          id: child.id,
+          name: child.name,
+          className: child.realData?.klass,
+          teacherId: child.teacherId,
+          consentGiven: child.consentGiven,
+          consentTimestamp: child.consentTimestamp,
+          realData: child.realData,
+        },
+      });
+    }
 
     return child;
   },
@@ -192,7 +207,10 @@ export const ChildrenStorage = {
   async saveSessionForChildAsync(childId: string, session: Session): Promise<void> {
     this.saveSessionForChild(childId, session);
 
-    syncToApi("/api/session-sync", { childId, session });
+    const child = this.getChild(childId);
+    if (shouldSyncChild(child)) {
+      syncToApi("/api/session-sync", { childId, session });
+    }
   },
 
   getSessionsForChild(childId: string): Session[] {
@@ -224,8 +242,9 @@ export const ChildrenStorage = {
    */
   async deleteSessionAsync(childId: string, sessionUpdatedAt: string): Promise<boolean> {
     const removed = this.deleteSession(childId, sessionUpdatedAt);
+    const child = this.getChild(childId);
 
-    if (removed) {
+    if (removed && shouldSyncChild(child)) {
       syncToApi("/api/session-sync", {
         action: "delete",
         childId,
@@ -250,9 +269,10 @@ export const ChildrenStorage = {
    * и дублирует удаление в Supabase через API.
    */
   async deleteChildAsync(childId: string): Promise<boolean> {
+    const child = this.getChild(childId);
     const removed = this.deleteChild(childId);
 
-    if (removed) {
+    if (removed && shouldSyncChild(child)) {
       syncToApi("/api/children", { action: "delete", childId });
     }
 
@@ -275,7 +295,9 @@ export const ChildrenStorage = {
     children[index].updatedAt = new Date().toISOString();
     writeChildren(children);
 
-    syncToApi("/api/session-feedback", { childId, historyInsight: insight });
+    if (shouldSyncChild(children[index])) {
+      syncToApi("/api/session-feedback", { childId, historyInsight: insight });
+    }
 
     return true;
   },
@@ -303,7 +325,9 @@ export const ChildrenStorage = {
     children[index].updatedAt = new Date().toISOString();
     writeChildren(children);
 
-    syncToApi("/api/session-feedback", { childId, adolescentFeedback: feedback });
+    if (shouldSyncChild(children[index])) {
+      syncToApi("/api/session-feedback", { childId, adolescentFeedback: feedback });
+    }
 
     return true;
   },
