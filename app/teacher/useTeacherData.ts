@@ -39,12 +39,25 @@ export function useTeacherData({
   const [copiedChildId, setCopiedChildId] = useState<string | null>(null);
   const [lastDeleted, setLastDeleted] = useState<{ childId: string; session: Session } | null>(null);
   const [analytics, setAnalytics] = useState<TeacherAnalytics | null>(null);
+  const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false);
   const dashboardTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const selectedChildIntentRef = useRef<string | null>(null);
 
   const selectedChild = useMemo(
     () => children.find((child) => child.id === selectedChildId) || children[0] || null,
     [children, selectedChildId]
   );
+
+  function getFreshChildren() {
+    return serverBackedDashboard
+      ? DataService.getChildren(teacherIdFromUrl)
+      : Promise.resolve(ChildrenStorage.getAll());
+  }
+
+  function applySelectedChildId(childId: string | null) {
+    selectedChildIntentRef.current = childId;
+    setSelectedChildId(childId);
+  }
 
   function scheduleDashboardTimeout(callback: () => void, delay: number) {
     const timeoutId = setTimeout(() => {
@@ -111,12 +124,20 @@ export function useTeacherData({
     let active = true;
 
     const loadServerChildren = async () => {
+      setIsInitialLoadComplete(false);
+
       try {
         const query = teacherIdFromUrl
           ? `?teacherId=${encodeURIComponent(teacherIdFromUrl)}&analytics=true`
           : "";
         const response = await fetch(`/api/teacher-data${query}`, { cache: "no-store" });
         if (!response.ok) {
+          if (active) {
+            setChildren([]);
+            applySelectedChildId(null);
+            setAnalytics(null);
+            setIsInitialLoadComplete(true);
+          }
           return;
         }
 
@@ -144,25 +165,30 @@ export function useTeacherData({
         } catch {}
 
         if (restoredChildId) {
-          setSelectedChildId(restoredChildId);
+          applySelectedChildId(restoredChildId);
           setSelectedSessionIdx(restoredSessionIdx);
+          setIsInitialLoadComplete(true);
           return;
         }
 
-        setSelectedChildId((current) => {
-          if (current && serverChildren.some((child) => child.id === current)) {
-            return current;
-          }
-          return serverChildren[0]?.id ?? null;
-        });
+        const preferredChildId = selectedChildIntentRef.current;
+        if (preferredChildId && serverChildren.some((child) => child.id === preferredChildId)) {
+          applySelectedChildId(preferredChildId);
+          setIsInitialLoadComplete(true);
+          return;
+        }
+
+        applySelectedChildId(serverChildren[0]?.id ?? null);
+        setIsInitialLoadComplete(true);
       } catch {
         if (!active) {
           return;
         }
 
         setChildren([]);
-        setSelectedChildId(null);
+        applySelectedChildId(null);
         setAnalytics(null);
+        setIsInitialLoadComplete(true);
       }
     };
 
@@ -181,7 +207,9 @@ export function useTeacherData({
     let active = true;
 
     const loadLocalChildren = async () => {
-      let loaded = await DataService.getChildren();
+      setIsInitialLoadComplete(false);
+
+      let loaded = ChildrenStorage.getAll();
 
       if (loaded.length === 0) {
         const child1 = await DataService.saveChild({
@@ -200,7 +228,7 @@ export function useTeacherData({
         } as Child);
 
         await DataService.saveSession(child1.id, createSampleSession(lang, locale));
-        loaded = await DataService.getChildren();
+        loaded = ChildrenStorage.getAll();
       }
 
       const seen = new Set<string>();
@@ -218,6 +246,7 @@ export function useTeacherData({
         for (const child of loaded) {
           await DataService.saveChild(child);
         }
+        loaded = ChildrenStorage.getAll();
       }
 
       if (!active) {
@@ -245,19 +274,22 @@ export function useTeacherData({
           }
         } catch {}
 
-        setSelectedChildId((current) => {
-          if (current && resolvedChildren.some((child: Child) => child.id === current)) {
-            return current;
-          }
+        const preferredChildId = selectedChildIntentRef.current;
+        if (preferredChildId && resolvedChildren.some((child: Child) => child.id === preferredChildId)) {
+          applySelectedChildId(preferredChildId);
+          return;
+        }
 
-          if (restoredChildId) {
-            queueMicrotask(() => setSelectedSessionIdx(restoredSessionIdx));
-            return restoredChildId;
-          }
+        if (restoredChildId) {
+          applySelectedChildId(restoredChildId);
+          queueMicrotask(() => setSelectedSessionIdx(restoredSessionIdx));
+          setIsInitialLoadComplete(true);
+          return;
+        }
 
-          queueMicrotask(() => setSelectedSessionIdx(0));
-          return resolvedChildren[0]?.id ?? null;
-        });
+        queueMicrotask(() => setSelectedSessionIdx(0));
+        applySelectedChildId(resolvedChildren[0]?.id ?? null);
+        setIsInitialLoadComplete(true);
       });
     };
 
@@ -288,7 +320,7 @@ export function useTeacherData({
 
     void (async () => {
       await DataService.saveSession(selectedChild.id, newSession);
-      const updatedChildren = await DataService.getChildren();
+      const updatedChildren = await getFreshChildren();
       setChildren(updatedChildren);
     })();
 
@@ -362,7 +394,7 @@ export function useTeacherData({
   const currentSession = sortedSessions[selectedSessionIdx] || null;
 
   function selectChild(childId: string) {
-    setSelectedChildId(childId);
+    applySelectedChildId(childId);
     setSelectedSessionIdx(0);
     setNewSessionContextInput("");
     setNewSessionHint(null);
@@ -395,16 +427,16 @@ export function useTeacherData({
       }
 
       await DataService.deleteChild(selectedChild.id);
-      const fresh = await DataService.getChildren();
+      const fresh = await getFreshChildren();
       setChildren(fresh);
       setLastDeleted(null);
       setNewSessionHint(null);
 
       if (fresh.length > 0) {
-        setSelectedChildId(fresh[0].id);
+        applySelectedChildId(fresh[0].id);
         setSelectedSessionIdx(0);
       } else {
-        setSelectedChildId(null);
+        applySelectedChildId(null);
       }
     })();
   }
@@ -448,7 +480,7 @@ export function useTeacherData({
           if (payload?.child) {
             newChild = payload.child as Child;
             await DataService.saveChild(newChild);
-            const updated = await DataService.getChildren();
+            const updated = await getFreshChildren();
             setChildren(updated);
             selectChild(newChild.id);
             return;
@@ -465,7 +497,7 @@ export function useTeacherData({
       updatedAt: new Date().toISOString(),
     } as Child;
     await DataService.saveChild(newChild);
-    const updated = await DataService.getChildren();
+    const updated = await getFreshChildren();
     setChildren(updated);
     selectChild(newChild.id);
   }
@@ -487,7 +519,7 @@ export function useTeacherData({
 
     void (async () => {
       await DataService.deleteSession(selectedChild.id, currentSession.updatedAt);
-      const fresh = await DataService.getChildren();
+      const fresh = await getFreshChildren();
       setChildren(fresh);
       setSelectedSessionIdx(0);
     })();
@@ -502,7 +534,7 @@ export function useTeacherData({
 
     void (async () => {
       await DataService.saveSession(lastDeleted.childId, lastDeleted.session);
-      const fresh = await DataService.getChildren();
+      const fresh = await getFreshChildren();
       setChildren(fresh);
       setLastDeleted(null);
       setSelectedSessionIdx(0);
@@ -567,6 +599,7 @@ export function useTeacherData({
     newSessionHint,
     lastDeleted,
     analytics,
+    isInitialLoadComplete,
     distribution,
     stageSupport,
     totalRecords,

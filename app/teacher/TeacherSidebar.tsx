@@ -22,6 +22,7 @@ interface TeacherSidebarUi {
 }
 
 interface TeacherSidebarProps {
+  isReady: boolean;
   childItems: Child[];
   visibleChildren: Child[];
   selectedChildId: string | null;
@@ -39,6 +40,7 @@ interface TeacherSidebarProps {
 }
 
 export function TeacherSidebar({
+  isReady,
   childItems,
   visibleChildren,
   selectedChildId,
@@ -93,13 +95,19 @@ export function TeacherSidebar({
         />
 
         <div className="children-list-scroll">
-          {visibleChildren.length === 0 && (
+          {!isReady && (
+            <div className="muted fs-13" style={{ padding: "12px 0" }}>
+              {locale.startsWith("en") ? "Loading..." : "Загрузка..."}
+            </div>
+          )}
+
+          {isReady && visibleChildren.length === 0 && (
             <div className="muted fs-13" style={{ padding: "12px 0" }}>
               {ui.noResults}
             </div>
           )}
 
-          {visibleChildren.map((child) => {
+          {isReady && visibleChildren.map((child) => {
             const isActive = selectedChildId === child.id;
             const sessionCount = child.sessions?.length || 0;
             const lastUpdated = child.updatedAt ? new Date(child.updatedAt).toLocaleDateString(locale) : "-";
@@ -155,32 +163,34 @@ export function TeacherSidebar({
           })}
         </div>
 
-        <div className="flex-row gap-6 flex-wrap">
-          <input
-            name="childName"
-            type="text"
-            value={newChildName}
-            onChange={(event) => setNewChildName(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
+        {isReady && (
+          <div className="flex-row gap-6 flex-wrap">
+            <input
+              name="childName"
+              type="text"
+              value={newChildName}
+              onChange={(event) => setNewChildName(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void handleAddChild();
+                }
+              }}
+              placeholder={ui.addNamePlaceholder}
+              className="fs-13 add-child-input"
+            />
+            <button
+              type="button"
+              onClick={() => {
                 void handleAddChild();
-              }
-            }}
-            placeholder={ui.addNamePlaceholder}
-            className="fs-13 add-child-input"
-          />
-          <button
-            type="button"
-            onClick={() => {
-              void handleAddChild();
-            }}
-            className="button secondary fs-12 whitespace-nowrap"
-            style={{ padding: "6px 10px" }}
-          >
-            {ui.addChild}
-          </button>
-        </div>
+              }}
+              className="button secondary fs-12 whitespace-nowrap"
+              style={{ padding: "6px 10px" }}
+            >
+              {ui.addChild}
+            </button>
+          </div>
+        )}
         <div className="muted fs-11 mt-6 text-center">{ui.storageLabel}</div>
       </div>
     </aside>

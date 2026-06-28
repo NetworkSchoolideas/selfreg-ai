@@ -1,14 +1,13 @@
-﻿"use client";
+"use client";
 
+import Link from "next/link";
 import { Suspense, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import { LanguageToggle } from "@/app/components/LanguageToggle";
 import { ErrorBoundary } from "@/app/components/ErrorBoundary";
 import { withLang, type AppLang } from "@/lib/app-i18n";
 
 function RoleSelectionContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const lang = (searchParams.get("lang") === "en" ? "en" : "ru") as AppLang;
 
@@ -36,10 +35,8 @@ function RoleSelectionContent() {
   const t = texts[lang];
 
   const handleRoleSelect = useCallback((role: "teacher" | "student") => {
-    // Save role preference and redirect to registration with role parameter
     sessionStorage.setItem("selected_role", role);
-    router.push(withLang(`/auth/register?role=${role}`, lang));
-  }, [lang, router]);
+  }, []);
 
   return (
     <div className="gradient-bg-role">
@@ -56,27 +53,31 @@ function RoleSelectionContent() {
         </p>
 
         <div className="grid mb-24" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))" }}>
-          <button
+          <Link
+            href={withLang("/auth/register?role=teacher", lang)}
             onClick={() => handleRoleSelect("teacher")}
             className="role-card"
             onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#4f46e5"; e.currentTarget.style.background = "#f5f3ff"; }}
             onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#e5e7eb"; e.currentTarget.style.background = "white"; }}
+            style={{ display: "block", textDecoration: "none" }}
           >
             <div className="fs-48 text-center">👨‍🏫</div>
             <h3 className="m-0 fs-20" style={{ color: "#1f2937" }}>{t.teacher}</h3>
             <p className="m-0 fs-14 c-muted" style={{ lineHeight: 1.5 }}>{t.teacherDesc}</p>
-          </button>
+          </Link>
 
-          <button
+          <Link
+            href={withLang("/auth/register?role=student", lang)}
             onClick={() => handleRoleSelect("student")}
             className="role-card"
             onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#10b981"; e.currentTarget.style.background = "#ecfdf5"; }}
             onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#e5e7eb"; e.currentTarget.style.background = "white"; }}
+            style={{ display: "block", textDecoration: "none" }}
           >
             <div className="fs-48 text-center">🎓</div>
             <h3 className="m-0 fs-20" style={{ color: "#1f2937" }}>{t.student}</h3>
             <p className="m-0 fs-14 c-muted" style={{ lineHeight: 1.5 }}>{t.studentDesc}</p>
-          </button>
+          </Link>
         </div>
 
         <div className="warning-box">

@@ -168,6 +168,7 @@ export function TeacherDashboard() {
     newSessionHint,
     lastDeleted,
     analytics,
+    isInitialLoadComplete,
     distribution,
     stageSupport,
     totalRecords,
@@ -224,6 +225,7 @@ export function TeacherDashboard() {
 
       <div className="dashboard-layout">
         <TeacherSidebar
+          isReady={isInitialLoadComplete}
           childItems={children}
           visibleChildren={visibleChildren}
           selectedChildId={selectedChildId}
@@ -241,7 +243,11 @@ export function TeacherDashboard() {
         />
 
         <div className="dashboard-main">
-          {!selectedChild ? (
+          {!isInitialLoadComplete ? (
+            <div className="panel text-center no-selection-panel">
+              <p className="muted mb-0">{lang === "en" ? "Loading..." : "Загрузка..."}</p>
+            </div>
+          ) : !selectedChild ? (
             <div className="panel text-center no-selection-panel">
               <h3 className="mt-0">{ui.selectStudentLeft}</h3>
               <p className="muted">{ui.selectStudentLeftDesc}</p>

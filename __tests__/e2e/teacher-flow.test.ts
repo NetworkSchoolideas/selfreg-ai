@@ -37,9 +37,9 @@ test.describe("Public smoke flows", () => {
 
     await expect(page).toHaveURL(/\/role-selection\?lang=ru$/);
     await expect(page.getByRole("heading", { name: "Выберите вашу роль" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Я учитель" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Я учитель" })).toBeVisible();
 
-    await page.getByRole("button", { name: "Я учитель" }).click();
+    await page.getByRole("link", { name: "Я учитель" }).click();
 
     await expect(page).toHaveURL(/\/auth\/register\?role=teacher&lang=ru$/);
     await expect(page.getByRole("heading", { name: "Регистрация" })).toBeVisible();
@@ -134,5 +134,86 @@ test.describe("Public smoke flows", () => {
     await expect(page.locator("main")).toContainText(sessionContext);
 
     expectHealthyClient(tracker);
+  });
+
+  test("teacher dashboard loads server-backed child and analytics", async ({ page, request }) => {
+    const tracker = collectClientErrors(page);
+    const teacherId = `E2E_TEACHER_${Date.now()}`;
+    const sessionId = crypto.randomUUID();
+    const consentTimestamp = new Date().toISOString();
+    const childName = `Серверный ученик ${Date.now()}`;
+
+    const createChildResponse = await request.post("/api/children", {
+      data: {
+        name: childName,
+        teacherId,
+        consentGiven: true,
+        consentTimestamp,
+        realData: {
+          fio: "Тестовый Ученик",
+          klass: "9А",
+        },
+      },
+    });
+    expect(createChildResponse.ok()).toBe(true);
+
+    const createChildPayload = await createChildResponse.json();
+    const childId = createChildPayload.child.id as string;
+
+    try {
+      const createSessionResponse = await request.post("/api/session-sync", {
+        data: {
+          sessionId,
+          childId,
+          context: "Проверка серверного потока",
+          finalNote: "Сессия завершена для server-backed e2e.",
+          updatedAt: new Date(Date.parse(consentTimestamp) + 1_000).toISOString(),
+          lang: "ru",
+          records: [
+            {
+              stageId: "1",
+              stageTitle: "Цель",
+              scenario: "A",
+              eventType: "answer",
+              answer: "Проверяю загрузку teacher dashboard из Supabase.",
+              feedback: "Данные сессии должны появиться в серверной аналитике.",
+              question: "Что проверяем?",
+              timestamp: consentTimestamp,
+              provider: "mock",
+              model: "local-mock",
+              responseMode: "mock",
+            },
+          ],
+        },
+      });
+      expect(createSessionResponse.ok()).toBe(true);
+
+      await page.addInitScript(() => {
+        window.localStorage.setItem("selfreg_onboarding_seen_teacher", "1");
+      });
+
+      await page.goto(`/teacher?teacher=${teacherId}&lang=ru`);
+
+      await expect(page).toHaveURL(new RegExp(`/teacher\\?teacher=${teacherId}&lang=ru$`));
+      await expect(page.getByText("Supabase · серверная синхронизация активна")).toBeVisible();
+      await expect(page.locator(".dashboard-sidebar")).toContainText("(1)");
+      await expect(page.locator(".dashboard-sidebar")).toContainText("есть реальные данные");
+
+      const studentHeader = page.locator(".child-header-panel");
+      await expect(studentHeader).toContainText("1 сессия");
+      await expect(page.getByRole("button", { name: "Раскрыть ФИО и класс" })).toBeVisible();
+      await page.getByRole("button", { name: "Раскрыть ФИО и класс" }).click();
+      await expect(studentHeader).toContainText("Тестовый Ученик");
+      await expect(studentHeader).toContainText("9А");
+
+      const analyticsPanel = page.locator(".analytics-panel");
+      await expect(analyticsPanel).toBeVisible();
+      await expect(analyticsPanel).toContainText("1");
+      await expect(page.locator(".sessions-grid")).toContainText("Проверка серверного потока");
+
+      expectHealthyClient(tracker);
+    } finally {
+      await request.delete(`/api/children?childId=${encodeURIComponent(childId)}&teacherId=${encodeURIComponent(teacherId)}`);
+    }
   });
 });
