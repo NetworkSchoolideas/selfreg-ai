@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { supabase, signInWithGoogle, signOut, getUserProfile, UserProfile } from "@/lib/supabase-auth";
 
 interface UseSupabaseAuthReturn {
@@ -21,7 +22,7 @@ interface UseSupabaseAuthReturn {
 
 export function useSupabaseAuth(): UseSupabaseAuthReturn {
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [session, setSession] = useState<any>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isMockMode, setIsMockMode] = useState(false);
@@ -40,7 +41,7 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
     }
 
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }: { data: { session: Session | null } }) => {
       console.log("[useSupabaseAuth] Initial session:", session?.user?.email);
       setSession(session);
       
@@ -55,7 +56,10 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
     });
 
     // Listen for changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((
+      _event: AuthChangeEvent,
+      session: Session | null
+    ) => {
       console.log("[useSupabaseAuth] Auth state changed:", _event);
       setSession(session);
       

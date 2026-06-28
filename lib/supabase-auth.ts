@@ -1,29 +1,13 @@
 /**
  * Supabase Auth Client
- * 
- * This module provides a unified interface for Supabase authentication.
- * Handles both OAuth (Google) and traditional email/password authentication.
+ *
+ * Auth reuses the shared browser Supabase client from `lib/supabase` to avoid
+ * creating multiple GoTrueClient instances in the same browser context.
  */
 
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
 
-// Check if we have Supabase credentials
-const supabaseUrl =
-  process.env.NEXT_PUBLIC_SUPABASE_URL ||
-  process.env.SUPABASE_URL;
-const supabaseAnonKey =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-  process.env.SUPABASE_ANON_KEY ||
-  process.env.SUPABASE_PUBLISHABLE_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn("[Supabase] Missing environment variables. Auth will be in mock mode.");
-}
-
-export const supabase = supabaseUrl && supabaseAnonKey
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : null;
+export { supabase };
 
 // Auth types
 export interface UserProfile {

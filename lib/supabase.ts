@@ -57,7 +57,7 @@ if (!supabaseAnonKey) {
  *   .eq('child_id', childId);
  * ```
  */
-export const supabase = supabaseEnabled && supabaseUrl && supabaseAnonKey
+export const supabase = supabaseUrl && supabaseAnonKey
   ? createClient<Database>(supabaseUrl, supabaseAnonKey, {
       db: {
         schema: 'public'
@@ -121,7 +121,7 @@ export const supabaseAdmin = supabaseServiceRoleKey && supabaseUrl
  * @returns true if Supabase client is initialized
  */
 export function isSupabaseAvailable(): boolean {
-  return supabase !== null;
+  return supabaseEnabled && supabase !== null;
 }
 
 /**
