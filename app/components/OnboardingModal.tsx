@@ -14,15 +14,15 @@ function getContent(lang: "ru" | "en", type: "adolescent" | "teacher") {
       subtitle:
         lang === "en"
           ? "This is a self-regulation practice session. You will go through 5 stages to learn how to manage your goals and actions better."
-          : "Это тренировочная сессия саморегуляции. Ты пройдёшь 5 этапов, чтобы научиться лучше управлять своими целями и действиями.",
+          : "Это тренировочная сессия саморегуляции. Ты пройдешь 5 этапов, чтобы научиться лучше управлять своими целями и действиями.",
       steps: [
         {
           icon: "🎯",
           title: lang === "en" ? "Goal" : "Цель",
           text:
             lang === "en"
-              ? "Set a goal for a real situation — study, project, sport, or a habit."
-              : "Поставь цель для реальной ситуации — учёба, проект, спорт или привычка.",
+              ? "Set a goal for a real situation - study, project, sport, or a habit."
+              : "Поставь цель для реальной ситуации - учеба, проект, спорт или привычка.",
         },
         {
           icon: "🏃",
@@ -38,7 +38,7 @@ function getContent(lang: "ru" | "en", type: "adolescent" | "teacher") {
           text:
             lang === "en"
               ? "Get AI feedback on your plan and thinking."
-              : "Получи обратную связь от ИИ о твоём плане и рассуждениях.",
+              : "Получи обратную связь от ИИ о твоем плане и рассуждениях.",
         },
         {
           icon: "🔍",
@@ -59,20 +59,19 @@ function getContent(lang: "ru" | "en", type: "adolescent" | "teacher") {
       ],
       notes: [
         lang === "en"
-          ? "💡 The AI may offer different support styles (Scenario A or B) — both are designed to help you reflect."
-          : "💡 ИИ может предлагать разные стили поддержки (Сценарий A или B) — оба помогают задуматься.",
+          ? "💡 The AI may offer different support styles (Scenario A or B) - both are designed to help you reflect."
+          : "💡 ИИ может предлагать разные стили поддержки (Сценарий A или B) - оба помогают задуматься.",
         lang === "en"
-          ? "❓ If a question is unclear, click \"Need clarification\" — the AI will rephrase it."
-          : "❓ Если вопрос непонятен, нажми «Не понял вопрос» — ИИ переформулирует его.",
+          ? '❓ If a question is unclear, click "Need clarification" - the AI will rephrase it.'
+          : '❓ Если вопрос непонятен, нажми "Не понял вопрос" - ИИ переформулирует его.',
         lang === "en"
-          ? "🔌 You can use the app without AI in Mock mode — just select \"mock\" as the provider."
-          : "🔌 Можно пользоваться приложением без ИИ в Mock-режиме — выбери «mock» как провайдер.",
+          ? '🔌 You can use the app without AI in Mock mode - just select "mock" as the provider.'
+          : '🔌 Можно пользоваться приложением без ИИ в Mock-режиме - выбери "mock" как провайдера.',
       ],
-      gotIt: lang === "en" ? "Got it, let's start!" : "Понятно, начнём!",
+      gotIt: lang === "en" ? "Got it, let's start!" : "Понятно, начнем!",
     };
   }
 
-  // Teacher content
   return {
     title: lang === "en" ? "Welcome to the Teacher Dashboard" : "Добро пожаловать в панель педагога",
     subtitle:
@@ -86,7 +85,7 @@ function getContent(lang: "ru" | "en", type: "adolescent" | "teacher") {
         text:
           lang === "en"
             ? "Add students on the left panel. Each student gets a unique link to share with them."
-            : "Добавляй учеников на левой панели. Каждый ученик получает уникальную ссылку.",
+            : "Добавляйте учеников на левой панели. Каждый ученик получает уникальную ссылку.",
       },
       {
         icon: "📊",
@@ -94,7 +93,7 @@ function getContent(lang: "ru" | "en", type: "adolescent" | "teacher") {
         text:
           lang === "en"
             ? "See class-wide statistics: scenario distribution, stage support, and student progress."
-            : "Смотри статистику по классу: распределение сценариев, поддержка этапов, прогресс учеников.",
+            : "Смотрите статистику по классу: распределение сценариев, поддержка этапов и прогресс учеников.",
       },
       {
         icon: "📋",
@@ -109,8 +108,8 @@ function getContent(lang: "ru" | "en", type: "adolescent" | "teacher") {
         title: lang === "en" ? "A/B scenarios" : "Сценарии A/B",
         text:
           lang === "en"
-            ? "A/B scenarios show different AI support patterns — normal support vs pressure/self-attack support."
-            : "Сценарии A/B показывают разные паттерны поддержки ИИ — обычная поддержка vs давление/самоатака.",
+            ? "A/B scenarios show different AI support patterns - normal support vs pressure/self-attack support."
+            : "Сценарии A/B показывают разные паттерны поддержки ИИ - обычная поддержка и давление/самоатака.",
       },
       {
         icon: "📤",
@@ -118,16 +117,16 @@ function getContent(lang: "ru" | "en", type: "adolescent" | "teacher") {
         text:
           lang === "en"
             ? "Export session data to CSV for further analysis."
-            : "Экспортируй данные сессий в CSV для дальнейшего анализа.",
+            : "Экспортируйте данные сессий в CSV для дальнейшего анализа.",
       },
     ],
     notes: [
       lang === "en"
-        ? "💡 Students can use the app with or without AI — Mock mode is always available."
-        : "💡 Ученики могут пользоваться приложением с ИИ или без — Mock-режим всегда доступен.",
+        ? "💡 Students can use the app with or without AI - Mock mode is always available."
+        : "💡 Ученики могут пользоваться приложением с ИИ или без него - Mock-режим всегда доступен.",
       lang === "en"
-        ? "🔗 Share the student prototype link from the student's card to let them start sessions."
-        : "🔗 Поделись ссылкой на прототип из карточки ученика, чтобы он мог начать сессии.",
+        ? "🔗 Share the student session link from the student's card so they can begin."
+        : "🔗 Поделитесь ссылкой на сессию из карточки ученика, чтобы он мог начать работу.",
     ],
     gotIt: lang === "en" ? "Got it, let's go!" : "Понятно, поехали!",
   };
@@ -142,21 +141,18 @@ export function OnboardingModal({ isOpen, onClose, lang, type }: OnboardingModal
     <div className="modal-overlay" onClick={onClose}>
       <div
         className="modal-content"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
         style={{ maxWidth: 520 }}
       >
-        {/* Close button */}
         <button onClick={onClose} className="modal-close">
-          ×
+          x
         </button>
 
-        {/* Title */}
         <h2 className="m-0 mb-8 fs-20">{content.title}</h2>
         <p className="m-0 mb-20 fs-14 c-muted" style={{ lineHeight: 1.5 }}>
           {content.subtitle}
         </p>
 
-        {/* Steps */}
         <div className="onboarding-body">
           {content.steps.map((step, index) => (
             <div className="onboarding-step" key={index}>
@@ -169,7 +165,6 @@ export function OnboardingModal({ isOpen, onClose, lang, type }: OnboardingModal
           ))}
         </div>
 
-        {/* Notes */}
         {content.notes.length > 0 && (
           <div className="mt-16" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {content.notes.map((note, index) => (
@@ -180,7 +175,6 @@ export function OnboardingModal({ isOpen, onClose, lang, type }: OnboardingModal
           </div>
         )}
 
-        {/* Footer */}
         <div className="onboarding-footer">
           <button className="button" onClick={onClose} style={{ padding: "10px 32px", fontSize: 15 }}>
             {content.gotIt}

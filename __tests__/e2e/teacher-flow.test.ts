@@ -33,14 +33,14 @@ function expectHealthyClient(
 }
 
 test.describe("Public smoke flows", () => {
-  test("home page exposes prototype entry points and landing link", async ({ page }) => {
+  test("home page exposes app entry points and landing link", async ({ page }) => {
     const tracker = collectClientErrors(page);
 
     await page.goto("/?lang=ru");
 
     await expect(page).toHaveURL(/\/\?lang=ru$/);
     await expect(page.getByRole("heading", { name: "SelfReg AI" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Открыть прототип" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Открыть сессию" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Дашборд педагога" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Настройки API" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Лендинг проекта" })).toHaveAttribute(
@@ -182,7 +182,7 @@ test.describe("Public smoke flows", () => {
     await expect(page).toHaveURL(/\/teacher\?lang=ru$/);
     await expect(page.getByText("Дашборд педагога")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Обзор учеников + инфографика" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "📥 CSV экспорт" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "📥 CSV Экспорт" })).toBeVisible();
     const sharedLink = page.getByRole("link", { name: "Старт" }).first();
     await expect(sharedLink).toHaveAttribute("href", /\/adolescent\?childId=/);
     expect(await sharedLink.getAttribute("href")).not.toContain("teacher=");

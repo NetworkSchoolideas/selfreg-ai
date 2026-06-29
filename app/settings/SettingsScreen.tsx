@@ -16,10 +16,10 @@ export function SettingsScreen() {
     title: lang === "en" ? "Connect your own AI API" : "Подключение собственного ИИ API",
     intro:
       lang === "en"
-        ? "The prototype demonstrates BYOK architecture: a team or organization chooses a provider and plugs in its own key. A safe mock mode is available for demos without external spend."
-        : "Прототип показывает архитектуру BYOK: команда или организация выбирает провайдера и подключает свой ключ. Для демонстрации без внешних списаний доступен безопасный mock-режим.",
+        ? "This app supports BYOK architecture: a team or organization chooses a provider and connects its own key. A safe mock mode is available for demos without external spend."
+        : "Приложение поддерживает BYOK-архитектуру: команда или организация выбирает провайдера и подключает свой ключ. Для демонстрации без внешних списаний доступен безопасный mock-режим.",
     home: lang === "en" ? "Home" : "Главная",
-    prototype: lang === "en" ? "Prototype" : "Прототип",
+    sessionApp: lang === "en" ? "Session app" : "Сессия",
     securityTitle: lang === "en" ? "Security rule" : "Правило безопасности",
     securityText:
       lang === "en"
@@ -27,7 +27,7 @@ export function SettingsScreen() {
         : "API-ключ не должен попадать в репозиторий, публичный HTML или клиентские логи. В пилоте используем переменные окружения Vercel или одноразовую проверку ключа на серверном API-слое.",
     variable: lang === "en" ? "Variable" : "Переменная",
     model: lang === "en" ? "Model" : "Модель",
-    docs: lang === "en" ? "Documentation" : "Документация"
+    docs: lang === "en" ? "Documentation" : "Документация",
   };
 
   return (
@@ -44,7 +44,7 @@ export function SettingsScreen() {
             {ui.home}
           </Link>
           <Link className="button" href={withLang("/adolescent", lang)}>
-            {ui.prototype}
+            {ui.sessionApp}
           </Link>
         </div>
       </div>

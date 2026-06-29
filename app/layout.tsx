@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "SelfReg AI",
-  description: "Web prototype for adolescent self-regulation support and teacher dashboard. Bilingual (RU/EN). BYOK AI provider architecture."
+  description: "SelfReg AI for adolescent self-regulation support and teacher analytics. Bilingual (RU/EN). BYOK AI provider architecture."
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

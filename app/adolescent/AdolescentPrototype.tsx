@@ -624,7 +624,7 @@ export function AdolescentPrototype() {
 
 function useUiText(lang: "ru" | "en") {
   return {
-    eyebrow: lang === "en" ? "Prototype for the adolescent" : "Прототип для подростка",
+    eyebrow: lang === "en" ? "Adolescent session" : "Сессия подростка",
     title: lang === "en" ? "Short self-regulation cycle" : "Короткий цикл саморегуляции",
     intro: lang === "en" ? "In 5-7 minutes choose a real situation, move through five steps, and get a clear recommendation." : "За 5-7 минут выбери реальную ситуацию, пройди пять шагов и получи понятную рекомендацию.",
     howTitle: lang === "en" ? "How to use it" : "Как пользоваться",

@@ -48,7 +48,7 @@ export function TeacherDashboard() {
           ? "This tool is designed for educators and psychologists working with adolescents."
           : "Этот инструмент предназначен для педагогов и психологов, работающих с подростками.",
       home: lang === "en" ? "Home" : "Главная",
-      prototype: lang === "en" ? "Run prototype" : "Пройти прототип",
+      prototype: lang === "en" ? "Open session app" : "Открыть сессию",
       students: lang === "en" ? "Students" : "Ученики",
       searchPlaceholder:
         lang === "en" ? "Search by ID, name or class..." : "Поиск по ID, ФИО или классу...",
@@ -84,7 +84,7 @@ export function TeacherDashboard() {
           ? "Context for a new session (study, sport...)"
           : "Контекст новой сессии (учёба, спорт...)",
       quickCreateButton: lang === "en" ? "+ New session" : "+ Новая сессия",
-      openPrototype: lang === "en" ? "Open prototype" : "Открыть прототип",
+      openPrototype: lang === "en" ? "Open session" : "Открыть сессию",
       copyLinkBtn: lang === "en" ? "📋 Link" : "📋 Ссылка",
       deleteStudent: lang === "en" ? "Delete student" : "Удалить ученика",
       analyticsTitle:

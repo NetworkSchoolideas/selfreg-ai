@@ -98,7 +98,7 @@ export function ApiKeyManager({ lang, provider, onKeyChange, onStatusChange }: A
           : "Для GigaChat нужен Authorization Key в формате base64(Client_ID:Client_Secret).",
       testHint:
         lang === "en"
-          ? "Test the key before using the prototype."
+          ? "Test the key before starting a live session."
           : "Проверьте ключ перед запуском прототипа.",
       storageLabel:
         lang === "en"

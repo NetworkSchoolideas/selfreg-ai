@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { LanguageToggle } from "@/app/components/LanguageToggle";
 import { AuthButton } from "@/app/components/AuthButton";
+import { LanguageToggle } from "@/app/components/LanguageToggle";
 import { normalizeAppLang, withLang } from "@/lib/app-i18n";
 
 const projectLandingUrl =
@@ -20,15 +20,15 @@ export function HomeClient() {
           <h1>SelfReg AI</h1>
           <p className="muted">
             {lang === "en"
-              ? "Web prototype: adolescent dialogue, teacher dashboard, and connectable AI through API."
-              : "Веб-прототип: подростковый диалог, педагогический дашборд и подключаемый ИИ через API."}
+              ? "Adolescent self-regulation sessions, teacher analytics, and connectable AI through API."
+              : "Сессии саморегуляции для подростков, аналитика для педагога и подключаемый ИИ через API."}
           </p>
         </div>
         <div className="action-row">
           <AuthButton lang={lang} />
           <LanguageToggle />
           <Link className="button" href={withLang("/adolescent", lang)}>
-            {lang === "en" ? "Open prototype" : "Открыть прототип"}
+            {lang === "en" ? "Open session" : "Открыть сессию"}
           </Link>
           <Link className="button secondary" href={withLang("/teacher", lang)}>
             {lang === "en" ? "Teacher dashboard" : "Дашборд педагога"}
@@ -72,12 +72,12 @@ export function HomeClient() {
       </section>
 
       <section className="panel roadmap">
-        <h2>{lang === "en" ? "What is already demonstrated" : "Что уже демонстрируем"}</h2>
+        <h2>{lang === "en" ? "Current product contour" : "Текущий контур продукта"}</h2>
         <ol>
-          <li>{lang === "en" ? "A working public project page on Vercel." : "Рабочую публичную страницу проекта на Vercel."}</li>
-          <li>{lang === "en" ? "A web prototype of the adolescent self-regulation path." : "Веб-прототип прохождения контура саморегуляции подростком."}</li>
-          <li>{lang === "en" ? "A teacher view with answer interpretation." : "Педагогический экран с интерпретацией ответов."}</li>
-          <li>{lang === "en" ? "A technical path for connecting a custom API key." : "Технический путь к подключению собственного API-ключа."}</li>
+          <li>{lang === "en" ? "Public app entry on Vercel." : "Публичная точка входа приложения на Vercel."}</li>
+          <li>{lang === "en" ? "A complete adolescent self-regulation session flow." : "Полный сценарий прохождения сессии саморегуляции подростком."}</li>
+          <li>{lang === "en" ? "A teacher dashboard with session review and analytics." : "Дашборд педагога с разбором сессий и аналитикой."}</li>
+          <li>{lang === "en" ? "A BYOK path for connecting a custom AI provider key." : "BYOK-контур для подключения собственного ключа ИИ-провайдера."}</li>
         </ol>
         <div className="action-row">
           <Link className="button secondary" href={withLang("/settings", lang)}>
