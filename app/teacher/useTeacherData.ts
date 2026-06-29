@@ -107,8 +107,10 @@ export function useTeacherData({
     }
 
     if (selectedChildId !== childIdFromUrl) {
-      applySelectedChildId(childIdFromUrl);
-      setSelectedSessionIdx(0);
+      queueMicrotask(() => {
+        applySelectedChildId(childIdFromUrl);
+        setSelectedSessionIdx(0);
+      });
     }
 
     urlChildSelectionHandledRef.current = true;

@@ -144,12 +144,17 @@ npm run test:e2e
 ## 🔐 Environment Variables
 
 ```env
+# Public app links
+NEXT_PUBLIC_PROJECT_LANDING_URL=https://selfreg-ai-networkschool.vercel.app
+
 # Supabase (optional — app works with localStorage without it)
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-key
 NEXT_PUBLIC_SUPABASE_ENABLED=false
 ```
+
+`NEXT_PUBLIC_PROJECT_LANDING_URL` controls the landing-page link shown on the home screen. If it is not set, the app falls back to the current production landing URL.
 
 ## 🌐 Bilingual Support
 

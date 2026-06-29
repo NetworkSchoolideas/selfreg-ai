@@ -1,5 +1,8 @@
 import { test, expect, type Page } from "@playwright/test";
 
+const projectLandingUrl =
+  process.env.NEXT_PUBLIC_PROJECT_LANDING_URL || "https://selfreg-ai-networkschool.vercel.app";
+
 function collectClientErrors(page: Page) {
   const pageErrors: string[] = [];
   const consoleErrors: string[] = [];
@@ -30,6 +33,24 @@ function expectHealthyClient(
 }
 
 test.describe("Public smoke flows", () => {
+  test("home page exposes prototype entry points and landing link", async ({ page }) => {
+    const tracker = collectClientErrors(page);
+
+    await page.goto("/?lang=ru");
+
+    await expect(page).toHaveURL(/\/\?lang=ru$/);
+    await expect(page.getByRole("heading", { name: "SelfReg AI" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Открыть прототип" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Дашборд педагога" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Настройки API" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Лендинг проекта" })).toHaveAttribute(
+      "href",
+      projectLandingUrl,
+    );
+
+    expectHealthyClient(tracker);
+  });
+
   test("role selection routes teacher to registration with preselected role", async ({ page }) => {
     const tracker = collectClientErrors(page);
 

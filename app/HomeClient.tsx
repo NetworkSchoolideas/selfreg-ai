@@ -6,6 +6,9 @@ import { LanguageToggle } from "@/app/components/LanguageToggle";
 import { AuthButton } from "@/app/components/AuthButton";
 import { normalizeAppLang, withLang } from "@/lib/app-i18n";
 
+const projectLandingUrl =
+  process.env.NEXT_PUBLIC_PROJECT_LANDING_URL || "https://selfreg-ai-networkschool.vercel.app";
+
 export function HomeClient() {
   const searchParams = useSearchParams();
   const lang = normalizeAppLang(searchParams.get("lang"));
@@ -80,14 +83,10 @@ export function HomeClient() {
           <Link className="button secondary" href={withLang("/settings", lang)}>
             {lang === "en" ? "API settings" : "Настройки API"}
           </Link>
-          {/* 
-            PRODUCTION: Замени эти ссылки на реальные URL после деплоя в Vercel.
-            Лендинг и приложение должны ссылаться друг на друга.
-          */}
-          <a 
-            className="button secondary" 
-            href="https://selfreg-ai-networkschool.vercel.app" 
-            target="_blank" 
+          <a
+            className="button secondary"
+            href={projectLandingUrl}
+            target="_blank"
             rel="noopener noreferrer"
           >
             {lang === "en" ? "Project landing" : "Лендинг проекта"}
