@@ -60,9 +60,11 @@ test.describe("Public smoke flows", () => {
     await expect(page.getByRole("heading", { name: "Выберите вашу роль" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Я учитель" })).toBeVisible();
 
-    await page.getByRole("link", { name: "Я учитель" }).click();
+    await Promise.all([
+      page.waitForURL(/\/auth\/register\?role=teacher&lang=ru$/, { timeout: 15000 }),
+      page.getByRole("link", { name: "Я учитель" }).click(),
+    ]);
 
-    await expect(page).toHaveURL(/\/auth\/register\?role=teacher&lang=ru$/);
     await expect(page.getByRole("heading", { name: "Регистрация" })).toBeVisible();
     await expect(page.locator('button[type="submit"]')).toContainText("Создать аккаунт");
 
@@ -92,6 +94,27 @@ test.describe("Public smoke flows", () => {
     await expect(page.getByRole("heading", { name: "Регистрация успешна!" })).toBeVisible();
     await expect(page.locator(".code-value")).toHaveText("T123456");
     await expect(page.getByRole("link", { name: "Перейти ко входу" })).toBeVisible();
+
+    expectHealthyClient(tracker);
+  });
+
+  test("teacher register success copy uses inline state without browser alert", async ({ page, context }) => {
+    const tracker = collectClientErrors(page);
+    const dialogs: string[] = [];
+
+    page.on("dialog", (dialog) => {
+      dialogs.push(dialog.message());
+      void dialog.dismiss();
+    });
+
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await page.goto("/teacher/register-success?lang=en&teacherCode=T654321");
+
+    const copyButton = page.getByRole("button", { name: "Copy" });
+    await expect(copyButton).toBeVisible();
+    await copyButton.click();
+    await page.waitForTimeout(250);
+    expect(dialogs).toEqual([]);
 
     expectHealthyClient(tracker);
   });
@@ -130,8 +153,7 @@ test.describe("Public smoke flows", () => {
     expect(childId).toBeTruthy();
 
     await page.goto(`/teacher/dashboard/child?childId=${childId}&lang=ru`);
-
-    await expect(page).toHaveURL(new RegExp(`/teacher\\?childId=${childId}&lang=ru$`));
+    await page.waitForURL(new RegExp(`/teacher\\?childId=${childId}&lang=ru$`), { timeout: 15000 });
     await expect(page.locator(".child-header-panel")).toContainText(childId!);
 
     expectHealthyClient(tracker);
@@ -197,6 +219,48 @@ test.describe("Public smoke flows", () => {
     await expect(page.locator(".sessions-header")).toContainText("(1)");
     await expect(page.locator(".sessions-grid")).toContainText(sessionContext);
     await expect(page.locator("main")).toContainText(sessionContext);
+
+    expectHealthyClient(tracker);
+  });
+
+  test("teacher deletes a session through the in-app confirmation dialog", async ({ page }) => {
+    const tracker = collectClientErrors(page);
+    const childName = `Delete flow ${Date.now()}`;
+    const sessionContext = `Session ${Date.now()}`;
+    const dialogs: string[] = [];
+
+    page.on("dialog", (dialog) => {
+      dialogs.push(dialog.message());
+      void dialog.dismiss();
+    });
+
+    await page.addInitScript(() => {
+      window.localStorage.clear();
+      window.localStorage.setItem("selfreg_onboarding_seen_teacher", "1");
+    });
+
+    await page.goto("/teacher?lang=en");
+
+    await page.locator('input[name="childName"]').fill(childName);
+    await page.getByRole("button", { name: "+ Add" }).click();
+
+    const studentHeader = page.locator(".child-header-panel");
+    await expect(studentHeader).toContainText("0 sessions");
+
+    await studentHeader.locator(".session-context-input").fill(sessionContext);
+    await studentHeader.getByRole("button", { name: "+ New session" }).click();
+
+    await expect(page.locator(".sessions-grid")).toContainText(sessionContext);
+    await page.getByRole("button", { name: "Delete selected" }).click();
+
+    const confirmDialog = page.locator(".modal-content");
+    await expect(confirmDialog.getByRole("heading", { name: "Delete session" })).toBeVisible();
+    await confirmDialog.getByRole("button", { name: "Delete", exact: true }).click();
+
+    await expect(page.locator(".undo-bar")).toContainText("Session deleted.");
+    await expect(page.locator(".sessions-header")).toContainText("(0)");
+    await expect(page.locator(".empty-state-dashed")).toContainText("Student has no sessions yet.");
+    expect(dialogs).toEqual([]);
 
     expectHealthyClient(tracker);
   });

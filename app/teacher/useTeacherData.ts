@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { withLang, type AppLang } from "@/lib/app-i18n";
+import type { AppLang } from "@/lib/app-i18n";
 import { ChildrenStorage, createChildId, type Child, type Session } from "@/lib/children-storage";
+import { copyTextToClipboard } from "@/lib/clipboard";
 import { DataService } from "@/lib/data-service";
 import type { TeacherAnalytics } from "@/lib/server-storage";
 import {
@@ -22,6 +23,19 @@ interface UseTeacherDataOptions {
   childIdFromUrl?: string;
   serverBackedDashboard: boolean;
   deferInitialLoad?: boolean;
+}
+
+interface DashboardNotice {
+  tone: "success" | "info" | "error";
+  message: string;
+}
+
+interface DashboardConfirmDialog {
+  title: string;
+  message: string;
+  confirmLabel: string;
+  cancelLabel: string;
+  onConfirm: () => void;
 }
 
 export function useTeacherData({
@@ -45,13 +59,40 @@ export function useTeacherData({
   const [lastDeleted, setLastDeleted] = useState<{ childId: string; session: Session } | null>(null);
   const [analytics, setAnalytics] = useState<TeacherAnalytics | null>(null);
   const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false);
+  const [notice, setNotice] = useState<DashboardNotice | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<DashboardConfirmDialog | null>(null);
   const dashboardTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const selectedChildIntentRef = useRef<string | null>(null);
   const urlChildSelectionHandledRef = useRef(false);
 
+  const messages = useMemo(
+    () => ({
+      deleteStudentTitle: lang === "en" ? "Delete student" : "Удалить ученика",
+      deleteStudentMessage: (childId: string) =>
+        lang === "en"
+          ? `Delete student ${childId} and all linked sessions? This action cannot be undone.`
+          : `Удалить ученика ${childId} и все связанные сессии? Это действие нельзя отменить.`,
+      deleteSessionTitle: lang === "en" ? "Delete session" : "Удалить сессию",
+      deleteSessionMessage:
+        lang === "en"
+          ? "Delete the selected session? It will disappear from the student's history."
+          : "Удалить выбранную сессию? Она исчезнет из истории ученика.",
+      confirmDelete: lang === "en" ? "Delete" : "Удалить",
+      cancel: lang === "en" ? "Cancel" : "Отмена",
+      allLinksCopied: (count: number) =>
+        lang === "en" ? `${count} links copied` : `Скопировано ссылок: ${count}`,
+      childLinkCopied: lang === "en" ? "Student link copied" : "Ссылка ученика скопирована",
+      copyFailed:
+        lang === "en"
+          ? "Failed to copy the link. Check browser clipboard permissions."
+          : "Не удалось скопировать ссылку. Проверьте доступ браузера к буферу обмена.",
+    }),
+    [lang],
+  );
+
   const selectedChild = useMemo(
     () => children.find((child) => child.id === selectedChildId) || children[0] || null,
-    [children, selectedChildId]
+    [children, selectedChildId],
   );
 
   function getFreshChildren() {
@@ -71,6 +112,13 @@ export function useTeacherData({
       callback();
     }, delay);
     dashboardTimeoutsRef.current.push(timeoutId);
+  }
+
+  function showNotice(nextNotice: DashboardNotice, delay = 2200) {
+    setNotice(nextNotice);
+    scheduleDashboardTimeout(() => {
+      setNotice((current) => (current === nextNotice ? null : current));
+    }, delay);
   }
 
   function closeOnboarding() {
@@ -143,16 +191,12 @@ export function useTeacherData({
       JSON.stringify({
         childId: selectedChildId,
         sessionIdx: selectedSessionIdx,
-      })
+      }),
     );
   }, [selectedChildId, selectedSessionIdx]);
 
   useEffect(() => {
-    if (deferInitialLoad) {
-      return;
-    }
-
-    if (!serverBackedDashboard) {
+    if (deferInitialLoad || !serverBackedDashboard) {
       return;
     }
 
@@ -166,6 +210,7 @@ export function useTeacherData({
           ? `?teacherId=${encodeURIComponent(teacherIdFromUrl)}&analytics=true`
           : "";
         const response = await fetch(`/api/teacher-data${query}`, { cache: "no-store" });
+
         if (!response.ok) {
           if (active) {
             setChildren([]);
@@ -242,11 +287,7 @@ export function useTeacherData({
   }, [serverBackedDashboard, teacherIdFromUrl, childIdFromUrl, deferInitialLoad]);
 
   useEffect(() => {
-    if (deferInitialLoad) {
-      return;
-    }
-
-    if (serverBackedDashboard) {
+    if (deferInitialLoad || serverBackedDashboard) {
       return;
     }
 
@@ -306,6 +347,7 @@ export function useTeacherData({
 
         let restoredChildId: string | null = null;
         let restoredSessionIdx = 0;
+
         try {
           const saved = localStorage.getItem(DASHBOARD_STATE_KEY);
           if (saved) {
@@ -360,7 +402,7 @@ export function useTeacherData({
 
     const context = customContext?.trim()
       ? customContext.trim()
-      : `${selectedChild.name} — ${new Date().toLocaleDateString(locale)}`;
+      : `${selectedChild.name} - ${new Date().toLocaleDateString(locale)}`;
 
     const newSession: Session = {
       context,
@@ -378,18 +420,11 @@ export function useTeacherData({
     })();
 
     setSelectedSessionIdx(0);
-
     setHighlightedSessionUpdatedAt(newSession.updatedAt);
-    scheduleDashboardTimeout(() => {
-      setHighlightedSessionUpdatedAt(null);
-    }, 2500);
-
+    scheduleDashboardTimeout(() => setHighlightedSessionUpdatedAt(null), 2500);
     setNewSessionHint({ context: newSession.context });
     setLastDeleted(null);
-
-    scheduleDashboardTimeout(() => {
-      setNewSessionHint(null);
-    }, 12000);
+    scheduleDashboardTimeout(() => setNewSessionHint(null), 12000);
   }
 
   const distribution = useMemo(
@@ -397,12 +432,12 @@ export function useTeacherData({
       selectedChild
         ? getScenarioDistribution(selectedChild.sessions)
         : { a: 0, b: 0, clarify: 0, skipped: 0, raw: { a: 0, b: 0, clarify: 0, skipped: 0, total: 0 } },
-    [selectedChild]
+    [selectedChild],
   );
 
   const stageSupport = useMemo(
     () => (selectedChild ? getStageSupport(selectedChild.sessions) : []),
-    [selectedChild]
+    [selectedChild],
   );
 
   const totalRecords = distribution.raw.total || 0;
@@ -431,17 +466,17 @@ export function useTeacherData({
           }
           return false;
         }),
-    [children, childSearch]
+    [children, childSearch],
   );
 
   const sortedSessions = useMemo(
     () =>
       selectedChild
         ? [...selectedChild.sessions].sort(
-            (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+            (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
           )
         : [],
-    [selectedChild]
+    [selectedChild],
   );
 
   const currentSession = sortedSessions[selectedSessionIdx] || null;
@@ -465,33 +500,40 @@ export function useTeacherData({
     if (!selectedChild) {
       return;
     }
-    if (!confirm(`Удалить ученика ${selectedChild.id} и все его сессии? Это необратимо.`)) {
-      return;
-    }
 
-    void (async () => {
-      if (serverBackedDashboard) {
-        try {
-          const teacherQuery = teacherIdFromUrl ? `&teacherId=${encodeURIComponent(teacherIdFromUrl)}` : "";
-          await fetch(`/api/children?childId=${encodeURIComponent(selectedChild.id)}${teacherQuery}`, {
-            method: "DELETE",
-          });
-        } catch {}
-      }
+    setConfirmDialog({
+      title: messages.deleteStudentTitle,
+      message: messages.deleteStudentMessage(selectedChild.id),
+      confirmLabel: messages.confirmDelete,
+      cancelLabel: messages.cancel,
+      onConfirm: () => {
+        setConfirmDialog(null);
 
-      await DataService.deleteChild(selectedChild.id);
-      const fresh = await getFreshChildren();
-      setChildren(fresh);
-      setLastDeleted(null);
-      setNewSessionHint(null);
+        void (async () => {
+          if (serverBackedDashboard) {
+            try {
+              const teacherQuery = teacherIdFromUrl ? `&teacherId=${encodeURIComponent(teacherIdFromUrl)}` : "";
+              await fetch(`/api/children?childId=${encodeURIComponent(selectedChild.id)}${teacherQuery}`, {
+                method: "DELETE",
+              });
+            } catch {}
+          }
 
-      if (fresh.length > 0) {
-        applySelectedChildId(fresh[0].id);
-        setSelectedSessionIdx(0);
-      } else {
-        applySelectedChildId(null);
-      }
-    })();
+          await DataService.deleteChild(selectedChild.id);
+          const fresh = await getFreshChildren();
+          setChildren(fresh);
+          setLastDeleted(null);
+          setNewSessionHint(null);
+
+          if (fresh.length > 0) {
+            applySelectedChildId(fresh[0].id);
+            setSelectedSessionIdx(0);
+          } else {
+            applySelectedChildId(null);
+          }
+        })();
+      },
+    });
   }
 
   function buildPrototypeHref(child: Child) {
@@ -500,16 +542,26 @@ export function useTeacherData({
 
   function copyAllLinks() {
     const links = children.map((child) => `${window.location.origin}${buildPrototypeHref(child)}`).join("\n");
-    navigator.clipboard.writeText(links);
-    alert(`Скопировано ${children.length} ссылок`);
+    void copyTextToClipboard(links)
+      .then(() => {
+        showNotice({ tone: "success", message: messages.allLinksCopied(children.length) });
+      })
+      .catch(() => {
+        showNotice({ tone: "error", message: messages.copyFailed }, 3200);
+      });
   }
 
   function copyChildLink(child: Child) {
     const link = `${window.location.origin}${buildPrototypeHref(child)}`;
-    navigator.clipboard.writeText(link).then(() => {
-      setCopiedChildId(child.id);
-      scheduleDashboardTimeout(() => setCopiedChildId(null), 1400);
-    });
+    void copyTextToClipboard(link)
+      .then(() => {
+        setCopiedChildId(child.id);
+        showNotice({ tone: "success", message: messages.childLinkCopied });
+        scheduleDashboardTimeout(() => setCopiedChildId(null), 1400);
+      })
+      .catch(() => {
+        showNotice({ tone: "error", message: messages.copyFailed }, 3200);
+      });
   }
 
   async function addChild(name: string) {
@@ -562,20 +614,26 @@ export function useTeacherData({
     if (!selectedChild || !currentSession) {
       return;
     }
-    if (!confirm("Удалить эту сессию?")) {
-      return;
-    }
 
-    setLastDeleted({ childId: selectedChild.id, session: { ...currentSession } });
+    setConfirmDialog({
+      title: messages.deleteSessionTitle,
+      message: messages.deleteSessionMessage,
+      confirmLabel: messages.confirmDelete,
+      cancelLabel: messages.cancel,
+      onConfirm: () => {
+        setConfirmDialog(null);
+        setLastDeleted({ childId: selectedChild.id, session: { ...currentSession } });
 
-    void (async () => {
-      await DataService.deleteSession(selectedChild.id, currentSession.updatedAt);
-      const fresh = await getFreshChildren();
-      setChildren(fresh);
-      setSelectedSessionIdx(0);
-    })();
+        void (async () => {
+          await DataService.deleteSession(selectedChild.id, currentSession.updatedAt);
+          const fresh = await getFreshChildren();
+          setChildren(fresh);
+          setSelectedSessionIdx(0);
+        })();
 
-    scheduleDashboardTimeout(() => setLastDeleted(null), 12000);
+        scheduleDashboardTimeout(() => setLastDeleted(null), 12000);
+      },
+    });
   }
 
   function undoLastDelete() {
@@ -622,7 +680,7 @@ export function useTeacherData({
             const escaped = cell.replace(/"/g, '""');
             return /[,"\n]/.test(cell) ? `"${escaped}"` : escaped;
           })
-          .join(",")
+          .join(","),
       )
       .join("\n");
 
@@ -651,6 +709,8 @@ export function useTeacherData({
     lastDeleted,
     analytics,
     isInitialLoadComplete,
+    notice,
+    confirmDialog,
     distribution,
     stageSupport,
     totalRecords,
@@ -673,5 +733,7 @@ export function useTeacherData({
     deleteSelectedSession,
     undoLastDelete,
     exportToCsv,
+    dismissNotice: () => setNotice(null),
+    closeConfirmDialog: () => setConfirmDialog(null),
   };
 }

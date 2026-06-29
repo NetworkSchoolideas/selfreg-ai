@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { useSearchParams } from "next/navigation";
+import { ConfirmDialog } from "@/app/components/ConfirmDialog";
 import { LanguageToggle } from "@/app/components/LanguageToggle";
 import { OnboardingModal } from "@/app/components/OnboardingModal";
+import { ToastNotice } from "@/app/components/ToastNotice";
 import { normalizeAppLang, withLang } from "@/lib/app-i18n";
 import type { RecordItem } from "@/lib/children-storage";
 import ClassStats from "@/components/analytics/ClassStats";
@@ -174,6 +176,8 @@ export function TeacherDashboard() {
     lastDeleted,
     analytics,
     isInitialLoadComplete,
+    notice,
+    confirmDialog,
     distribution,
     stageSupport,
     totalRecords,
@@ -196,6 +200,8 @@ export function TeacherDashboard() {
     deleteSelectedSession,
     undoLastDelete,
     exportToCsv,
+    dismissNotice,
+    closeConfirmDialog,
   } = useTeacherData({
     lang,
     locale,
@@ -208,6 +214,16 @@ export function TeacherDashboard() {
   return (
     <main className="shell">
       <OnboardingModal isOpen={showOnboarding} onClose={closeOnboarding} lang={lang} type="teacher" />
+      <ConfirmDialog
+        isOpen={Boolean(confirmDialog)}
+        title={confirmDialog?.title || ""}
+        message={confirmDialog?.message || ""}
+        confirmLabel={confirmDialog?.confirmLabel || ""}
+        cancelLabel={confirmDialog?.cancelLabel || ""}
+        tone="danger"
+        onConfirm={() => confirmDialog?.onConfirm()}
+        onCancel={closeConfirmDialog}
+      />
 
       <div className="topbar app-header">
         <div>
@@ -229,6 +245,13 @@ export function TeacherDashboard() {
           </Link>
         </div>
       </div>
+
+      <ToastNotice
+        isVisible={Boolean(notice)}
+        message={notice?.message || ""}
+        tone={notice?.tone}
+        onDismiss={dismissNotice}
+      />
 
       <div className="dashboard-layout">
         <TeacherSidebar

@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { AppLang } from "@/lib/app-i18n";
+import { copyTextToClipboard } from "@/lib/clipboard";
 import { ErrorBoundary } from "@/app/components/ErrorBoundary";
 
 function TeacherRegisterSuccessPage() {
@@ -13,6 +14,7 @@ function TeacherRegisterSuccessPage() {
 
   const [countdown, setCountdown] = useState(10);
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState(false);
   const teacherCode =
     searchParams.get("teacherCode") ||
     (typeof window !== "undefined" ? sessionStorage.getItem("teacher_code") || "" : "");
@@ -24,6 +26,7 @@ function TeacherRegisterSuccessPage() {
       code: "Код учителя",
       copy: "Копировать",
       copied: "Скопировано!",
+      copyError: "Не удалось скопировать автоматически. Скопируйте код вручную.",
       saveCode: "Сохраните этот код: ученикам он понадобится, чтобы привязаться к вашему аккаунту.",
       nextSteps: "Дальнейшие шаги:",
       step1: "Поделитесь кодом с учениками",
@@ -32,7 +35,6 @@ function TeacherRegisterSuccessPage() {
       goToLogin: "Перейти ко входу",
       autoRedirect: "Автоматическое перенаправление через",
       loading: "Загрузка...",
-      copiedAlert: "Код скопирован!",
     },
     en: {
       title: "Registration successful!",
@@ -40,6 +42,7 @@ function TeacherRegisterSuccessPage() {
       code: "Teacher code",
       copy: "Copy",
       copied: "Copied!",
+      copyError: "Automatic copy is unavailable. Copy the code manually.",
       saveCode: "Save this code: students will need it to link to your account.",
       nextSteps: "Next steps:",
       step1: "Share the code with students",
@@ -48,7 +51,6 @@ function TeacherRegisterSuccessPage() {
       goToLogin: "Go to login",
       autoRedirect: "Automatic redirect in",
       loading: "Loading...",
-      copiedAlert: "Code copied!",
     },
   };
 
@@ -69,14 +71,14 @@ function TeacherRegisterSuccessPage() {
 
   const copyToClipboard = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(teacherCode);
+      await copyTextToClipboard(teacherCode);
+      setCopyError(false);
       setCopied(true);
       setTimeout(() => setCopied(false), 1400);
-      alert(t.copiedAlert);
-    } catch (err) {
-      console.error("Failed to copy:", err);
+    } catch {
+      setCopyError(true);
     }
-  }, [teacherCode, t.copiedAlert]);
+  }, [teacherCode]);
 
   if (!teacherCode) {
     return (
@@ -103,6 +105,11 @@ function TeacherRegisterSuccessPage() {
           <button onClick={copyToClipboard} className="copy-btn">
             {copied ? t.copied : t.copy}
           </button>
+          {copyError && (
+            <div className="mt-8 fs-13" style={{ color: "#b45309" }}>
+              {t.copyError}
+            </div>
+          )}
         </div>
 
         <div className="warning-box mb-24">{t.saveCode}</div>
