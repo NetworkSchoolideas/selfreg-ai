@@ -19,6 +19,7 @@ import type { RecordItem, CompletedSession } from "@/types/session";
 import { useSessionSubmit } from "@/hooks/useSessionSubmit";
 import { useSessionHistory } from "@/hooks/useSessionHistory";
 import { buildSessionSummary } from "@/lib/session-summary";
+import { resolveTeacherLinkContext } from "@/lib/teacher-link";
 
 const STORAGE_KEY = "selfreg_demo_session";
 
@@ -35,7 +36,11 @@ export function AdolescentPrototype() {
   const searchParams = useSearchParams();
   const lang = (searchParams.get("lang") === "en" ? "en" : "ru") as AppLang;
   const childIdFromUrl = searchParams.get("childId");
-  const teacherIdFromUrl = searchParams.get("teacher");
+  const explicitTeacherIdFromUrl = searchParams.get("teacherId");
+  const explicitTeacherCodeFromUrl = searchParams.get("teacherCode");
+  const legacyTeacherLink = resolveTeacherLinkContext(searchParams.get("teacher"));
+  const teacherIdFromUrl = explicitTeacherIdFromUrl || legacyTeacherLink.teacherIdFromUrl;
+  const initialTeacherCode = explicitTeacherCodeFromUrl || legacyTeacherLink.teacherCodeFromUrl || "";
   const ui = useUiText(lang);
   const initialContext = lang === "en" ? "study project" : "учебный проект";
 
@@ -69,7 +74,7 @@ export function AdolescentPrototype() {
   const [participantClass, setParticipantClass] = useState("");
   const [isRegistered, setIsRegistered] = useState(false);
   const [consentGiven, setConsentGiven] = useState(false);
-  const [teacherCode, setTeacherCode] = useState(teacherIdFromUrl ?? "");
+  const [teacherCode, setTeacherCode] = useState(initialTeacherCode);
 
   // UI-only state
   const [showHistory, setShowHistory] = useState(true);
@@ -82,6 +87,29 @@ export function AdolescentPrototype() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const clarifyResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasActiveChild = isRegistered || Boolean(currentChildId);
+
+  const linkChildToTeacherByCode = useCallback(async (childId: string, rawTeacherCode: string) => {
+    const normalizedTeacherCode = rawTeacherCode.trim();
+    if (!normalizedTeacherCode) {
+      return;
+    }
+
+    try {
+      const joinResponse = await fetch("/api/join-teacher", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ teacherCode: normalizedTeacherCode, childId }),
+      });
+
+      if (!joinResponse.ok) {
+        return;
+      }
+
+      await joinResponse.json();
+    } catch (err) {
+      console.error("[Join Teacher] Error:", err);
+    }
+  }, []);
 
   // Onboarding check on first visit
   useEffect(() => {
@@ -112,23 +140,7 @@ export function AdolescentPrototype() {
       // 1. Пробуем DataService (Supabase → localStorage)
       const found = await DataService.getChild(childIdFromUrl);
       if (found && active) {
-        // Link child to teacher if teacherCode was provided
-        const enteredTeacherCode = teacherCode.trim();
-        if (enteredTeacherCode) {
-          try {
-            const joinResponse = await fetch("/api/join-teacher", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ teacherCode: enteredTeacherCode, childId: found.id }),
-            });
-            if (joinResponse.ok) {
-              const joinResult = await joinResponse.json();
-              console.log("[Join Teacher] Successfully linked to:", joinResult.teacherName);
-            }
-          } catch (err) {
-            console.error("[Join Teacher] Error:", err);
-          }
-        }
+        await linkChildToTeacherByCode(found.id, teacherCode);
         const sessionsCount = found.sessions?.length || 0;
         const name = sessionsCount > 0 ? `${found.name} (${sessionsCount})` : found.name;
         setCurrentChildName(name);
@@ -172,7 +184,7 @@ export function AdolescentPrototype() {
     return () => {
       active = false;
     };
-  }, [childIdFromUrl, teacherCode]);
+  }, [childIdFromUrl, teacherCode, linkChildToTeacherByCode]);
 
   // Restore pending history insight after refresh
   useEffect(() => {
@@ -221,7 +233,8 @@ export function AdolescentPrototype() {
     if (!fio || !klass || !consentGiven || isRegistering) return;
 
     const anonId = generateAnonId(fio, klass);
-    const teacherId = teacherCode.trim() || teacherIdFromUrl || undefined;
+    const enteredTeacherCode = teacherCode.trim();
+    const teacherId = teacherIdFromUrl || undefined;
     const consentTimestamp = new Date().toISOString();
 
     setIsRegistering(true);
@@ -244,23 +257,7 @@ export function AdolescentPrototype() {
         const payload = await response.json();
         if (payload?.child) {
           await DataService.saveChild(payload.child);
-          // Link child to teacher if teacherCode was provided
-          const enteredTeacherCode = teacherCode.trim();
-          if (enteredTeacherCode) {
-            try {
-              const joinResponse = await fetch("/api/join-teacher", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ teacherCode: enteredTeacherCode, childId: payload.child.id }),
-              });
-              if (joinResponse.ok) {
-                const joinResult = await joinResponse.json();
-                console.log("[Join Teacher] Successfully linked to:", joinResult.teacherName);
-              }
-            } catch (err) {
-              console.error("[Join Teacher] Error:", err);
-            }
-          }
+          await linkChildToTeacherByCode(payload.child.id, enteredTeacherCode);
           setCurrentChildId(payload.child.id);
           setCurrentChildName(`${fio} (${klass})`);
           setIsRegistered(true);
@@ -283,12 +280,13 @@ export function AdolescentPrototype() {
       consentTimestamp,
     };
     await DataService.saveChild(localChild);
+    await linkChildToTeacherByCode(localChild.id, enteredTeacherCode);
     setCurrentChildId(localChild.id);
     setCurrentChildName(`${fio} (${klass})`);
     setIsRegistered(true);
     setChildLookupFailed(false);
     setIsRegistering(false);
-  }, [participantName, participantClass, consentGiven, teacherCode, teacherIdFromUrl, isRegistering]);
+  }, [participantName, participantClass, consentGiven, teacherCode, teacherIdFromUrl, isRegistering, linkChildToTeacherByCode]);
 
   // Restart handler
   const handleRestart = useCallback(() => {

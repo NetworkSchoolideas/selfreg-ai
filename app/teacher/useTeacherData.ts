@@ -10,6 +10,7 @@ import {
   getScenarioDistribution,
   getStageSupport,
 } from "@/lib/teacher-dashboard-analytics";
+import { buildAdolescentPrototypeHref } from "@/lib/teacher-link";
 
 const DASHBOARD_STATE_KEY = "selfreg_dashboard_state";
 const ONBOARDING_SEEN_KEY = "selfreg_onboarding_seen_teacher";
@@ -484,9 +485,7 @@ export function useTeacherData({
   }
 
   function buildPrototypeHref(child: Child) {
-    const teacherParam = child.teacherId || teacherIdFromUrl;
-    const suffix = teacherParam ? `&teacher=${encodeURIComponent(teacherParam)}` : "";
-    return withLang(`/adolescent?childId=${child.id}${suffix}`, lang);
+    return buildAdolescentPrototypeHref(child.id, lang);
   }
 
   function copyAllLinks() {

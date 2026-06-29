@@ -161,6 +161,9 @@ test.describe("Public smoke flows", () => {
     await expect(page.getByText("Дашборд педагога")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Обзор учеников + инфографика" })).toBeVisible();
     await expect(page.getByRole("button", { name: "📥 CSV экспорт" })).toBeVisible();
+    const sharedLink = page.getByRole("link", { name: "Старт" }).first();
+    await expect(sharedLink).toHaveAttribute("href", /\/adolescent\?childId=/);
+    expect(await sharedLink.getAttribute("href")).not.toContain("teacher=");
 
     expectHealthyClient(tracker);
   });
