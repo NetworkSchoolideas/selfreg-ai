@@ -1,188 +1,158 @@
-﻿# Deployment Guide - SelfReg AI
+# Deployment Guide - SelfReg AI
 
-## Quick Deploy
+## What must be true before deploy
 
-### Vercel (Recommended)
+The current app expects:
 
-1. **Connect GitHub Repository**
-   - Push code to GitHub
-   - Import repository in [Vercel Dashboard](https://vercel.com/new)
+- Next.js app on Vercel or any Node-compatible host
+- Supabase Auth enabled
+- `profiles`, `children`, `sessions`, and `session_records` tables present
+- RLS policies applied to the current schema
+- server-side env for Supabase admin access
 
-2. **Configure Environment Variables**
-   ```
-   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-   SUPABASE_SERVICE_ROLE_KEY=your_service_key (for server functions)
-   ```
+The old `teachers` table flow is no longer the source of truth. Teacher role and teacher code now live in `profiles`, and teacher code is stored in `profiles.metadata.teacher_code`.
 
-3. **Deploy**
-   - Vercel auto-detects Next.js
-   - Click "Deploy"
-   - Done! 🎉
+## Recommended deployment path
 
-### Manual Build
+### 1. Prepare Supabase
 
-```bash
-# Install dependencies
-npm install
+Follow [supabase/SETUP.md](supabase/SETUP.md) to create the current schema.
 
-# Build for production
-npm run build
+Then apply:
 
-# Start production server
-npm start
-```
+- [supabase/migrations/001-rls-policies.sql](supabase/migrations/001-rls-policies.sql)
 
-## Environment Setup
+### 2. Configure environment variables
 
-### Required Variables
-
-| Variable | Description | Where to get |
-|----------|-------------|--------------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | Supabase Dashboard → Settings → API |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public anon key | Supabase Dashboard → Settings → API |
-| `SUPABASE_SERVICE_ROLE_KEY` | Service role key (server-only) | Supabase Dashboard → Settings → API |
-
-### `.env.local` Template
+Minimum required for production:
 
 ```env
+NEXT_PUBLIC_SUPABASE_ENABLED=true
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+APP_BASE_URL=https://your-app-domain.vercel.app
+NEXT_PUBLIC_PROJECT_LANDING_URL=https://your-landing-domain.vercel.app
 ```
 
-## Database Setup
+Optional provider env:
 
-### 1. Create Tables
-
-Run in Supabase SQL Editor:
-
-```sql
--- Teachers table
-CREATE TABLE teachers (
-  id UUID PRIMARY KEY REFERENCES auth.users(id),
-  email TEXT NOT NULL,
-  teacher_code TEXT UNIQUE NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Children table
-CREATE TABLE children (
-  id UUID PRIMARY KEY REFERENCES auth.users(id),
-  email TEXT NOT NULL,
-  name TEXT NOT NULL,
-  class_name TEXT NOT NULL,
-  teacher_id UUID REFERENCES teachers(id),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Sessions table
-CREATE TABLE sessions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  child_id UUID REFERENCES children(id) NOT NULL,
-  session_date TIMESTAMPTZ DEFAULT NOW(),
-  duration INTEGER,
-  data JSONB,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+```env
+DEFAULT_AI_PROVIDER=mock
+GITHUB_MODELS_TOKEN=
+GITHUB_MODELS_MODEL=openai/gpt-4o-mini
+OPENROUTER_API_KEY=
+OPENROUTER_MODEL=openrouter/free
+AI_GATEWAY_API_KEY=
+AI_GATEWAY_MODEL=openai/gpt-oss-120b
+GIGACHAT_CREDENTIALS=
+GIGACHAT_SCOPE=GIGACHAT_API_PERS
+GIGACHAT_AUTH_URL=https://ngw.devices.sberbank.ru:9443/api/v2/oauth
+GIGACHAT_API_URL=https://gigachat.devices.sberbank.ru/api/v1/chat/completions
 ```
 
-### 2. Apply RLS Policies
+Security env:
 
-Run the migration from `supabase/migrations/001-rls-policies.sql`
+```env
+ALLOW_EPHEMERAL_USER_KEYS=true
+ALLOW_STORED_USER_KEYS=false
+APP_ENCRYPTION_KEY=
+```
 
-### 3. Enable Authentication
+If `ALLOW_STORED_USER_KEYS=true`, `APP_ENCRYPTION_KEY` must be set.
 
-- Go to Authentication → Providers
-- Enable Email provider
-- Disable email confirmation (for dev)
+### 3. Deploy to Vercel
 
-## Production Checklist
+1. Push the repo to GitHub.
+2. Import the project into [Vercel](https://vercel.com/new).
+3. Add the environment variables above.
+4. Deploy.
 
-### Before Deploy
+### 4. Set Supabase Auth URLs
 
-- [ ] Set all environment variables
-- [ ] Apply database migrations
-- [ ] Enable RLS policies
-- [ ] Test user registration flow
-- [ ] Test teacher-student linking
-- [ ] Verify analytics load
-- [ ] Check mobile responsiveness
-- [ ] Review error logs
+In Supabase Auth settings, add:
 
-### Post-Deploy
+- Site URL: your production app URL
+- Redirect URL: `https://your-app-domain.vercel.app/auth/callback`
 
-- [ ] Monitor Vercel analytics
-- [ ] Set up error tracking (Sentry)
-- [ ] Configure custom domain (optional)
-- [ ] Set up SSL certificates
-- [ ] Configure backup strategy
+If you use preview deployments, add the preview domain pattern or explicit preview callback URLs as well.
 
-## Monitoring
+## Local production check
 
-### Vercel Analytics
-
-- View in Vercel Dashboard → Analytics
-- Track:
-  - Page views
-  - Performance metrics
-  - Geographic distribution
-
-### Error Tracking
-
-Recommended: Sentry
+Run these before any release:
 
 ```bash
-npm install @sentry/nextjs
-npx @sentry/wizard@latest -i nextjs
+npm run check
+npm run build
+npm run test:e2e
 ```
 
-## Scaling
+## Release checklist
 
-### Database Optimization
+### App readiness
 
-```sql
--- Add indexes for common queries
-CREATE INDEX idx_children_teacher ON children(teacher_id);
-CREATE INDEX idx_sessions_child ON sessions(child_id);
-CREATE INDEX idx_teachers_code ON teachers(teacher_code);
-```
+- [ ] `npm run check` passes
+- [ ] `npm run build` passes
+- [ ] `npm run test:e2e` passes
+- [ ] Home page opens and landing link points to the correct environment URL
+- [ ] Teacher registration completes and shows a teacher code
+- [ ] Teacher login reaches `/teacher`
+- [ ] Student link or teacher-code join flow links the child to the correct teacher
+- [ ] Teacher dashboard loads server-backed data
+- [ ] Session sync writes `sessions` and `session_records`
 
-### CDN Configuration
+### Supabase readiness
 
-Vercel auto-configures CDN. For custom:
-- Enable edge caching
-- Configure cache headers
-- Set up image optimization
+- [ ] `profiles`, `children`, `sessions`, `session_records` exist
+- [ ] RLS SQL from `supabase/migrations/001-rls-policies.sql` is applied
+- [ ] Email auth is enabled
+- [ ] OAuth callback URL is configured if Google auth is used
+- [ ] `SUPABASE_SERVICE_ROLE_KEY` is present in the app host
+
+### Operational readiness
+
+- [ ] `APP_BASE_URL` matches the production app origin
+- [ ] `NEXT_PUBLIC_PROJECT_LANDING_URL` matches the production landing origin
+- [ ] Error logs are monitored in Vercel
+- [ ] Supabase project backups and access controls are reviewed
 
 ## Troubleshooting
 
-### Common Issues
+### `Supabase admin not configured`
 
-**Build fails:**
-```bash
-npm run build  # Check errors locally first
-```
+The server-side key is missing. Check:
 
-**Supabase connection error:**
-- Verify environment variables
-- Check Supabase project status
-- Validate API keys
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_SECRET_KEY` fallback if you intentionally use that name
 
-**RLS blocking access:**
-- Review policies in Supabase Dashboard
-- Check user roles in profiles table
-- Test with service_role key for debugging
+### Auth works, but teacher/student linking fails
 
-**Mobile layout broken:**
-- Clear browser cache
-- Check viewport meta tag
-- Verify CSS media queries
+Check:
 
-## Support
+- teacher role is stored in `profiles.role`
+- teacher code exists in `profiles.metadata.teacher_code`
+- child row exists in `children`
+- `children.teacher_id` updates are allowed through the server route
 
-- Docs: [vercel.com/docs](https://vercel.com/docs)
-- Supabase: [supabase.com/docs](https://supabase.com/docs)
-- Next.js: [nextjs.org/docs](https://nextjs.org/docs)
+### Teacher dashboard opens but shows local fallback only
+
+Check:
+
+- `NEXT_PUBLIC_SUPABASE_ENABLED=true`
+- public Supabase URL and anon key are set
+- teacher data exists in `children`, `sessions`, and `session_records`
+
+### OAuth redirects back to login with `auth=error`
+
+Check:
+
+- Supabase Site URL
+- `/auth/callback` redirect URL
+- `APP_BASE_URL`
+- provider configuration in Supabase Auth
+
+## Notes
+
+- The app can still run in mock mode without external AI provider keys.
+- The data model already supports server-backed teacher analytics and session history.
+- The most fragile production edge is auth + teacher/student linking, not the static app shell.

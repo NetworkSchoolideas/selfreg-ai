@@ -1,92 +1,163 @@
-﻿# Инструкция по настройке Supabase
+# Supabase Setup for SelfReg AI
 
-## 1. Создание проекта
+This project no longer uses a dedicated `teachers` table as the primary auth model.
 
-1. Перейдите на [supabase.com](https://supabase.com)
-2. Нажмите **Start your project**
-3. Выберите регион (близкий к вам)
-4. Задайте пароль для базы данных
-5. Дождитесь создания проекта (~2 минуты)
+Current source of truth:
 
-## 2. Настройка таблиц
+- `profiles` - auth-linked user profile with role and metadata
+- `children` - student/participant records linked to a teacher and optionally to an auth user
+- `sessions` - saved self-regulation sessions
+- `session_records` - per-stage records inside each session
 
-### Таблица `teachers`
+Teacher code is stored in:
 
-```sql
-CREATE TABLE teachers (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  email TEXT NOT NULL,
-  teacher_code TEXT UNIQUE NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+- `profiles.metadata.teacher_code`
 
-CREATE INDEX idx_teachers_code ON teachers(teacher_code);
-```
+Teacher school or organization can also be stored in:
 
-### Таблица `children`
+- `profiles.metadata.school`
 
-```sql
-CREATE TABLE children (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  email TEXT NOT NULL,
-  name TEXT NOT NULL,
-  class_name TEXT NOT NULL,
-  teacher_id UUID REFERENCES teachers(id) ON DELETE SET NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+## 1. Create a Supabase project
 
-CREATE INDEX idx_children_teacher ON children(teacher_id);
-CREATE INDEX idx_children_email ON children(email);
-```
+1. Create a new project in [Supabase](https://supabase.com).
+2. Save the project URL, anon key, and service role key.
+3. Enable Email auth.
+4. Configure OAuth providers only if you need them.
 
-### Таблица `sessions`
+## 2. Create the current schema
+
+Run this SQL in the Supabase SQL editor.
 
 ```sql
-CREATE TABLE sessions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  child_id UUID REFERENCES children(id) ON DELETE CASCADE NOT NULL,
-  session_date TIMESTAMPTZ DEFAULT NOW(),
-  duration INTEGER,
-  data JSONB,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+create extension if not exists pgcrypto;
+
+create table if not exists public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  email text not null,
+  full_name text,
+  avatar_url text,
+  role text not null check (role in ('teacher', 'student')),
+  metadata jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
-CREATE INDEX idx_sessions_child ON sessions(child_id);
-CREATE INDEX idx_sessions_date ON sessions(session_date);
+create table if not exists public.children (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  class text not null default '',
+  user_id uuid references auth.users(id) on delete set null,
+  teacher_id uuid references public.profiles(id) on delete set null,
+  consent_given boolean default false,
+  consent_timestamp timestamptz,
+  metadata jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.sessions (
+  id uuid primary key default gen_random_uuid(),
+  child_id uuid not null references public.children(id) on delete cascade,
+  context text not null,
+  final_note text,
+  status text not null default 'in_progress' check (status in ('in_progress', 'completed')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  completed_at timestamptz,
+  lang text check (lang in ('ru', 'en')),
+  history_insight text,
+  adolescent_feedback jsonb
+);
+
+create table if not exists public.session_records (
+  id uuid primary key default gen_random_uuid(),
+  session_id uuid not null references public.sessions(id) on delete cascade,
+  stage_id integer not null,
+  stage_title text not null,
+  scenario text not null,
+  event_type text check (event_type in ('answer', 'clarify_request', 'back', 'skip')),
+  provider text,
+  model text,
+  response_mode text check (response_mode in ('mock', 'llm-json', 'llm-text', 'llm-fallback')),
+  feedback text not null,
+  question text,
+  answer text,
+  created_at timestamptz not null default now()
+);
 ```
 
-## 3. Применение RLS политик
+## 3. Create indexes
 
-Запустите SQL из файла `supabase/migrations/001-rls-policies.sql` через SQL Editor.
+Recommended indexes for the current app:
 
-## 4. Настройка Authentication
+```sql
+create index if not exists idx_profiles_role on public.profiles(role);
+create index if not exists idx_profiles_metadata_gin on public.profiles using gin (metadata);
 
-### Email/Password Authentication
+create index if not exists idx_children_teacher_id on public.children(teacher_id);
+create index if not exists idx_children_user_id on public.children(user_id);
+create index if not exists idx_children_updated_at on public.children(updated_at desc);
 
-1. Перейдите в **Authentication** → **Providers**
-2. Включите **Email**
-3. Отключите **Confirm email** (для разработки)
+create index if not exists idx_sessions_child_id on public.sessions(child_id);
+create index if not exists idx_sessions_updated_at on public.sessions(updated_at desc);
+create index if not exists idx_sessions_status on public.sessions(status);
 
-### JWT Token
+create index if not exists idx_session_records_session_id on public.session_records(session_id);
+create index if not exists idx_session_records_created_at on public.session_records(created_at);
+```
 
-1. Перейдите в **Project Settings** → **API**
-2. Скопируйте **anon/public key**
-3. Скопируйте **service_role key** (только для сервера!)
+The GIN index on `profiles.metadata` is important if you expect frequent teacher-code lookup via `metadata @> '{"teacher_code":"..."}'`.
 
-## 5. Переменные окружения
+## 4. Apply RLS
 
-Добавьте в `.env.local`:
+Apply:
+
+- [migrations/001-rls-policies.sql](migrations/001-rls-policies.sql)
+
+## 5. Configure auth
+
+### Email auth
+
+Enable Email provider in Supabase Auth.
+
+### Google auth
+
+If using Google login:
+
+1. Enable Google provider in Supabase Auth.
+2. Set redirect URL to:
+   - `http://localhost:3000/auth/callback` for local
+   - `https://your-app-domain/auth/callback` for production
+
+## 6. Configure the app
+
+Set `.env.local`:
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=ваш_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=ваш_anon_key
+NEXT_PUBLIC_SUPABASE_ENABLED=true
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+APP_BASE_URL=http://localhost:3000
+NEXT_PUBLIC_PROJECT_LANDING_URL=https://selfreg-ai-networkschool.vercel.app
 ```
 
-## 6. Тестирование
+## 7. Verify the setup
 
-1. Зарегистрируйте учителя
-2. Скопируйте teacherCode
-3. Зарегистрируйте ученика с teacherCode
-4. Проверьте связь в dashboard учителя
+Minimum verification flow:
+
+1. Run `npm run check`
+2. Run `npm run build`
+3. Run `npm run test:e2e`
+4. Register a teacher
+5. Confirm the teacher gets a code
+6. Create or link a child
+7. Complete a session
+8. Confirm teacher dashboard shows the saved data
+
+## Important notes
+
+- `profiles.role` is required for auth-based redirects.
+- `children.teacher_id` is the canonical teacher-child link.
+- `children.user_id` is optional and can be used for auth-linked student accounts.
+- `session_records` are written separately from `sessions`; both must exist for server analytics and history views.

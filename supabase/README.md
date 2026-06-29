@@ -1,59 +1,60 @@
-﻿# RLS Policies для SelfReg AI
+# Supabase RLS Notes for SelfReg AI
 
-## Описание
+## Current schema covered by RLS
 
-Этот файл содержит политики Row Level Security (RLS) для защиты данных в базе данных Supabase.
+The current RLS migration targets:
 
-## Применение
+- `profiles`
+- `children`
+- `sessions`
+- `session_records`
 
-### Вариант 1: Через Supabase Dashboard
+It does not target the legacy `teachers` table flow as the primary model anymore.
 
-1. Откройте [Supabase Dashboard](https://supabase.com/dashboard)
-2. Выберите ваш проект
-3. Перейдите в **SQL Editor** (в меню слева)
-4. Скопируйте содержимое `001-rls-policies.sql`
-5. Нажмите **Run**
+## Access model
 
-### Вариант 2: Через Supabase CLI
+### Profiles
+
+- users can read their own profile
+- users can insert their own profile during auth bootstrap
+- users can update their own profile
+
+### Children
+
+- teachers can read and manage children linked through `children.teacher_id`
+- students can read and update their own child row when linked through `children.user_id`
+- legacy direct access by `children.id = auth.uid()` is preserved for backward compatibility
+
+### Sessions
+
+- teachers can access sessions of their linked children
+- students can access sessions that belong to their own linked child row
+
+### Session records
+
+- teachers can access records of sessions that belong to their linked children
+- students can access records of sessions that belong to their own linked child row
+
+## Why this matters
+
+The app uses a mix of:
+
+- auth-aware client access for `profiles`
+- server routes with service-role access for teacher dashboard and session sync
+- local fallback storage when Supabase is unavailable
+
+If the schema and RLS do not match the current runtime model, auth and teacher-student linking may appear to work partially while server-backed analytics silently fail.
+
+## Applying the policies
+
+Use either:
 
 ```bash
 supabase db push
 ```
 
-## Политики
+or paste the SQL from:
 
-### Teachers Table
-- ✅ SELECT: только свои данные
-- ✅ UPDATE: только свои данные
-- ✅ INSERT: только свои данные при регистрации
+- [migrations/001-rls-policies.sql](migrations/001-rls-policies.sql)
 
-### Children Table
-- ✅ SELECT: свои данные + данные своего учителя
-- ✅ UPDATE: свои данные
-- ✅ INSERT: свои данные + ученики учителя
-- ✅ DELETE: только учитель может удалять своих учеников
-
-### Sessions Table
-- ✅ SELECT: свои сессии + сессии своего учителя
-- ✅ INSERT: свои сессии + учитель для своих учеников
-- ✅ UPDATE: свои сессии + учитель для своих учеников
-- ✅ DELETE: учитель для своих учеников
-
-## Helper Functions
-
-### `is_teacher()`
-Проверяет, является ли пользователь учителем.
-
-### `is_student()`
-Проверяет, является ли пользователь учеником.
-
-### `get_student_teacher_id(student_id)`
-Возвращает ID учителя для данного ученика.
-
-## Важные примечания
-
-⚠️ **Важно:** Перед применением политик убедитесь, что таблицы уже существуют в базе данных.
-
-⚠️ **Тестирование:** Протестируйте политики на тестовых данных перед использованием в production.
-
-⚠️ **Резервное копирование:** Сделайте бэкап базы данных перед применением миграций.
+into the Supabase SQL editor.

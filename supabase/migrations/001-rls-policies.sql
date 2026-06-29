@@ -1,173 +1,334 @@
-﻿-- Enable RLS on all tables
-ALTER TABLE IF EXISTS children ENABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS teachers ENABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS sessions ENABLE ROW LEVEL SECURITY;
+-- Current SelfReg AI schema:
+-- profiles / children / sessions / session_records
+-- Teacher role lives in profiles.role
+-- Teacher code lives in profiles.metadata->>'teacher_code'
 
--- ============================================
--- Teachers Table Policies
--- ============================================
+alter table if exists public.profiles enable row level security;
+alter table if exists public.children enable row level security;
+alter table if exists public.sessions enable row level security;
+alter table if exists public.session_records enable row level security;
 
--- Teachers can view their own record
-CREATE POLICY "Teachers can view own record"
-  ON teachers
-  FOR SELECT
-  USING (auth.uid() = id);
+create or replace function public.is_teacher(current_user_id uuid default auth.uid())
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.profiles
+    where id = current_user_id
+      and role = 'teacher'
+  );
+$$;
 
--- Teachers can update their own record
-CREATE POLICY "Teachers can update own record"
-  ON teachers
-  FOR UPDATE
-  USING (auth.uid() = id);
+create or replace function public.can_access_child(target_child_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.children child
+    where child.id = target_child_id
+      and (
+        child.teacher_id = auth.uid()
+        or child.user_id = auth.uid()
+        or child.id = auth.uid()
+      )
+  );
+$$;
 
--- Teachers can insert their own record during registration
-CREATE POLICY "Teachers can insert own record"
-  ON teachers
-  FOR INSERT
-  WITH CHECK (auth.uid() = id);
+create or replace function public.can_access_session(target_session_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.sessions session
+    join public.children child on child.id = session.child_id
+    where session.id = target_session_id
+      and (
+        child.teacher_id = auth.uid()
+        or child.user_id = auth.uid()
+        or child.id = auth.uid()
+      )
+  );
+$$;
 
--- ============================================
--- Children Table Policies
--- ============================================
+drop policy if exists "Profiles: read own" on public.profiles;
+drop policy if exists "Profiles: insert own" on public.profiles;
+drop policy if exists "Profiles: update own" on public.profiles;
 
--- Students can view their own record
-CREATE POLICY "Students can view own record"
-  ON children
-  FOR SELECT
-  USING (auth.uid() = id);
+create policy "Profiles: read own"
+  on public.profiles
+  for select
+  using (auth.uid() = id);
 
--- Students can update their own record
-CREATE POLICY "Students can update own record"
-  ON children
-  FOR UPDATE
-  USING (auth.uid() = id);
+create policy "Profiles: insert own"
+  on public.profiles
+  for insert
+  with check (auth.uid() = id);
 
--- Students can insert their own record during registration
-CREATE POLICY "Students can insert own record"
-  ON children
-  FOR INSERT
-  WITH CHECK (auth.uid() = id);
+create policy "Profiles: update own"
+  on public.profiles
+  for update
+  using (auth.uid() = id)
+  with check (auth.uid() = id);
 
--- Teachers can view their own students
-CREATE POLICY "Teachers can view own students"
-  ON children
-  FOR SELECT
-  USING (teacher_id = auth.uid());
+drop policy if exists "Children: read own" on public.children;
+drop policy if exists "Children: update own" on public.children;
+drop policy if exists "Children: teacher read" on public.children;
+drop policy if exists "Children: teacher insert" on public.children;
+drop policy if exists "Children: teacher update" on public.children;
+drop policy if exists "Children: teacher delete" on public.children;
 
--- Teachers can update their own students
-CREATE POLICY "Teachers can update own students"
-  ON children
-  FOR UPDATE
-  USING (teacher_id = auth.uid());
+create policy "Children: read own"
+  on public.children
+  for select
+  using (user_id = auth.uid() or id = auth.uid());
 
--- Teachers can insert students (via join-teacher flow)
-CREATE POLICY "Teachers can insert students"
-  ON children
-  FOR INSERT
-  WITH CHECK (teacher_id = auth.uid());
+create policy "Children: update own"
+  on public.children
+  for update
+  using (user_id = auth.uid() or id = auth.uid())
+  with check (user_id = auth.uid() or id = auth.uid());
 
--- Teachers can delete their own students
-CREATE POLICY "Teachers can delete own students"
-  ON children
-  FOR DELETE
-  USING (teacher_id = auth.uid());
+create policy "Children: teacher read"
+  on public.children
+  for select
+  using (teacher_id = auth.uid());
 
--- ============================================
--- Sessions Table Policies
--- ============================================
+create policy "Children: teacher insert"
+  on public.children
+  for insert
+  with check (teacher_id = auth.uid());
 
--- Students can view their own sessions
-CREATE POLICY "Students can view own sessions"
-  ON sessions
-  FOR SELECT
-  USING (child_id = auth.uid());
+create policy "Children: teacher update"
+  on public.children
+  for update
+  using (teacher_id = auth.uid())
+  with check (teacher_id = auth.uid());
 
--- Students can insert their own sessions
-CREATE POLICY "Students can insert own sessions"
-  ON sessions
-  FOR INSERT
-  WITH CHECK (child_id = auth.uid());
+create policy "Children: teacher delete"
+  on public.children
+  for delete
+  using (teacher_id = auth.uid());
 
--- Teachers can view sessions of their students
-CREATE POLICY "Teachers can view student sessions"
-  ON sessions
-  FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM children
-      WHERE children.id = sessions.child_id
-      AND children.teacher_id = auth.uid()
+drop policy if exists "Sessions: read own" on public.sessions;
+drop policy if exists "Sessions: insert own" on public.sessions;
+drop policy if exists "Sessions: update own" on public.sessions;
+drop policy if exists "Sessions: delete own" on public.sessions;
+drop policy if exists "Sessions: teacher read" on public.sessions;
+drop policy if exists "Sessions: teacher insert" on public.sessions;
+drop policy if exists "Sessions: teacher update" on public.sessions;
+drop policy if exists "Sessions: teacher delete" on public.sessions;
+
+create policy "Sessions: read own"
+  on public.sessions
+  for select
+  using (
+    exists (
+      select 1
+      from public.children child
+      where child.id = sessions.child_id
+        and (child.user_id = auth.uid() or child.id = auth.uid())
     )
   );
 
--- Teachers can insert sessions for their students
-CREATE POLICY "Teachers can insert student sessions"
-  ON sessions
-  FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM children
-      WHERE children.id = sessions.child_id
-      AND children.teacher_id = auth.uid()
+create policy "Sessions: insert own"
+  on public.sessions
+  for insert
+  with check (
+    exists (
+      select 1
+      from public.children child
+      where child.id = sessions.child_id
+        and (child.user_id = auth.uid() or child.id = auth.uid())
     )
   );
 
--- Teachers can update sessions of their students
-CREATE POLICY "Teachers can update student sessions"
-  ON sessions
-  FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM children
-      WHERE children.id = sessions.child_id
-      AND children.teacher_id = auth.uid()
+create policy "Sessions: update own"
+  on public.sessions
+  for update
+  using (
+    exists (
+      select 1
+      from public.children child
+      where child.id = sessions.child_id
+        and (child.user_id = auth.uid() or child.id = auth.uid())
+    )
+  )
+  with check (
+    exists (
+      select 1
+      from public.children child
+      where child.id = sessions.child_id
+        and (child.user_id = auth.uid() or child.id = auth.uid())
     )
   );
 
--- Teachers can delete sessions of their students
-CREATE POLICY "Teachers can delete student sessions"
-  ON sessions
-  FOR DELETE
-  USING (
-    EXISTS (
-      SELECT 1 FROM children
-      WHERE children.id = sessions.child_id
-      AND children.teacher_id = auth.uid()
+create policy "Sessions: delete own"
+  on public.sessions
+  for delete
+  using (
+    exists (
+      select 1
+      from public.children child
+      where child.id = sessions.child_id
+        and (child.user_id = auth.uid() or child.id = auth.uid())
     )
   );
 
--- ============================================
--- Helper Functions
--- ============================================
-
--- Function to check if user is a teacher
-CREATE OR REPLACE FUNCTION is_teacher()
-RETURNS BOOLEAN AS $$
-BEGIN
-  RETURN EXISTS (
-    SELECT 1 FROM teachers
-    WHERE teachers.id = auth.uid()
+create policy "Sessions: teacher read"
+  on public.sessions
+  for select
+  using (
+    exists (
+      select 1
+      from public.children child
+      where child.id = sessions.child_id
+        and child.teacher_id = auth.uid()
+    )
   );
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Function to check if user is a student
-CREATE OR REPLACE FUNCTION is_student()
-RETURNS BOOLEAN AS $$
-BEGIN
-  RETURN EXISTS (
-    SELECT 1 FROM children
-    WHERE children.id = auth.uid()
+create policy "Sessions: teacher insert"
+  on public.sessions
+  for insert
+  with check (
+    exists (
+      select 1
+      from public.children child
+      where child.id = sessions.child_id
+        and child.teacher_id = auth.uid()
+    )
   );
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Function to get student's teacher ID
-CREATE OR REPLACE FUNCTION get_student_teacher_id(student_id UUID)
-RETURNS UUID AS $$
-BEGIN
-  RETURN (
-    SELECT teacher_id FROM children
-    WHERE children.id = student_id
+create policy "Sessions: teacher update"
+  on public.sessions
+  for update
+  using (
+    exists (
+      select 1
+      from public.children child
+      where child.id = sessions.child_id
+        and child.teacher_id = auth.uid()
+    )
+  )
+  with check (
+    exists (
+      select 1
+      from public.children child
+      where child.id = sessions.child_id
+        and child.teacher_id = auth.uid()
+    )
   );
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+create policy "Sessions: teacher delete"
+  on public.sessions
+  for delete
+  using (
+    exists (
+      select 1
+      from public.children child
+      where child.id = sessions.child_id
+        and child.teacher_id = auth.uid()
+    )
+  );
+
+drop policy if exists "Session records: read own" on public.session_records;
+drop policy if exists "Session records: insert own" on public.session_records;
+drop policy if exists "Session records: update own" on public.session_records;
+drop policy if exists "Session records: delete own" on public.session_records;
+drop policy if exists "Session records: teacher read" on public.session_records;
+drop policy if exists "Session records: teacher insert" on public.session_records;
+drop policy if exists "Session records: teacher update" on public.session_records;
+drop policy if exists "Session records: teacher delete" on public.session_records;
+
+create policy "Session records: read own"
+  on public.session_records
+  for select
+  using (public.can_access_session(session_id));
+
+create policy "Session records: insert own"
+  on public.session_records
+  for insert
+  with check (public.can_access_session(session_id));
+
+create policy "Session records: update own"
+  on public.session_records
+  for update
+  using (public.can_access_session(session_id))
+  with check (public.can_access_session(session_id));
+
+create policy "Session records: delete own"
+  on public.session_records
+  for delete
+  using (public.can_access_session(session_id));
+
+create policy "Session records: teacher read"
+  on public.session_records
+  for select
+  using (
+    exists (
+      select 1
+      from public.sessions session
+      join public.children child on child.id = session.child_id
+      where session.id = session_records.session_id
+        and child.teacher_id = auth.uid()
+    )
+  );
+
+create policy "Session records: teacher insert"
+  on public.session_records
+  for insert
+  with check (
+    exists (
+      select 1
+      from public.sessions session
+      join public.children child on child.id = session.child_id
+      where session.id = session_records.session_id
+        and child.teacher_id = auth.uid()
+    )
+  );
+
+create policy "Session records: teacher update"
+  on public.session_records
+  for update
+  using (
+    exists (
+      select 1
+      from public.sessions session
+      join public.children child on child.id = session.child_id
+      where session.id = session_records.session_id
+        and child.teacher_id = auth.uid()
+    )
+  )
+  with check (
+    exists (
+      select 1
+      from public.sessions session
+      join public.children child on child.id = session.child_id
+      where session.id = session_records.session_id
+        and child.teacher_id = auth.uid()
+    )
+  );
+
+create policy "Session records: teacher delete"
+  on public.session_records
+  for delete
+  using (
+    exists (
+      select 1
+      from public.sessions session
+      join public.children child on child.id = session.child_id
+      where session.id = session_records.session_id
+        and child.teacher_id = auth.uid()
+    )
+  );
