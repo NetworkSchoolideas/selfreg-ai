@@ -14,6 +14,7 @@ import { TeacherSessionsPanel } from "@/app/teacher/TeacherSessionsPanel";
 import { TeacherSessionDetail } from "@/app/teacher/TeacherSessionDetail";
 import { TeacherChildHeader } from "@/app/teacher/TeacherChildHeader";
 import { useTeacherData } from "@/app/teacher/useTeacherData";
+import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import {
   getRecordEventLabel,
   getResponseModeLabel,
@@ -24,10 +25,13 @@ import {
 export function TeacherDashboard() {
   const searchParams = useSearchParams();
   const lang = normalizeAppLang(searchParams.get("lang"));
-  const teacherIdFromUrl = searchParams.get("teacher") || undefined;
+  const teacherIdFromQuery = searchParams.get("teacher") || undefined;
   const childIdFromUrl = searchParams.get("childId") || undefined;
   const locale = lang === "en" ? "en-US" : "ru-RU";
+  const { user: authUser, isLoading: isAuthLoading, isTeacher } = useSupabaseAuth();
+  const teacherIdFromUrl = teacherIdFromQuery || (isTeacher ? authUser?.id : undefined);
   const serverBackedDashboard = Boolean(teacherIdFromUrl);
+  const deferInitialLoad = !teacherIdFromQuery && isAuthLoading;
 
   const ui = useMemo(
     () => ({
@@ -198,6 +202,7 @@ export function TeacherDashboard() {
     teacherIdFromUrl,
     childIdFromUrl,
     serverBackedDashboard,
+    deferInitialLoad,
   });
 
   return (

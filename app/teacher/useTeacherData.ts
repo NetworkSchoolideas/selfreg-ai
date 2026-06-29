@@ -21,6 +21,7 @@ interface UseTeacherDataOptions {
   teacherIdFromUrl?: string;
   childIdFromUrl?: string;
   serverBackedDashboard: boolean;
+  deferInitialLoad?: boolean;
 }
 
 export function useTeacherData({
@@ -29,6 +30,7 @@ export function useTeacherData({
   teacherIdFromUrl,
   childIdFromUrl,
   serverBackedDashboard,
+  deferInitialLoad = false,
 }: UseTeacherDataOptions) {
   const [selectedSessionIdx, setSelectedSessionIdx] = useState(0);
   const [newSessionHint, setNewSessionHint] = useState<{ context: string } | null>(null);
@@ -146,6 +148,10 @@ export function useTeacherData({
   }, [selectedChildId, selectedSessionIdx]);
 
   useEffect(() => {
+    if (deferInitialLoad) {
+      return;
+    }
+
     if (!serverBackedDashboard) {
       return;
     }
@@ -233,9 +239,13 @@ export function useTeacherData({
     return () => {
       active = false;
     };
-  }, [serverBackedDashboard, teacherIdFromUrl, childIdFromUrl]);
+  }, [serverBackedDashboard, teacherIdFromUrl, childIdFromUrl, deferInitialLoad]);
 
   useEffect(() => {
+    if (deferInitialLoad) {
+      return;
+    }
+
     if (serverBackedDashboard) {
       return;
     }
@@ -341,7 +351,7 @@ export function useTeacherData({
     return () => {
       active = false;
     };
-  }, [serverBackedDashboard, lang, locale, childIdFromUrl]);
+  }, [serverBackedDashboard, lang, locale, childIdFromUrl, deferInitialLoad]);
 
   function createNewSessionForChild(customContext?: string) {
     if (!selectedChild) {
