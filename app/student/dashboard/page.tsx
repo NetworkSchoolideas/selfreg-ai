@@ -1,17 +1,16 @@
-﻿"use client";
+"use client";
 
-import { Suspense, useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ErrorBoundary } from "@/app/components/ErrorBoundary";
 import { LanguageToggle } from "@/app/components/LanguageToggle";
 import { normalizeAppLang, withLang } from "@/lib/app-i18n";
 import { DataService } from "@/lib/data-service";
-import type { ChildProfile, Session } from "@/types/session";
-import type { AppLang } from "@/lib/app-i18n";
+import { getStudentDashboardMetrics, getStudentDashboardStatus } from "@/lib/student-dashboard";
+import type { ChildProfile } from "@/types/session";
 
 function StudentDashboardContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const childId = searchParams.get("childId");
   const lang = normalizeAppLang(searchParams.get("lang"));
@@ -27,9 +26,9 @@ function StudentDashboardContent() {
       title: "Личный кабинет",
       loading: "Загрузка...",
       errorTitle: "Ошибка",
-      errorNoId: "ID ученика не указан",
       errorNotFound: "Профиль не найден. Возможно, сессии ещё не сохранены локально.",
       errorConnection: "Ошибка загрузки профиля",
+      backToSession: "Вернуться к сессии",
       newSession: "Новая сессия",
       home: "На главную",
       totalSessions: "Всего сессий",
@@ -47,19 +46,23 @@ function StudentDashboardContent() {
       sessionLabel: "Сессия",
       completedLabel: "Завершена",
       inProgressLabel: "В процессе",
-      comingSoon: "Разделы в разработке",
-      progressCharts: "Графики прогресса",
-      sessionFeedback: "Обратная связь по сессиям",
-      achievements: "Достижения и награды",
-      profileSettings: "Настройки профиля",
+      currentStatus: "Текущий статус",
+      latestActivity: "Последняя активность",
+      nextStep: "Следующий шаг",
+      nextStepReady: "Запустить новую сессию и пройти цикл до конца.",
+      nextStepInProgress: "Вернуться к текущей работе и завершить начатую сессию.",
+      nextStepCompleted: "Когда появится новый запрос или ситуация, начните следующий цикл.",
+      teacherConnection: "Связь с педагогом",
+      teacherConnected: "Активна",
+      teacherMissing: "Не настроена",
     },
     en: {
       title: "Dashboard",
       loading: "Loading...",
       errorTitle: "Error",
-      errorNoId: "Student ID not provided",
       errorNotFound: "Profile not found. Sessions may not be saved locally yet.",
       errorConnection: "Failed to load profile",
+      backToSession: "Back to session",
       newSession: "New session",
       home: "Home",
       totalSessions: "Total sessions",
@@ -77,11 +80,15 @@ function StudentDashboardContent() {
       sessionLabel: "Session",
       completedLabel: "Completed",
       inProgressLabel: "In progress",
-      comingSoon: "Coming soon",
-      progressCharts: "Progress charts",
-      sessionFeedback: "Session feedback",
-      achievements: "Achievements",
-      profileSettings: "Profile settings",
+      currentStatus: "Current status",
+      latestActivity: "Latest activity",
+      nextStep: "Next step",
+      nextStepReady: "Start a new session and complete the cycle.",
+      nextStepInProgress: "Return to the current work and finish the active session.",
+      nextStepCompleted: "When a new situation appears, start the next cycle.",
+      teacherConnection: "Teacher connection",
+      teacherConnected: "Active",
+      teacherMissing: "Not configured",
     },
   };
 
@@ -100,33 +107,44 @@ function StudentDashboardContent() {
       try {
         setLoading(true);
 
-        // Используем DataService: Supabase → localStorage fallback
         const child = await DataService.getChild(childId);
         if (child && active) {
           setProfile(child);
+          setError(null);
           setLoading(false);
           return;
         }
 
-        if (active) setError(t.errorNotFound);
-      } catch (err) {
-        if (active) setError(t.errorConnection);
-        console.error(err);
+        if (active) {
+          setError(t.errorNotFound);
+        }
+      } catch (loadError) {
+        if (active) {
+          setError(t.errorConnection);
+        }
+        console.error(loadError);
       } finally {
-        if (active) setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     };
 
-    loadProfile();
+    void loadProfile();
 
     return () => {
       active = false;
     };
-  }, [childId, lang, t.errorConnection, t.errorNotFound]);
+  }, [childId, t.errorConnection, t.errorNotFound]);
 
-  const completedSessions = profile?.sessions.filter((s) => s.status === "completed" || s.finalNote) || [];
-  const inProgressSessions = profile?.sessions.filter((s) => s.status === "in_progress" || (!s.finalNote && s.records?.length > 0)) || [];
-  const totalSessions = completedSessions.length + inProgressSessions.length;
+  const metrics = useMemo(() => (profile ? getStudentDashboardMetrics(profile) : null), [profile]);
+  const status = useMemo(() => {
+    if (!profile || !metrics) {
+      return null;
+    }
+
+    return getStudentDashboardStatus(profile, metrics, lang);
+  }, [lang, metrics, profile]);
 
   if (loading) {
     return (
@@ -152,7 +170,7 @@ function StudentDashboardContent() {
               borderRadius: 8,
             }}
           >
-            {childId ? (lang === "en" ? "Back to session" : "Вернуться к сессии") : t.home}
+            {childId ? t.backToSession : t.home}
           </Link>
         </div>
       </div>
@@ -161,6 +179,21 @@ function StudentDashboardContent() {
 
   const displayName = profile.realData?.fio || profile.name || (lang === "en" ? "Student" : "Ученик");
   const displayClass = profile.realData?.klass || "";
+  const sortedSessions = metrics
+    ? [...profile.sessions].sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime())
+    : [];
+  const nextStepText =
+    metrics && metrics.inProgressSessions.length > 0
+      ? t.nextStepInProgress
+      : metrics && metrics.completedSessions.length > 0
+        ? t.nextStepCompleted
+        : t.nextStepReady;
+  const statusToneStyles = {
+    neutral: { background: "#eff6ff", border: "#bfdbfe", accent: "#1d4ed8" },
+    progress: { background: "#ecfdf5", border: "#bbf7d0", accent: "#047857" },
+    active: { background: "#fff7ed", border: "#fed7aa", accent: "#c2410c" },
+  } as const;
+  const statusTone = status ? statusToneStyles[status.tone] : statusToneStyles.neutral;
 
   return (
     <div style={{ minHeight: "100vh", background: "#f3f4f6", padding: 20 }}>
@@ -207,19 +240,58 @@ function StudentDashboardContent() {
         <div className="stat-grid-3col">
           <div className="stat-card" style={{ padding: 24, borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
             <div className="fs-14 c-muted mb-8">{t.totalSessions}</div>
-            <div className="fs-36 fw-700">{totalSessions}</div>
+            <div className="fs-36 fw-700">{metrics?.totalSessions ?? 0}</div>
           </div>
           <div className="stat-card" style={{ padding: 24, borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
             <div className="fs-14 c-muted mb-8">{t.completed}</div>
-            <div className="fs-36 fw-700" style={{ color: "#10b981" }}>{completedSessions.length}</div>
+            <div className="fs-36 fw-700" style={{ color: "#10b981" }}>{metrics?.completedSessions.length ?? 0}</div>
           </div>
           <div className="stat-card" style={{ padding: 24, borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
             <div className="fs-14 c-muted mb-8">{t.inProgress}</div>
-            <div className="fs-36 fw-700" style={{ color: "#f59e0b" }}>{inProgressSessions.length}</div>
+            <div className="fs-36 fw-700" style={{ color: "#f59e0b" }}>{metrics?.inProgressSessions.length ?? 0}</div>
           </div>
         </div>
 
         <div className="flex-col gap-24">
+          {status && (
+            <div
+              className="bg-white br-12 p-24"
+              style={{
+                boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                background: statusTone.background,
+                border: `1px solid ${statusTone.border}`,
+              }}
+            >
+              <div className="flex-row justify-between items-start" style={{ gap: 16, flexWrap: "wrap" }}>
+                <div style={{ maxWidth: 680 }}>
+                  <div className="fs-14 fw-600 mb-8" style={{ color: statusTone.accent }}>
+                    {t.currentStatus}
+                  </div>
+                  <h2 className="fs-22 mb-8">{status.title}</h2>
+                  <p className="c-muted" style={{ margin: 0 }}>{status.description}</p>
+                </div>
+                <div style={{ minWidth: 220, display: "grid", gap: 12 }}>
+                  <div className="profile-field" style={{ background: "rgba(255,255,255,0.72)" }}>
+                    <div className="fs-13 c-muted mb-4">{t.latestActivity}</div>
+                    <div className="fs-15 fw-500">
+                      {metrics?.latestSession
+                        ? new Date(metrics.latestSession.updatedAt).toLocaleString(lang === "en" ? "en-US" : "ru-RU")
+                        : "-"}
+                    </div>
+                  </div>
+                  <div className="profile-field" style={{ background: "rgba(255,255,255,0.72)" }}>
+                    <div className="fs-13 c-muted mb-4">{t.teacherConnection}</div>
+                    <div className="fs-15 fw-500">{profile.teacherId ? t.teacherConnected : t.teacherMissing}</div>
+                  </div>
+                  <div className="profile-field" style={{ background: "rgba(255,255,255,0.72)" }}>
+                    <div className="fs-13 c-muted mb-4">{t.nextStep}</div>
+                    <div className="fs-15 fw-500">{nextStepText}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="bg-white br-12 p-24" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
             <h2 className="fs-20 mb-16">{t.profile}</h2>
 
@@ -259,68 +331,58 @@ function StudentDashboardContent() {
           <div className="bg-white br-12 p-24" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
             <h2 className="fs-20 mb-16">{t.sessionHistory}</h2>
 
-            {totalSessions === 0 && (
+            {(metrics?.totalSessions ?? 0) === 0 && (
               <div className="text-center c-muted" style={{ padding: 40 }}>
                 <p>{t.noSessions}</p>
-                <p className="fs-14 mt-8">
-                  {t.startHint}
-                </p>
+                <p className="fs-14 mt-8">{t.startHint}</p>
               </div>
             )}
 
-            {totalSessions > 0 && (
+            {(metrics?.totalSessions ?? 0) > 0 && (
               <div className="flex-col gap-16">
-                {[...profile.sessions]
-                  .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-                  .map((session) => {
-                    const isCompleted = Boolean(session.finalNote?.trim()) || session.status === "completed";
-                    return (
-                      <div
-                        key={session.sessionId || session.updatedAt}
-                        className="profile-field"
-                      >
-                        <div className="flex-row justify-between items-center mb-8">
-                          <div className="fs-16 fw-500">{session.context || `${t.sessionLabel}`}</div>
-                          <span className="br-999 fs-12 fw-500" style={{
+                {sortedSessions.map((session) => {
+                  const isCompleted = Boolean(session.finalNote?.trim()) || session.status === "completed";
+
+                  return (
+                    <div key={session.sessionId || session.updatedAt} className="profile-field">
+                      <div className="flex-row justify-between items-center mb-8">
+                        <div className="fs-16 fw-500">{session.context || t.sessionLabel}</div>
+                        <span
+                          className="br-999 fs-12 fw-500"
+                          style={{
                             padding: "4px 12px",
                             background: isCompleted ? "#d1fae5" : "#fef3c7",
                             color: isCompleted ? "#065f46" : "#92400e",
-                          }}>
-                            {isCompleted ? t.completedLabel : t.inProgressLabel}
-                          </span>
+                          }}
+                        >
+                          {isCompleted ? t.completedLabel : t.inProgressLabel}
+                        </span>
+                      </div>
+                      {session.finalNote && (
+                        <div className="fs-14 c-muted mb-8">
+                          {session.finalNote}
                         </div>
-                        {session.finalNote && (
-                          <div className="fs-14 c-muted mb-8">
-                            {session.finalNote}
-                          </div>
-                        )}
-                        <div className="fs-12" style={{ color: "#9ca3af" }}>
-                          {new Date(session.updatedAt).toLocaleString(lang === "en" ? "en-US" : "ru-RU")}
-                        </div>
-                        {session.historyInsight && (
-                          <div className="mt-12 p-12 br-8 fs-13" style={{
+                      )}
+                      <div className="fs-12" style={{ color: "#9ca3af" }}>
+                        {new Date(session.updatedAt).toLocaleString(lang === "en" ? "en-US" : "ru-RU")}
+                      </div>
+                      {session.historyInsight && (
+                        <div
+                          className="mt-12 p-12 br-8 fs-13"
+                          style={{
                             background: "#f0fdf4",
                             border: "1px solid #bbf7d0",
                             color: "#166534",
-                          }}>
-                            💡 {session.historyInsight}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                          }}
+                        >
+                          💡 {session.historyInsight}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
-          </div>
-
-          <div className="mt-32 p-24 bg-white br-12" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
-            <h3 className="fs-18 mb-16">{t.comingSoon}</h3>
-            <ul className="c-muted" style={{ paddingLeft: 20 }}>
-              <li>{t.progressCharts}</li>
-              <li>{t.sessionFeedback}</li>
-              <li>{t.achievements}</li>
-              <li>{t.profileSettings}</li>
-            </ul>
           </div>
         </div>
       </div>

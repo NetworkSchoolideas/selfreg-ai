@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { EmailAuthModal } from "@/app/components/EmailAuthModal";
+import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 
 interface AuthButtonProps {
   lang: "ru" | "en";
@@ -41,8 +41,8 @@ export function AuthButton({ lang }: AuthButtonProps) {
                   ? "Supabase not configured - mock mode"
                   : "Supabase не настроен - тестовый режим"
                 : lang === "en"
-                ? "Sign in with Google"
-                : "Войти через Google"
+                  ? "Sign in with Google"
+                  : "Войти через Google"
             }
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -52,18 +52,15 @@ export function AuthButton({ lang }: AuthButtonProps) {
               <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
             </svg>
             {lang === "en" ? "Sign in" : "Войти"}
-            {isMockMode && (
-              <span style={{ fontSize: 10, marginLeft: 2 }}>(MVP)</span>
-            )}
           </button>
-          
+
           <button
             onClick={() => setShowEmailModal(true)}
             className="button secondary"
             style={{ padding: "6px 10px", fontSize: 13 }}
             title={lang === "en" ? "Sign in with email" : "Вход по email"}
           >
-            {lang === "en" ? "Email" : "Email"}
+            Email
           </button>
         </div>
 
@@ -76,7 +73,6 @@ export function AuthButton({ lang }: AuthButtonProps) {
     );
   }
 
-  // User is logged in - show avatar and logout
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
       <div
