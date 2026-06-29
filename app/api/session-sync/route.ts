@@ -4,7 +4,8 @@ import { getSupabaseAdmin, isSupabaseAdminAvailable } from "@/lib/supabase";
 import { clientError, serverError } from "@/lib/api-errors";
 import type { Database } from "@/types/supabase";
 
-const SessionSyncPayload = z.object({
+const SessionSyncUpsertPayload = z.object({
+  action: z.literal("upsert").optional(),
   sessionId: z.string().uuid().optional(),
   childId: z.string().min(1),
   context: z.string().min(1),
@@ -36,14 +37,83 @@ const SessionSyncPayload = z.object({
   ),
 });
 
+const SessionSyncDeletePayload = z
+  .object({
+    action: z.literal("delete"),
+    childId: z.string().min(1),
+    sessionId: z.string().uuid().optional(),
+    sessionUpdatedAt: z.string().min(1).optional(),
+  })
+  .refine((payload) => Boolean(payload.sessionId || payload.sessionUpdatedAt), {
+    message: "sessionId or sessionUpdatedAt is required",
+  });
+
 export async function POST(request: Request) {
   try {
     if (!isSupabaseAdminAvailable()) {
       return serverError("Supabase admin client is not configured", "SUPABASE_ADMIN_UNAVAILABLE");
     }
 
-    const payload = SessionSyncPayload.parse(await request.json());
+    const rawPayload = await request.json();
     const supabaseAdmin: any = getSupabaseAdmin();
+
+    if (rawPayload?.action === "delete") {
+      const payload = SessionSyncDeletePayload.parse(rawPayload);
+
+      const sessionLookup = supabaseAdmin
+        .from("sessions")
+        .select("id")
+        .eq("child_id", payload.childId);
+
+      const { data: existingSession, error: existingSessionError } = await (payload.sessionId
+        ? sessionLookup.eq("id", payload.sessionId)
+        : sessionLookup.eq("updated_at", payload.sessionUpdatedAt)
+      ).maybeSingle();
+
+      if (existingSessionError) {
+        return serverError(existingSessionError.message, "SUPABASE_SESSION_LOOKUP_ERROR");
+      }
+
+      if (!existingSession) {
+        return clientError("Session not found", "SESSION_NOT_FOUND");
+      }
+
+      const { error: deleteRecordsError } = await supabaseAdmin
+        .from("session_records")
+        .delete()
+        .eq("session_id", existingSession.id);
+
+      if (deleteRecordsError) {
+        return serverError(deleteRecordsError.message, "SUPABASE_RECORDS_DELETE_ERROR");
+      }
+
+      const { error: deleteSessionError } = await supabaseAdmin
+        .from("sessions")
+        .delete()
+        .eq("id", existingSession.id);
+
+      if (deleteSessionError) {
+        return serverError(deleteSessionError.message, "SUPABASE_SESSION_DELETE_ERROR");
+      }
+
+      const touchTimestamp = new Date().toISOString();
+      const { error: childTouchError } = await supabaseAdmin
+        .from("children")
+        .update({ updated_at: touchTimestamp })
+        .eq("id", payload.childId);
+
+      if (childTouchError) {
+        return serverError(childTouchError.message, "SUPABASE_CHILD_TOUCH_ERROR");
+      }
+
+      return NextResponse.json({
+        ok: true,
+        deleted: true,
+        sessionId: existingSession.id,
+      });
+    }
+
+    const payload = SessionSyncUpsertPayload.parse(rawPayload);
 
     const { data: existingChild, error: childError } = await supabaseAdmin
       .from("children")

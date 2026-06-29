@@ -1,4 +1,5 @@
 import type { RecordItem, Session, ChildProfile as Child, AdolescentFeedback } from "@/types/session";
+import { toSessionSyncUpsertPayload } from "@/lib/session-sync";
 
 export type { RecordItem, Session, Child, AdolescentFeedback };
 
@@ -209,7 +210,7 @@ export const ChildrenStorage = {
 
     const child = this.getChild(childId);
     if (shouldSyncChild(child)) {
-      syncToApi("/api/session-sync", { childId, session });
+      syncToApi("/api/session-sync", toSessionSyncUpsertPayload(childId, session));
     }
   },
 
@@ -241,6 +242,9 @@ export const ChildrenStorage = {
    * и дублирует удаление в Supabase через API.
    */
   async deleteSessionAsync(childId: string, sessionUpdatedAt: string): Promise<boolean> {
+    const session = this.getChild(childId)?.sessions.find(
+      (storedSession) => storedSession.updatedAt === sessionUpdatedAt
+    );
     const removed = this.deleteSession(childId, sessionUpdatedAt);
     const child = this.getChild(childId);
 
@@ -248,6 +252,7 @@ export const ChildrenStorage = {
       syncToApi("/api/session-sync", {
         action: "delete",
         childId,
+        sessionId: session?.sessionId,
         sessionUpdatedAt,
       });
     }
