@@ -18,6 +18,7 @@ interface UseTeacherDataOptions {
   lang: AppLang;
   locale: string;
   teacherIdFromUrl?: string;
+  childIdFromUrl?: string;
   serverBackedDashboard: boolean;
 }
 
@@ -25,6 +26,7 @@ export function useTeacherData({
   lang,
   locale,
   teacherIdFromUrl,
+  childIdFromUrl,
   serverBackedDashboard,
 }: UseTeacherDataOptions) {
   const [selectedSessionIdx, setSelectedSessionIdx] = useState(0);
@@ -42,6 +44,7 @@ export function useTeacherData({
   const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false);
   const dashboardTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const selectedChildIntentRef = useRef<string | null>(null);
+  const urlChildSelectionHandledRef = useRef(false);
 
   const selectedChild = useMemo(
     () => children.find((child) => child.id === selectedChildId) || children[0] || null,
@@ -87,6 +90,29 @@ export function useTeacherData({
       dashboardTimeoutsRef.current = [];
     };
   }, []);
+
+  useEffect(() => {
+    if (!childIdFromUrl) {
+      urlChildSelectionHandledRef.current = false;
+      return;
+    }
+
+    if (urlChildSelectionHandledRef.current) {
+      return;
+    }
+
+    const childFromUrlExists = children.some((child) => child.id === childIdFromUrl);
+    if (!childFromUrlExists) {
+      return;
+    }
+
+    if (selectedChildId !== childIdFromUrl) {
+      applySelectedChildId(childIdFromUrl);
+      setSelectedSessionIdx(0);
+    }
+
+    urlChildSelectionHandledRef.current = true;
+  }, [childIdFromUrl, children, selectedChildId]);
 
   useEffect(() => {
     if (selectedChild) {
@@ -164,6 +190,13 @@ export function useTeacherData({
           }
         } catch {}
 
+        if (childIdFromUrl && serverChildren.some((child) => child.id === childIdFromUrl)) {
+          applySelectedChildId(childIdFromUrl);
+          setSelectedSessionIdx(0);
+          setIsInitialLoadComplete(true);
+          return;
+        }
+
         if (restoredChildId) {
           applySelectedChildId(restoredChildId);
           setSelectedSessionIdx(restoredSessionIdx);
@@ -197,7 +230,7 @@ export function useTeacherData({
     return () => {
       active = false;
     };
-  }, [serverBackedDashboard, teacherIdFromUrl]);
+  }, [serverBackedDashboard, teacherIdFromUrl, childIdFromUrl]);
 
   useEffect(() => {
     if (serverBackedDashboard) {
@@ -275,8 +308,15 @@ export function useTeacherData({
         } catch {}
 
         const preferredChildId = selectedChildIntentRef.current;
+        if (childIdFromUrl && resolvedChildren.some((child: Child) => child.id === childIdFromUrl)) {
+          applySelectedChildId(childIdFromUrl);
+          setIsInitialLoadComplete(true);
+          return;
+        }
+
         if (preferredChildId && resolvedChildren.some((child: Child) => child.id === preferredChildId)) {
           applySelectedChildId(preferredChildId);
+          setIsInitialLoadComplete(true);
           return;
         }
 
@@ -298,7 +338,7 @@ export function useTeacherData({
     return () => {
       active = false;
     };
-  }, [serverBackedDashboard, lang, locale]);
+  }, [serverBackedDashboard, lang, locale, childIdFromUrl]);
 
   function createNewSessionForChild(customContext?: string) {
     if (!selectedChild) {

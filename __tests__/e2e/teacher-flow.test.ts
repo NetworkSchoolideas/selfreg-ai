@@ -94,6 +94,28 @@ test.describe("Public smoke flows", () => {
     expectHealthyClient(tracker);
   });
 
+  test("legacy teacher child route redirects into unified teacher dashboard", async ({ page }) => {
+    const tracker = collectClientErrors(page);
+
+    await page.goto("/");
+    await page.evaluate(() => {
+      window.localStorage.clear();
+      window.localStorage.setItem("selfreg_onboarding_seen_teacher", "1");
+    });
+
+    await page.goto("/teacher?lang=ru");
+
+    const childId = (await page.locator(".child-header-panel .font-mono").textContent())?.trim();
+    expect(childId).toBeTruthy();
+
+    await page.goto(`/teacher/dashboard/child?childId=${childId}&lang=ru`);
+
+    await expect(page).toHaveURL(new RegExp(`/teacher\\?childId=${childId}&lang=ru$`));
+    await expect(page.locator(".child-header-panel")).toContainText(childId!);
+
+    expectHealthyClient(tracker);
+  });
+
   test("student dashboard without childId shows guided error state", async ({ page }) => {
     const tracker = collectClientErrors(page);
 

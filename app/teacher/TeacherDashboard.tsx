@@ -25,6 +25,7 @@ export function TeacherDashboard() {
   const searchParams = useSearchParams();
   const lang = normalizeAppLang(searchParams.get("lang"));
   const teacherIdFromUrl = searchParams.get("teacher") || undefined;
+  const childIdFromUrl = searchParams.get("childId") || undefined;
   const locale = lang === "en" ? "en-US" : "ru-RU";
   const serverBackedDashboard = Boolean(teacherIdFromUrl);
 
@@ -195,6 +196,7 @@ export function TeacherDashboard() {
     lang,
     locale,
     teacherIdFromUrl,
+    childIdFromUrl,
     serverBackedDashboard,
   });
 
