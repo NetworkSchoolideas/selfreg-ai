@@ -57,14 +57,10 @@ function RegisterContent() {
     setIsLoading(true);
 
     try {
-      const { error } = await signUpWithEmail(email, password, fullName || undefined);
+      const { error } = await signUpWithEmail(email, password, fullName || undefined, { role });
       if (error) {
         throw error;
       }
-
-      try {
-        localStorage.setItem("selfreg_pending_role", role);
-      } catch {}
 
       setSuccess(ui.successMessage);
 

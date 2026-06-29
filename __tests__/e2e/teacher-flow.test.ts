@@ -75,6 +75,25 @@ test.describe("Public smoke flows", () => {
     expectHealthyClient(tracker);
   });
 
+  test("teacher register page routes login CTA to teacher auth login", async ({ page }) => {
+    const tracker = collectClientErrors(page);
+
+    await page.goto("/teacher/register?lang=ru");
+
+    await expect(page).toHaveURL(/\/teacher\/register\?lang=ru$/);
+    await expect(page.getByRole("heading", { name: "Регистрация учителя" })).toBeVisible();
+    await expect(page.getByPlaceholder("Иванов Иван Иванович")).toBeVisible();
+    await expect(page.getByPlaceholder("Название школы")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Войти" })).toBeVisible();
+
+    await page.getByRole("link", { name: "Войти" }).click();
+
+    await expect(page).toHaveURL(/\/auth\/login\?role=teacher&lang=ru$/);
+    await expect(page.getByRole("heading", { name: "Вход" })).toBeVisible();
+
+    expectHealthyClient(tracker);
+  });
+
   test("student dashboard without childId shows guided error state", async ({ page }) => {
     const tracker = collectClientErrors(page);
 

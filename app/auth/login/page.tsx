@@ -42,7 +42,8 @@ function LoginContent() {
     setIsLoading(true);
 
     try {
-      const { error } = await signInWithEmail(email, password);
+      const resolvedRole = roleParam === "teacher" || roleParam === "student" ? roleParam : undefined;
+      const { error } = await signInWithEmail(email, password, { role: resolvedRole });
       if (error) {
         throw error;
       }

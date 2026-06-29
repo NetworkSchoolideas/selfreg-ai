@@ -4,9 +4,8 @@ import { Suspense, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { signUpWithEmail } from "@/lib/supabase-auth";
-import { supabase } from "@/lib/supabase";
 import { ErrorBoundary } from "@/app/components/ErrorBoundary";
-import type { AppLang } from "@/lib/app-i18n";
+import { withLang, type AppLang } from "@/lib/app-i18n";
 
 function TeacherRegisterContent() {
   const router = useRouter();
@@ -93,38 +92,28 @@ function TeacherRegisterContent() {
     setIsLoading(true);
 
     try {
-      const result = await signUpWithEmail(email, password, name);
+      const teacherCode = `${name.split(" ")[0]?.charAt(0).toUpperCase() || "T"}${Date.now().toString().slice(-6)}`;
+      const result = await signUpWithEmail(email, password, name, {
+        role: "teacher",
+        metadata: {
+          school,
+          teacher_code: teacherCode,
+        },
+        redirectTo: `${window.location.origin}/auth/callback?role=teacher`,
+      });
+
       if (result.error) {
         throw result.error;
       }
 
       if (result.data?.user) {
-        const teacherCode = `${name.split(" ")[0]?.charAt(0).toUpperCase() || "T"}${Date.now().toString().slice(-6)}`;
-
-        if (supabase) {
-          const profileData: any = {
-            id: result.data.user.id,
-            email,
-            role: "teacher",
-            teacher_code: teacherCode,
-            full_name: name,
-            school,
-            consent_given: true,
-            consent_timestamp: new Date().toISOString(),
-          };
-
-          const { error: profileError } = await supabase.from("profiles").upsert(profileData);
-          if (profileError) {
-            throw profileError;
-          }
-        }
-
         sessionStorage.setItem("teacher_code", teacherCode);
         sessionStorage.setItem("teacher_id", result.data.user.id);
-        router.push(`/teacher/register-success?lang=${lang}&teacherCode=${teacherCode}`);
+        router.push(withLang(`/teacher/register-success?teacherCode=${teacherCode}`, lang));
       }
     } catch (err: any) {
       setError(err.message || t.errorRegistration);
+    } finally {
       setIsLoading(false);
     }
   }, [agreeToTerms, confirmPassword, email, lang, name, password, router, school, t]);
@@ -148,7 +137,7 @@ function TeacherRegisterContent() {
 
         {error && <div className="error-box">{error}</div>}
 
-        <form className="flex-col gap-16">
+        <form className="flex-col gap-16" onSubmit={handleRegister}>
           <div>
             <label className="form-label">{t.name} *</label>
             <input
@@ -225,7 +214,6 @@ function TeacherRegisterContent() {
             disabled={isLoading}
             className="submit-btn"
             style={{ background: isLoading ? "#9ca3af" : "#10b981" }}
-            onClick={handleRegister}
           >
             {isLoading ? t.creating : t.register}
           </button>
@@ -233,7 +221,7 @@ function TeacherRegisterContent() {
 
         <div className="auth-footer c-muted">
           {t.haveAccount}{" "}
-          <Link href={`/api/auth/callback?provider=login&lang=${lang}`} className="no-underline fw-500" style={{ color: "#059669" }}>
+          <Link href={withLang("/auth/login?role=teacher", lang)} className="no-underline fw-500" style={{ color: "#059669" }}>
             {t.login}
           </Link>
         </div>
