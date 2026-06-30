@@ -89,6 +89,7 @@ async function main() {
         env: {
           ...process.env,
           BROWSER: "none",
+          SELFREG_E2E_TEACHER_ACCESS_BYPASS: "1",
         },
       });
 

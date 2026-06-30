@@ -63,4 +63,34 @@ describe("teacher data route", () => {
     expect(fetchChildrenFromSupabase).toHaveBeenCalledWith("teacher-auth-1");
     expect(computeTeacherAnalytics).toHaveBeenCalledWith("teacher-auth-1");
   });
+
+  it("rejects teacherId query access for another teacher", async () => {
+    const maybeSingle = jest.fn().mockResolvedValue({
+      data: { role: "teacher" },
+    });
+    const eq = jest.fn().mockReturnValue({ maybeSingle });
+    const select = jest.fn().mockReturnValue({ eq });
+    const from = jest.fn().mockReturnValue({ select });
+
+    (createServerClient as jest.Mock).mockReturnValue({
+      auth: {
+        getUser: jest.fn().mockResolvedValue({
+          data: { user: { id: "teacher-auth-1" } },
+        }),
+      },
+      from,
+    });
+
+    const response = await GET(
+      new Request("https://selfreg.ai/api/teacher-data?teacherId=teacher-auth-2&analytics=true")
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({
+      error: "Teacher access denied",
+      code: "TEACHER_ACCESS_DENIED",
+    });
+    expect(fetchChildrenFromSupabase).not.toHaveBeenCalled();
+    expect(computeTeacherAnalytics).not.toHaveBeenCalled();
+  });
 });
