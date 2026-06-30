@@ -134,8 +134,8 @@ export function TeacherDashboard() {
         lang === "en" ? "Select a session above to see details." : "Выберите сессию выше, чтобы увидеть детали.",
       emptySession:
         lang === "en"
-          ? "Session is empty. Open the prototype using the link above and complete the cycle - results will appear here automatically."
-          : "Сессия пока пустая. Откройте прототип по ссылке выше и пройдите цикл — результаты появятся здесь автоматически.",
+          ? "Session is empty. Open the session link above and complete the cycle. Results will appear here automatically."
+          : "Сессия пока пустая. Откройте ссылку на сессию выше и пройдите цикл — результаты появятся здесь автоматически.",
       scenarioLabel: (scenario: string) =>
         scenario === "clarify"
           ? lang === "en"

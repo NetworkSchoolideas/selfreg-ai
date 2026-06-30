@@ -58,11 +58,13 @@ test.describe("Public smoke flows", () => {
 
     await expect(page).toHaveURL(/\/role-selection\?lang=ru$/);
     await expect(page.getByRole("heading", { name: "Выберите вашу роль" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Я учитель" })).toBeVisible();
+
+    const teacherRoleCard = page.locator('a[href="/auth/register?role=teacher&lang=ru"]').first();
+    await expect(teacherRoleCard).toBeVisible();
 
     await Promise.all([
       page.waitForURL(/\/auth\/register\?role=teacher&lang=ru$/, { timeout: 15000 }),
-      page.getByRole("link", { name: "Я учитель" }).click(),
+      teacherRoleCard.click(),
     ]);
 
     await expect(page.getByRole("heading", { name: "Регистрация" })).toBeVisible();
@@ -125,7 +127,7 @@ test.describe("Public smoke flows", () => {
     await page.goto("/teacher/register?lang=ru");
 
     await expect(page).toHaveURL(/\/teacher\/register\?lang=ru$/);
-    await expect(page.getByRole("heading", { name: "Регистрация учителя" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Регистрация педагога" })).toBeVisible();
     await expect(page.getByPlaceholder("Иванов Иван Иванович")).toBeVisible();
     await expect(page.getByPlaceholder("Название школы")).toBeVisible();
     await expect(page.getByRole("link", { name: "Войти" })).toBeVisible();
@@ -182,7 +184,7 @@ test.describe("Public smoke flows", () => {
     await expect(page).toHaveURL(/\/teacher\?lang=ru$/);
     await expect(page.getByText("Дашборд педагога")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Обзор учеников + инфографика" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "📥 CSV Экспорт" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "CSV Экспорт" })).toBeVisible();
     const sharedLink = page.getByRole("link", { name: "Старт" }).first();
     await expect(sharedLink).toHaveAttribute("href", /\/adolescent\?childId=/);
     expect(await sharedLink.getAttribute("href")).not.toContain("teacher=");

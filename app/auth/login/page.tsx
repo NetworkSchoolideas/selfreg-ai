@@ -1,11 +1,11 @@
 "use client";
 
-import { useSearchParams, useRouter } from "next/navigation";
-import { useCallback, useState, Suspense } from "react";
 import Link from "next/link";
-import { normalizeAppLang, withLang } from "@/lib/app-i18n";
+import { Suspense, useCallback, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { LanguageToggle } from "@/app/components/LanguageToggle";
 import { ErrorBoundary } from "@/app/components/ErrorBoundary";
+import { normalizeAppLang, withLang } from "@/lib/app-i18n";
 import { signInWithEmail, signInWithGoogle } from "@/lib/supabase-auth";
 
 function LoginContent() {
@@ -21,19 +21,19 @@ function LoginContent() {
 
   const ui: Record<string, string> = {
     title: lang === "en" ? "Sign in" : "Вход",
-    subtitle: lang === "en" ? "Welcome back to SelfReg AI" : "С возвращением в SelfReg AI",
+    subtitle: lang === "en" ? "Continue working in SelfReg AI" : "Продолжить работу в SelfReg AI",
     emailLabel: "Email",
     emailPlaceholder: "you@example.com",
     passwordLabel: lang === "en" ? "Password" : "Пароль",
     passwordPlaceholder: lang === "en" ? "Enter your password" : "Введите пароль",
     submit: lang === "en" ? "Sign in" : "Войти",
-    loading: lang === "en" ? "Signing in..." : "Вход...",
+    loading: lang === "en" ? "Signing in..." : "Входим...",
     google: lang === "en" ? "Sign in with Google" : "Войти через Google",
     noAccount: lang === "en" ? "Don't have an account?" : "Нет аккаунта?",
     register: lang === "en" ? "Create account" : "Создать аккаунт",
     or: lang === "en" ? "or" : "или",
     back: lang === "en" ? "Back to home" : "На главную",
-    errorGeneric: lang === "en" ? "Authentication failed" : "Ошибка аутентификации",
+    errorGeneric: lang === "en" ? "Authentication failed" : "Не удалось выполнить вход",
   };
 
   const handleEmailLogin = useCallback(async (event: React.FormEvent) => {
@@ -43,9 +43,9 @@ function LoginContent() {
 
     try {
       const resolvedRole = roleParam === "teacher" || roleParam === "student" ? roleParam : undefined;
-      const { error } = await signInWithEmail(email, password, { role: resolvedRole });
-      if (error) {
-        throw error;
+      const { error: authError } = await signInWithEmail(email, password, { role: resolvedRole });
+      if (authError) {
+        throw authError;
       }
 
       router.push(roleParam === "teacher" ? "/teacher" : roleParam === "student" ? "/student/dashboard" : "/");
@@ -75,7 +75,7 @@ function LoginContent() {
   return (
     <main className="shell">
       <div className="auth-header-row">
-        <Link href="/" className="fs-14 c-muted no-underline">
+        <Link href={withLang("/", lang)} className="fs-14 c-muted no-underline">
           ← {ui.back}
         </Link>
         <LanguageToggle />

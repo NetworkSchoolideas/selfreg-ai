@@ -1,12 +1,12 @@
 "use client";
 
-import { useSearchParams, useRouter } from "next/navigation";
-import { useCallback, useState, Suspense } from "react";
 import Link from "next/link";
-import { normalizeAppLang, withLang } from "@/lib/app-i18n";
+import { Suspense, useCallback, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { LanguageToggle } from "@/app/components/LanguageToggle";
 import { ErrorBoundary } from "@/app/components/ErrorBoundary";
-import { signUpWithEmail, signInWithGoogle } from "@/lib/supabase-auth";
+import { normalizeAppLang, withLang } from "@/lib/app-i18n";
+import { signInWithGoogle, signUpWithEmail } from "@/lib/supabase-auth";
 
 function RegisterContent() {
   const searchParams = useSearchParams();
@@ -26,28 +26,28 @@ function RegisterContent() {
 
   const ui: Record<string, string> = {
     title: lang === "en" ? "Create account" : "Регистрация",
-    subtitle: lang === "en" ? "Join SelfReg AI" : "Присоединиться к SelfReg AI",
+    subtitle: lang === "en" ? "Join SelfReg AI" : "Создайте аккаунт в SelfReg AI",
     emailLabel: "Email",
     emailPlaceholder: "you@example.com",
     passwordLabel: lang === "en" ? "Password" : "Пароль",
-    passwordPlaceholder: lang === "en" ? "Min. 6 characters" : "Мин. 6 символов",
+    passwordPlaceholder: lang === "en" ? "Min. 6 characters" : "Минимум 6 символов",
     fullNameLabel: lang === "en" ? "Full name" : "ФИО",
     fullNamePlaceholder: lang === "en" ? "Ivan Ivanov" : "Иван Иванов",
     roleLabel: lang === "en" ? "I am a" : "Я",
     roleTeacher: lang === "en" ? "Teacher" : "Педагог",
     roleStudent: lang === "en" ? "Student" : "Ученик",
     submit: lang === "en" ? "Create account" : "Создать аккаунт",
-    loading: lang === "en" ? "Creating account..." : "Создание аккаунта...",
+    loading: lang === "en" ? "Creating account..." : "Создаем аккаунт...",
     google: lang === "en" ? "Sign up with Google" : "Зарегистрироваться через Google",
     hasAccount: lang === "en" ? "Already have an account?" : "Уже есть аккаунт?",
     login: lang === "en" ? "Sign in" : "Войти",
     or: lang === "en" ? "or" : "или",
     back: lang === "en" ? "Back to home" : "На главную",
-    errorGeneric: lang === "en" ? "Registration failed" : "Ошибка регистрации",
+    errorGeneric: lang === "en" ? "Registration failed" : "Не удалось создать аккаунт",
     successMessage:
       lang === "en"
         ? "Account created! Check your email for verification."
-        : "Аккаунт создан. Проверьте email для подтверждения.",
+        : "Аккаунт создан. Проверьте почту, чтобы подтвердить email.",
   };
 
   const handleEmailRegister = useCallback(async (event: React.FormEvent) => {
@@ -57,9 +57,9 @@ function RegisterContent() {
     setIsLoading(true);
 
     try {
-      const { error } = await signUpWithEmail(email, password, fullName || undefined, { role });
-      if (error) {
-        throw error;
+      const { error: authError } = await signUpWithEmail(email, password, fullName || undefined, { role });
+      if (authError) {
+        throw authError;
       }
 
       setSuccess(ui.successMessage);
@@ -72,7 +72,7 @@ function RegisterContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [email, password, fullName, role, router, lang, ui.successMessage, ui.errorGeneric]);
+  }, [email, fullName, lang, password, role, router, ui.errorGeneric, ui.successMessage]);
 
   const handleGoogleRegister = useCallback(async () => {
     setError(null);
@@ -94,7 +94,7 @@ function RegisterContent() {
   return (
     <main className="shell">
       <div className="auth-header-row">
-        <Link href="/" className="fs-14 c-muted no-underline">
+        <Link href={withLang("/", lang)} className="fs-14 c-muted no-underline">
           ← {ui.back}
         </Link>
         <LanguageToggle />
@@ -176,7 +176,7 @@ function RegisterContent() {
                   disabled={isLoading || !!success}
                   className={role === "teacher" ? "button role-toggle-btn" : "button secondary role-toggle-btn"}
                 >
-                  {lang === "en" ? "Teacher" : "Педагог"}
+                  {ui.roleTeacher}
                 </button>
                 <button
                   type="button"
@@ -184,7 +184,7 @@ function RegisterContent() {
                   disabled={isLoading || !!success}
                   className={role === "student" ? "button role-toggle-btn" : "button secondary role-toggle-btn"}
                 >
-                  {lang === "en" ? "Student" : "Ученик"}
+                  {ui.roleStudent}
                 </button>
               </div>
             </div>
@@ -201,10 +201,7 @@ function RegisterContent() {
 
           <div className="auth-footer">
             <span className="muted">{ui.hasAccount}</span>{" "}
-            <Link
-              href={withLang(`/auth/login${preselectedRole ? `?role=${preselectedRole}` : ""}`, lang)}
-              className="c-accent underline"
-            >
+            <Link href={withLang(`/auth/login?role=${role}`, lang)} className="c-accent underline">
               {ui.login}
             </Link>
           </div>

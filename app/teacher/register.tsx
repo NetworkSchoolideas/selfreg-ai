@@ -1,16 +1,16 @@
 "use client";
 
-import { Suspense, useState, useCallback } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { signUpWithEmail } from "@/lib/supabase-auth";
+import { Suspense, useCallback, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ErrorBoundary } from "@/app/components/ErrorBoundary";
-import { withLang, type AppLang } from "@/lib/app-i18n";
+import { normalizeAppLang, withLang } from "@/lib/app-i18n";
+import { signUpWithEmail } from "@/lib/supabase-auth";
 
 function TeacherRegisterContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const lang = (searchParams.get("lang") === "en" ? "en" : "ru") as AppLang;
+  const lang = normalizeAppLang(searchParams.get("lang"));
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,46 +23,46 @@ function TeacherRegisterContent() {
 
   const texts = {
     ru: {
-      title: "Регистрация учителя",
-      subtitle: "Создайте учётную запись для доступа к аналитике",
+      title: "Регистрация педагога",
+      subtitle: "Создайте аккаунт для доступа к аналитике и сессиям учеников",
       email: "Email",
       emailPlaceholder: "your@email.com",
       password: "Пароль",
       confirmPassword: "Подтвердите пароль",
       name: "ФИО",
       namePlaceholder: "Иванов Иван Иванович",
-      school: "Школа / Организация",
+      school: "Школа / организация",
       schoolPlaceholder: "Название школы",
       agree: "Я согласен с политикой обработки данных",
-      register: "Зарегистрироваться",
-      haveAccount: "Уже есть учётная запись?",
+      register: "Создать аккаунт",
+      haveAccount: "Уже есть учетная запись?",
       login: "Войти",
-      back: "Назад",
+      back: "На главную",
       errorPasswordMismatch: "Пароли не совпадают",
       errorEmptyFields: "Заполните все обязательные поля",
       errorRegistration: "Ошибка регистрации",
       errorAgreement: "Пожалуйста, согласитесь с политикой обработки данных",
-      creating: "Создание учётной записи...",
+      creating: "Создаем учетную запись...",
     },
     en: {
-      title: "Teacher Registration",
-      subtitle: "Create an account to access analytics",
+      title: "Teacher registration",
+      subtitle: "Create an account to access analytics and student sessions",
       email: "Email",
       emailPlaceholder: "your@email.com",
       password: "Password",
       confirmPassword: "Confirm password",
-      name: "Full Name",
+      name: "Full name",
       namePlaceholder: "John Doe",
-      school: "School / Organization",
+      school: "School / organization",
       schoolPlaceholder: "School name",
       agree: "I agree to the data processing policy",
-      register: "Register",
+      register: "Create account",
       haveAccount: "Already have an account?",
-      login: "Login",
-      back: "Back",
+      login: "Sign in",
+      back: "Back to home",
       errorPasswordMismatch: "Passwords do not match",
       errorEmptyFields: "Fill in all required fields",
-      errorRegistration: "Registration error",
+      errorRegistration: "Registration failed",
       errorAgreement: "Please agree to the data processing policy",
       creating: "Creating account...",
     },
@@ -121,14 +121,14 @@ function TeacherRegisterContent() {
   return (
     <div className="gradient-bg-teacher">
       <div className="absolute" style={{ top: 20, left: 20 }}>
-        <Link href={`/?lang=${lang}`} className="back-link">
+        <Link href={withLang("/", lang)} className="back-link">
           ← {t.back}
         </Link>
       </div>
 
       <div className="white-card">
         <div className="text-center mb-32">
-          <div className="fs-48 mb-16">Teacher</div>
+          <div className="fs-48 mb-16" aria-hidden="true">👩‍🏫</div>
           <h1 className="mt-0 mb-8 fs-28" style={{ color: "#1f2937" }}>
             {t.title}
           </h1>

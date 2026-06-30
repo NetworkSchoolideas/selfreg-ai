@@ -5,30 +5,30 @@ import { Suspense, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { LanguageToggle } from "@/app/components/LanguageToggle";
 import { ErrorBoundary } from "@/app/components/ErrorBoundary";
-import { withLang, type AppLang } from "@/lib/app-i18n";
+import { normalizeAppLang, withLang } from "@/lib/app-i18n";
 
 function RoleSelectionContent() {
   const searchParams = useSearchParams();
-  const lang = (searchParams.get("lang") === "en" ? "en" : "ru") as AppLang;
+  const lang = normalizeAppLang(searchParams.get("lang"));
 
   const texts = {
     ru: {
       title: "Выберите вашу роль",
-      subtitle: "Чтобы продолжить, укажите, кем вы являетесь",
-      teacher: "Я учитель",
+      subtitle: "Чтобы продолжить, укажите, кто вы",
+      teacher: "Я педагог",
       student: "Я ученик / родитель",
-      teacherDesc: "Доступ к аналитике, управление учениками",
-      studentDesc: "Сессии саморегуляции, развитие навыков",
-      warning: "Выбор можно будет изменить в настройках профиля",
+      teacherDesc: "Доступ к аналитике и управлению учениками",
+      studentDesc: "Сессии саморегуляции и развитие навыков",
+      warning: "Роль можно изменить позже в настройках профиля",
     },
     en: {
-      title: "Select your role",
-      subtitle: "To continue, please indicate who you are",
+      title: "Choose your role",
+      subtitle: "To continue, tell us who you are",
       teacher: "I am a teacher",
-      student: "I am a student / parent",
-      teacherDesc: "Access to analytics, manage students",
-      studentDesc: "Self-regulation sessions, skill development",
-      warning: "You can change this in profile settings later",
+      student: "I am a student or parent",
+      teacherDesc: "Access analytics and manage students",
+      studentDesc: "Join self-regulation sessions and build skills",
+      warning: "You can change your role later in profile settings",
     },
   };
 
@@ -57,11 +57,17 @@ function RoleSelectionContent() {
             href={withLang("/auth/register?role=teacher", lang)}
             onClick={() => handleRoleSelect("teacher")}
             className="role-card"
-            onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#4f46e5"; e.currentTarget.style.background = "#f5f3ff"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#e5e7eb"; e.currentTarget.style.background = "white"; }}
+            onMouseEnter={(event) => {
+              event.currentTarget.style.borderColor = "#4f46e5";
+              event.currentTarget.style.background = "#f5f3ff";
+            }}
+            onMouseLeave={(event) => {
+              event.currentTarget.style.borderColor = "#e5e7eb";
+              event.currentTarget.style.background = "white";
+            }}
             style={{ display: "block", textDecoration: "none" }}
           >
-            <div className="fs-48 text-center">👨‍🏫</div>
+            <div className="fs-48 text-center" aria-hidden="true">👩‍🏫</div>
             <h3 className="m-0 fs-20" style={{ color: "#1f2937" }}>{t.teacher}</h3>
             <p className="m-0 fs-14 c-muted" style={{ lineHeight: 1.5 }}>{t.teacherDesc}</p>
           </Link>
@@ -70,11 +76,17 @@ function RoleSelectionContent() {
             href={withLang("/auth/register?role=student", lang)}
             onClick={() => handleRoleSelect("student")}
             className="role-card"
-            onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#10b981"; e.currentTarget.style.background = "#ecfdf5"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#e5e7eb"; e.currentTarget.style.background = "white"; }}
+            onMouseEnter={(event) => {
+              event.currentTarget.style.borderColor = "#10b981";
+              event.currentTarget.style.background = "#ecfdf5";
+            }}
+            onMouseLeave={(event) => {
+              event.currentTarget.style.borderColor = "#e5e7eb";
+              event.currentTarget.style.background = "white";
+            }}
             style={{ display: "block", textDecoration: "none" }}
           >
-            <div className="fs-48 text-center">🎓</div>
+            <div className="fs-48 text-center" aria-hidden="true">🎓</div>
             <h3 className="m-0 fs-20" style={{ color: "#1f2937" }}>{t.student}</h3>
             <p className="m-0 fs-14 c-muted" style={{ lineHeight: 1.5 }}>{t.studentDesc}</p>
           </Link>
@@ -91,11 +103,13 @@ function RoleSelectionContent() {
 export default function RoleSelectionPage() {
   return (
     <ErrorBoundary>
-      <Suspense fallback={
-        <div className="centered-message gradient-bg-role">
-          <div className="loading-text">Загрузка...</div>
-        </div>
-      }>
+      <Suspense
+        fallback={
+          <div className="centered-message gradient-bg-role">
+            <div className="loading-text">Loading...</div>
+          </div>
+        }
+      >
         <RoleSelectionContent />
       </Suspense>
     </ErrorBoundary>
