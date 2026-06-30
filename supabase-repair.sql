@@ -9,9 +9,47 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 ALTER TABLE IF EXISTS public.children
-  ADD COLUMN IF NOT EXISTS teacher_id UUID,
+  ADD COLUMN IF NOT EXISTS teacher_id TEXT,
   ADD COLUMN IF NOT EXISTS consent_given BOOLEAN DEFAULT FALSE,
   ADD COLUMN IF NOT EXISTS consent_timestamp TIMESTAMPTZ;
+
+DO $$
+DECLARE
+  constraint_name TEXT;
+BEGIN
+  IF to_regclass('public.children') IS NULL THEN
+    RETURN;
+  END IF;
+
+  FOR constraint_name IN
+    SELECT con.conname
+    FROM pg_constraint con
+    JOIN pg_class rel ON rel.oid = con.conrelid
+    JOIN pg_namespace nsp ON nsp.oid = rel.relnamespace
+    JOIN pg_attribute att
+      ON att.attrelid = con.conrelid
+      AND att.attname = 'teacher_id'
+      AND att.attnum = ANY (con.conkey)
+    WHERE nsp.nspname = 'public'
+      AND rel.relname = 'children'
+      AND con.contype = 'f'
+  LOOP
+    EXECUTE format('ALTER TABLE public.children DROP CONSTRAINT IF EXISTS %I', constraint_name);
+  END LOOP;
+
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'children'
+      AND column_name = 'teacher_id'
+      AND data_type <> 'text'
+  ) THEN
+    ALTER TABLE public.children
+      ALTER COLUMN teacher_id TYPE TEXT
+      USING teacher_id::text;
+  END IF;
+END $$;
 
 ALTER TABLE IF EXISTS public.sessions
   ADD COLUMN IF NOT EXISTS lang TEXT,
@@ -53,22 +91,36 @@ DROP FUNCTION IF EXISTS public.handle_new_user();
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, email, full_name, avatar_url, role)
+  INSERT INTO public.profiles (id, email, full_name, avatar_url, role, metadata, updated_at)
   VALUES (
     NEW.id,
     NEW.email,
     NEW.raw_user_meta_data->>'full_name',
     NEW.raw_user_meta_data->>'avatar_url',
-    CASE
-      WHEN NEW.email LIKE '%@school.ru' THEN 'teacher'
-      WHEN NEW.email LIKE '%@edu.ru' THEN 'teacher'
-      WHEN NEW.email LIKE '%@teacher.ru' THEN 'teacher'
-      ELSE 'student'
-    END
-  );
+    COALESCE(
+      NULLIF(NEW.raw_user_meta_data->>'preferred_role', ''),
+      CASE
+        WHEN NEW.email LIKE '%@school.ru' THEN 'teacher'
+        WHEN NEW.email LIKE '%@edu.ru' THEN 'teacher'
+        WHEN NEW.email LIKE '%@teacher.ru' THEN 'teacher'
+        ELSE 'student'
+      END
+    ),
+    COALESCE(NEW.raw_user_meta_data, '{}'::jsonb),
+    NOW()
+  )
+  ON CONFLICT (id) DO UPDATE
+    SET email = EXCLUDED.email,
+        full_name = COALESCE(public.profiles.full_name, EXCLUDED.full_name),
+        avatar_url = COALESCE(public.profiles.avatar_url, EXCLUDED.avatar_url),
+        role = COALESCE(public.profiles.role, EXCLUDED.role),
+        metadata = COALESCE(public.profiles.metadata, '{}'::jsonb) || COALESCE(EXCLUDED.metadata, '{}'::jsonb),
+        updated_at = NOW();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+REVOKE ALL ON FUNCTION public.handle_new_user() FROM public, anon, authenticated;
 
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
@@ -81,7 +133,9 @@ BEGIN
   NEW.updated_at = NOW();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SET search_path = public;
+
+REVOKE ALL ON FUNCTION public.handle_updated_at() FROM public, anon, authenticated;
 
 CREATE TRIGGER handle_children_updated_at
   BEFORE UPDATE ON public.children

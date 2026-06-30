@@ -23,7 +23,7 @@ It does not target the legacy `teachers` table flow as the primary model anymore
 
 - teachers can read and manage children linked through `children.teacher_id`
 - students can read and update their own child row when linked through `children.user_id`
-- legacy direct access by `children.id = auth.uid()` is preserved for backward compatibility
+- `children.teacher_id` is stored as text to support historical non-UUID teacher identifiers
 
 ### Sessions
 

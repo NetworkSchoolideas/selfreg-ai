@@ -29,7 +29,7 @@ Teacher school or organization can also be stored in:
 Run this SQL in the Supabase SQL editor.
 
 ```sql
-create extension if not exists pgcrypto;
+create extension if not exists "uuid-ossp";
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -43,11 +43,11 @@ create table if not exists public.profiles (
 );
 
 create table if not exists public.children (
-  id uuid primary key default gen_random_uuid(),
+  id uuid primary key default uuid_generate_v4(),
   name text not null,
   class text not null default '',
-  user_id uuid references auth.users(id) on delete set null,
-  teacher_id uuid references public.profiles(id) on delete set null,
+  user_id uuid references auth.users(id) on delete cascade,
+  teacher_id text,
   consent_given boolean default false,
   consent_timestamp timestamptz,
   metadata jsonb,
@@ -56,7 +56,7 @@ create table if not exists public.children (
 );
 
 create table if not exists public.sessions (
-  id uuid primary key default gen_random_uuid(),
+  id uuid primary key default uuid_generate_v4(),
   child_id uuid not null references public.children(id) on delete cascade,
   context text not null,
   final_note text,
@@ -70,7 +70,7 @@ create table if not exists public.sessions (
 );
 
 create table if not exists public.session_records (
-  id uuid primary key default gen_random_uuid(),
+  id uuid primary key default uuid_generate_v4(),
   session_id uuid not null references public.sessions(id) on delete cascade,
   stage_id integer not null,
   stage_title text not null,
@@ -158,6 +158,6 @@ Minimum verification flow:
 ## Important notes
 
 - `profiles.role` is required for auth-based redirects.
-- `children.teacher_id` is the canonical teacher-child link.
+- `children.teacher_id` is the canonical teacher-child link and is stored as `text` for compatibility with existing non-UUID teacher identifiers.
 - `children.user_id` is optional and can be used for auth-linked student accounts.
 - `session_records` are written separately from `sessions`; both must exist for server analytics and history views.
