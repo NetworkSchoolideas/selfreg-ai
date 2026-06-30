@@ -69,14 +69,17 @@ This document explains how to configure Supabase Auth with Google OAuth for the 
 
 ### 1. Deploy Database Schema
 
-Run `supabase-schema.sql` in Supabase SQL Editor:
+Run `supabase-schema.sql` in Supabase SQL Editor, then apply `supabase/migrations/001-rls-policies.sql`:
 
 ```sql
 -- This creates:
 -- - profiles table
 -- - auto-creation trigger
--- - RLS policies
+-- - RLS enabled on app tables
 -- - Role detection based on email domain
+--
+-- RLS policies are applied separately from:
+-- supabase/migrations/001-rls-policies.sql
 ```
 
 ### 2. Configure Google OAuth in Supabase
@@ -140,8 +143,8 @@ WHEN email LIKE '%@organization.edu' THEN 'teacher'
 ## Mock Mode
 
 If Supabase credentials are missing, the app automatically falls back to mock mode:
-- AuthButton shows "(MVP)" badge
-- Sign in simulates OAuth flow
+- Auth controls show that Supabase is not configured
+- Sign in stays in local development mode
 - User data stored in localStorage
 - No actual authentication occurs
 
@@ -160,18 +163,17 @@ Use any other email domain (e.g., Gmail, Outlook)
 
 ## Security Considerations
 
-### Current (MVP)
-- ✅ RLS policies protect profile data
-- ✅ Users can only view their own profile
-- ✅ Teachers can view all profiles (for admin purposes)
-- ⚠️ Teacher Dashboard is publicly accessible (for testing)
+### Current
+- RLS policies protect profile, child, session, and session record data when `supabase/migrations/001-rls-policies.sql` is applied.
+- Users can only view and update their own profile.
+- Teachers can read and manage children linked through `children.teacher_id`.
+- Server teacher-data routes verify the authenticated Supabase teacher before returning dashboard data.
 
 ### Before Production
-- 🔒 Implement middleware route protection
-- 🔒 Add RLS policies for teacher-only data
-- 🔒 Restrict Teacher Dashboard access
-- 🔒 Add email verification requirement
-- 🔒 Implement session refresh tokens
+- Confirm the production Supabase project has the current migration applied.
+- Confirm email verification policy and OAuth redirect URLs.
+- Review dashboard access against the live deployment URL.
+- Review session expiry and refresh-token settings for the target pilot.
 
 ## Troubleshooting
 
@@ -214,4 +216,4 @@ For issues or questions:
 
 ---
 
-**Last Updated**: Phase 5 (Auth MVP) - March 2026
+**Last Updated**: Release hardening - June 2026

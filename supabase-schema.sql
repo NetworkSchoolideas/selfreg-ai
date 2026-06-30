@@ -4,6 +4,10 @@
 -- Idempotent schema aligned with the current app code.
 -- Safe to run on a fresh project. For an existing project,
 -- prefer running supabase-repair.sql first.
+--
+-- This file creates tables, indexes, triggers, and enables RLS.
+-- Apply current policies separately from:
+--   supabase/migrations/001-rls-policies.sql
 -- ============================================
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -165,101 +169,11 @@ ALTER TABLE public.children ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.session_records ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view their own profile"
-  ON public.profiles FOR SELECT
-  USING (auth.uid() = id);
-
-CREATE POLICY "Users can insert their own profile"
-  ON public.profiles FOR INSERT
-  WITH CHECK (auth.uid() = id);
-
-CREATE POLICY "Users can update their own profile"
-  ON public.profiles FOR UPDATE
-  USING (auth.uid() = id);
-
-CREATE POLICY "Teachers can view all profiles"
-  ON public.profiles FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1
-      FROM public.profiles AS teacher_profiles
-      WHERE teacher_profiles.id = auth.uid()
-        AND teacher_profiles.role = 'teacher'
-    )
-  );
-
-CREATE POLICY "Users can view their own children"
-  ON public.children FOR SELECT
-  USING (auth.uid() = user_id OR user_id IS NULL);
-
-CREATE POLICY "Users can create their own children"
-  ON public.children FOR INSERT
-  WITH CHECK (auth.uid() = user_id OR user_id IS NULL);
-
-CREATE POLICY "Users can update their own children"
-  ON public.children FOR UPDATE
-  USING (auth.uid() = user_id OR user_id IS NULL);
-
-CREATE POLICY "Users can delete their own children"
-  ON public.children FOR DELETE
-  USING (auth.uid() = user_id OR user_id IS NULL);
-
-CREATE POLICY "Users can view sessions for their children"
-  ON public.sessions FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1
-      FROM public.children
-      WHERE children.id = sessions.child_id
-        AND children.user_id = auth.uid()
-    )
-  );
-
-CREATE POLICY "Users can create sessions for their children"
-  ON public.sessions FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1
-      FROM public.children
-      WHERE children.id = child_id
-        AND children.user_id = auth.uid()
-    )
-  );
-
-CREATE POLICY "Users can update sessions for their children"
-  ON public.sessions FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1
-      FROM public.children
-      WHERE children.id = sessions.child_id
-        AND children.user_id = auth.uid()
-    )
-  );
-
-CREATE POLICY "Users can view session records for their sessions"
-  ON public.session_records FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1
-      FROM public.sessions
-      JOIN public.children ON children.id = sessions.child_id
-      WHERE sessions.id = session_records.session_id
-        AND children.user_id = auth.uid()
-    )
-  );
-
-CREATE POLICY "Users can create session records for their sessions"
-  ON public.session_records FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1
-      FROM public.sessions
-      JOIN public.children ON children.id = sessions.child_id
-      WHERE sessions.id = session_id
-        AND children.user_id = auth.uid()
-    )
-  );
+-- RLS is intentionally enabled here without broad default policies.
+-- Apply the current access model from:
+--   supabase/migrations/001-rls-policies.sql
+-- Do not reintroduce policies that expose children with user_id IS NULL or allow
+-- teachers to read every profile.
 
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
