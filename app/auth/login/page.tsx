@@ -16,6 +16,7 @@ function LoginContent() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -123,15 +124,30 @@ function LoginContent() {
 
             <label className="field mb-20">
               {ui.passwordLabel}
-              <input
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder={ui.passwordPlaceholder}
-                minLength={6}
-                required
-                disabled={isLoading}
-              />
+              <div className="password-input-row">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder={ui.passwordPlaceholder}
+                  minLength={6}
+                  required
+                  disabled={isLoading}
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowPassword((value) => !value)}
+                  disabled={isLoading}
+                  aria-label={
+                    showPassword
+                      ? lang === "en" ? "Hide password" : "Скрыть пароль"
+                      : lang === "en" ? "Show password" : "Показать пароль"
+                  }
+                >
+                  {showPassword ? (lang === "en" ? "Hide" : "Скрыть") : (lang === "en" ? "Show" : "Показать")}
+                </button>
+              </div>
             </label>
 
             <button
@@ -147,7 +163,7 @@ function LoginContent() {
           <div className="auth-footer">
             <span className="muted">{ui.noAccount}</span>{" "}
             <Link
-              href={withLang(`/auth/register${roleParam ? `?role=${roleParam}` : ""}`, lang)}
+              href={withLang(roleParam === "teacher" ? "/teacher/register" : `/auth/register${roleParam ? `?role=${roleParam}` : ""}`, lang)}
               className="c-accent underline"
             >
               {ui.register}

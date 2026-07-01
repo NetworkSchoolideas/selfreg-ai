@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useCallback, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { LanguageToggle } from "@/app/components/LanguageToggle";
 import { ErrorBoundary } from "@/app/components/ErrorBoundary";
@@ -16,6 +16,7 @@ function RegisterContent() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState("");
   const [role, setRole] = useState<"teacher" | "student">(
     preselectedRole === "teacher" ? "teacher" : "student"
@@ -23,6 +24,12 @@ function RegisterContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (preselectedRole === "teacher") {
+      router.replace(withLang("/teacher/register", lang));
+    }
+  }, [lang, preselectedRole, router]);
 
   const ui: Record<string, string> = {
     title: lang === "en" ? "Create account" : "Регистрация",
@@ -154,15 +161,30 @@ function RegisterContent() {
 
             <label className="field mb-16">
               {ui.passwordLabel}
-              <input
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder={ui.passwordPlaceholder}
-                minLength={6}
-                required
-                disabled={isLoading || !!success}
-              />
+              <div className="password-input-row">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder={ui.passwordPlaceholder}
+                  minLength={6}
+                  required
+                  disabled={isLoading || !!success}
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowPassword((value) => !value)}
+                  disabled={isLoading || !!success}
+                  aria-label={
+                    showPassword
+                      ? lang === "en" ? "Hide password" : "Скрыть пароль"
+                      : lang === "en" ? "Show password" : "Показать пароль"
+                  }
+                >
+                  {showPassword ? (lang === "en" ? "Hide" : "Скрыть") : (lang === "en" ? "Show" : "Показать")}
+                </button>
+              </div>
             </label>
 
             <div className="mb-20">

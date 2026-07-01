@@ -28,6 +28,7 @@ export async function proxy(req: NextRequest) {
     "/",
     "/auth/login",
     "/auth/register",
+    "/auth/callback",
     "/role-selection",
     "/adolescent",
     "/teacher/register",

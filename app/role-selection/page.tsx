@@ -54,7 +54,7 @@ function RoleSelectionContent() {
 
         <div className="grid mb-24" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))" }}>
           <Link
-            href={withLang("/auth/register?role=teacher", lang)}
+            href={withLang("/teacher/register", lang)}
             onClick={() => handleRoleSelect("teacher")}
             className="role-card"
             onMouseEnter={(event) => {

@@ -15,6 +15,8 @@ function TeacherRegisterContent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [name, setName] = useState("");
   const [school, setSchool] = useState("");
   const [agreeToTerms, setAgreeToTerms] = useState(false);
@@ -176,26 +178,54 @@ function TeacherRegisterContent() {
 
           <div>
             <label className="form-label">{t.password} *</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              required
-              minLength={6}
-              className="form-input"
-            />
+            <div className="password-input-row">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+                minLength={6}
+                className="form-input"
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowPassword((value) => !value)}
+                aria-label={
+                  showPassword
+                    ? lang === "en" ? "Hide password" : "Скрыть пароль"
+                    : lang === "en" ? "Show password" : "Показать пароль"
+                }
+              >
+                {showPassword ? (lang === "en" ? "Hide" : "Скрыть") : (lang === "en" ? "Show" : "Показать")}
+              </button>
+            </div>
           </div>
 
           <div>
             <label className="form-label">{t.confirmPassword} *</label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(event) => setConfirmPassword(event.target.value)}
-              required
-              minLength={6}
-              className="form-input"
-            />
+            <div className="password-input-row">
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                required
+                minLength={6}
+                className="form-input"
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowConfirmPassword((value) => !value)}
+                aria-label={
+                  showConfirmPassword
+                    ? lang === "en" ? "Hide password" : "Скрыть пароль"
+                    : lang === "en" ? "Show password" : "Показать пароль"
+                }
+              >
+                {showConfirmPassword ? (lang === "en" ? "Hide" : "Скрыть") : (lang === "en" ? "Show" : "Показать")}
+              </button>
+            </div>
           </div>
 
           <label className="checkbox-field">

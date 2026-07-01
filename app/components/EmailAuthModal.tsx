@@ -13,6 +13,7 @@ export function EmailAuthModal({ isOpen, onClose, lang }: EmailAuthModalProps) {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -131,15 +132,29 @@ export function EmailAuthModal({ isOpen, onClose, lang }: EmailAuthModalProps) {
             <label className="modal-form-label">
               {ui.password}
             </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder={ui.passwordPlaceholder}
-              minLength={6}
-              required
-              className="modal-form-input"
-            />
+            <div className="password-input-row">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={ui.passwordPlaceholder}
+                minLength={6}
+                required
+                className="modal-form-input"
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowPassword((value) => !value)}
+                aria-label={
+                  showPassword
+                    ? lang === "en" ? "Hide password" : "Скрыть пароль"
+                    : lang === "en" ? "Show password" : "Показать пароль"
+                }
+              >
+                {showPassword ? (lang === "en" ? "Hide" : "Скрыть") : (lang === "en" ? "Show" : "Показать")}
+              </button>
+            </div>
           </div>
 
           <button
