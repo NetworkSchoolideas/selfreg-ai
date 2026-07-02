@@ -1,0 +1,2 @@
+-- Intentionally empty.
+-- Preview branches are created without production data.

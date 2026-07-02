@@ -1,0 +1,7 @@
+# Minimal Supabase project config committed so GitHub Branching can treat this
+# repository as a standard CLI-initialized Supabase project.
+project_id = "selfreg-ai"
+
+[db.seed]
+enabled = false
+sql_paths = ["./seed.sql"]
