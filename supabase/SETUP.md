@@ -112,7 +112,7 @@ The GIN index on `profiles.metadata` is important if you expect frequent teacher
 
 Apply:
 
-- [migrations/001-rls-policies.sql](migrations/001-rls-policies.sql)
+- [migrations/20260701094103_release_rls_policies.sql](migrations/20260701094103_release_rls_policies.sql)
 
 ## 5. Configure auth
 

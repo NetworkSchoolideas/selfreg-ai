@@ -55,6 +55,6 @@ supabase db push
 
 or paste the SQL from:
 
-- [migrations/001-rls-policies.sql](migrations/001-rls-policies.sql)
+- [migrations/20260701094103_release_rls_policies.sql](migrations/20260701094103_release_rls_policies.sql)
 
 into the Supabase SQL editor.
