@@ -27,7 +27,7 @@ import {
   fetchChildFromSupabase,
 } from "@/lib/server-storage";
 import { isSupabaseAvailable } from "@/lib/supabase";
-import { getSession } from "@/lib/supabase-auth";
+import { supabase } from "@/lib/supabase-auth";
 
 // ============================================================================
 // Types
@@ -75,8 +75,14 @@ async function isSupabaseReady(): Promise<boolean> {
   }
 
   try {
-    const { data } = await getSession();
-    return !!data?.session;
+    if (!supabase) {
+      return false;
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    return !!user;
   } catch {
     return false;
   }

@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { clientError, serverError } from "@/lib/api-errors";
 import {
   deleteChildFromSupabase,
+  fetchChildByUserIdFromSupabase,
   fetchChildFromSupabase,
   fetchChildrenFromSupabase,
   upsertChildInSupabase,
@@ -66,7 +67,7 @@ export async function GET(request: Request) {
         return NextResponse.json({ ok: true, child: null });
       }
 
-      const child = await fetchChildFromSupabase(userId);
+      const child = await fetchChildByUserIdFromSupabase(userId);
       return NextResponse.json({ ok: true, child });
     }
 
@@ -75,19 +76,12 @@ export async function GET(request: Request) {
       return NextResponse.json({ ok: true, child });
     }
 
-    if (!teacherId) {
-      return NextResponse.json({
-        ok: true,
-        children: [],
-      });
-    }
-
     const access = await requireTeacherAccess(teacherId);
     if (access.response) {
       return access.response;
     }
 
-    const children = await fetchChildrenFromSupabase(teacherId);
+    const children = await fetchChildrenFromSupabase(access.teacherId!);
     return NextResponse.json({ ok: true, children });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to load children";
@@ -100,14 +94,15 @@ export async function POST(request: Request) {
     const body = await request.json();
 
     if (body.action === "upsert" && body.child) {
-      if (body.child.teacherId) {
-        const access = await requireTeacherAccess(body.child.teacherId);
-        if (access.response) {
-          return access.response;
-        }
+      const access = await requireTeacherAccess(body.child.teacherId);
+      if (access.response) {
+        return access.response;
       }
 
-      const child = await upsertChildInSupabase(body.child);
+      const child = await upsertChildInSupabase({
+        ...body.child,
+        teacherId: body.child.teacherId || access.teacherId,
+      });
       return NextResponse.json({ ok: true, child });
     }
 
@@ -122,14 +117,15 @@ export async function POST(request: Request) {
     }
 
     const payload = ChildPayload.parse(body);
-    if (payload.teacherId) {
-      const access = await requireTeacherAccess(payload.teacherId);
-      if (access.response) {
-        return access.response;
-      }
+    const access = await requireTeacherAccess(payload.teacherId);
+    if (access.response) {
+      return access.response;
     }
 
-    const child = await upsertChildInSupabase(payload);
+    const child = await upsertChildInSupabase({
+      ...payload,
+      teacherId: payload.teacherId || access.teacherId,
+    });
     return NextResponse.json({ ok: true, child });
   } catch (error) {
     if (error instanceof z.ZodError) {

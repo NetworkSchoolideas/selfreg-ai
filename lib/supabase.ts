@@ -13,6 +13,7 @@
  * @module supabase
  */
 
+import { createBrowserClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/supabase';
 
@@ -58,7 +59,23 @@ if (!supabaseAnonKey) {
  * ```
  */
 export const supabase = supabaseUrl && supabaseAnonKey
-  ? createClient<Database>(supabaseUrl, supabaseAnonKey, {
+  ? typeof window !== 'undefined'
+    ? createBrowserClient<Database>(supabaseUrl, supabaseAnonKey, {
+        db: {
+          schema: 'public'
+        },
+        auth: {
+          autoRefreshToken: true,
+          persistSession: true,
+          detectSessionInUrl: true
+        },
+        global: {
+          headers: {
+            'X-Client-Info': 'selfreg-ai-webapp'
+          }
+        }
+      })
+    : createClient<Database>(supabaseUrl, supabaseAnonKey, {
       db: {
         schema: 'public'
       },

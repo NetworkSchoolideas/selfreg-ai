@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
+import type { AuthChangeEvent, Session, User } from "@supabase/supabase-js";
 import { supabase, signInWithGoogle, signOut, getUserProfile, UserProfile } from "@/lib/supabase-auth";
 
 interface UseSupabaseAuthReturn {
@@ -27,10 +27,37 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
   const [error, setError] = useState<string | null>(null);
   const [isMockMode, setIsMockMode] = useState(false);
 
+  const buildFallbackProfile = (authUser: User): UserProfile => ({
+    id: authUser.id,
+    email: authUser.email || "",
+    full_name:
+      typeof authUser.user_metadata?.full_name === "string"
+        ? authUser.user_metadata.full_name
+        : typeof authUser.user_metadata?.name === "string"
+          ? authUser.user_metadata.name
+          : authUser.email?.split("@")[0],
+    avatar_url:
+      typeof authUser.user_metadata?.avatar_url === "string"
+        ? authUser.user_metadata.avatar_url
+        : typeof authUser.user_metadata?.picture === "string"
+          ? authUser.user_metadata.picture
+          : undefined,
+    role:
+      authUser.user_metadata?.preferred_role === "teacher"
+        ? "teacher"
+        : "student",
+    metadata:
+      authUser.user_metadata && typeof authUser.user_metadata === "object"
+        ? authUser.user_metadata
+        : undefined,
+  });
+
   // Check if Supabase is configured and listen to auth state changes
   useEffect(() => {
+    const supabaseClient = supabase;
+
     // Check if Supabase is available
-    if (!supabase) {
+    if (!supabaseClient) {
       console.log("[useSupabaseAuth] Supabase not configured - running in mock mode");
       // Use queueMicrotask to avoid calling setState synchronously in effect
       queueMicrotask(() => {
@@ -40,38 +67,53 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
       return;
     }
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }: { data: { session: Session | null } }) => {
-      console.log("[useSupabaseAuth] Initial session:", session?.user?.email);
+    const syncAuthenticatedUser = async (session: Session | null) => {
       setSession(session);
-      
-      if (session?.user) {
-        getUserProfile(session.user.id).then((profile) => {
-          setUser(profile);
-          setIsLoading(false);
-        });
-      } else {
+
+      if (!session) {
+        setUser(null);
         setIsLoading(false);
+        return;
       }
+
+      const {
+        data: { user },
+      } = await supabaseClient.auth.getUser();
+
+      if (!user) {
+        setUser(null);
+        setIsLoading(false);
+        return;
+      }
+
+      const profile = await getUserProfile(user.id);
+      setUser(profile || buildFallbackProfile(user));
+      setIsLoading(false);
+    };
+
+    supabaseClient.auth.getUser().then(({ data: { user } }) => {
+      console.log("[useSupabaseAuth] Initial user present:", Boolean(user));
+
+      if (!user) {
+        setSession(null);
+        setUser(null);
+        setIsLoading(false);
+        return;
+      }
+
+      getUserProfile(user.id).then((profile) => {
+        setUser(profile || buildFallbackProfile(user as User));
+        setIsLoading(false);
+      });
     });
 
     // Listen for changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((
+    const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((
       _event: AuthChangeEvent,
       session: Session | null
     ) => {
       console.log("[useSupabaseAuth] Auth state changed:", _event);
-      setSession(session);
-      
-      if (session?.user) {
-        getUserProfile(session.user.id).then((profile) => {
-          setUser(profile);
-          setIsLoading(false);
-        });
-      } else {
-        setUser(null);
-        setIsLoading(false);
-      }
+      void syncAuthenticatedUser(session);
     });
 
     return () => {

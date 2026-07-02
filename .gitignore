@@ -18,6 +18,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 dev-server*.log
+debug.log
+playwright-report/
+test-results/
 
 # Local env files
 .env*.local

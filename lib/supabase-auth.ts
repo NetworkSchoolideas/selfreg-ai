@@ -283,7 +283,7 @@ export function onAuthStateChange(callback: (event: string, session: any) => voi
   }
 
   return supabase.auth.onAuthStateChange((event, session) => {
-    console.log("[Supabase] Auth state changed:", event, session?.user?.email);
+    console.log("[Supabase] Auth state changed:", event, Boolean(session));
     callback(event, session);
   });
 }
@@ -301,7 +301,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
     .single();
 
   if (error) {
-    console.error("[Supabase] Failed to fetch profile:", error);
+    console.warn("[Supabase] Failed to fetch profile:", error);
     return null;
   }
 

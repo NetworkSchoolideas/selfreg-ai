@@ -1,0 +1,111 @@
+import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+
+const e2eSecret = process.env.SELFREG_E2E_SECRET || "local-e2e-secret";
+
+const teacherUser = {
+  email: "selfreg.playwright.teacher@selfreg.test",
+  password: "Test123!Teacher",
+  role: "teacher" as const,
+  fullName: "Playwright Teacher",
+  school: "E2E School",
+};
+
+const studentUser = {
+  email: "selfreg.playwright.student@selfreg.test",
+  password: "Test123!Student",
+  role: "student" as const,
+  fullName: "Playwright Student",
+};
+
+function collectClientErrors(page: Page) {
+  const pageErrors: string[] = [];
+  const consoleErrors: string[] = [];
+
+  page.on("pageerror", (error) => {
+    pageErrors.push(error.message);
+  });
+
+  page.on("console", (message) => {
+    if (message.type() === "error") {
+      consoleErrors.push(message.text());
+    }
+  });
+
+  return { pageErrors, consoleErrors };
+}
+
+function expectHealthyClient(tracker: { pageErrors: string[]; consoleErrors: string[] }) {
+  expect(tracker.pageErrors, `Unexpected page errors: ${tracker.pageErrors.join(" | ")}`).toEqual([]);
+  expect(tracker.consoleErrors, `Unexpected console errors: ${tracker.consoleErrors.join(" | ")}`).toEqual([]);
+}
+
+async function ensureConfirmedUsers(request: APIRequestContext) {
+  const response = await request.post("/api/e2e/setup", {
+    headers: {
+      "x-e2e-secret": e2eSecret,
+    },
+    data: {
+      users: [teacherUser, studentUser],
+    },
+  });
+
+  expect(response.ok()).toBe(true);
+}
+
+async function loginViaForm(page: Page, role: "teacher" | "student", email: string, password: string) {
+  await page.goto(`/auth/login?role=${role}&lang=ru`, { waitUntil: "networkidle" });
+  await expect(page.getByPlaceholder("you@example.com")).toBeVisible();
+  await expect(page.locator('button[type="submit"]')).toBeVisible();
+  const passwordInput = page.locator(".password-input-row input");
+  const passwordToggle = page.locator(".password-toggle");
+  await expect(passwordToggle).toBeVisible();
+  await passwordToggle.click();
+  await expect(passwordInput).toHaveAttribute("type", "text");
+  await passwordToggle.click();
+  await expect(passwordInput).toHaveAttribute("type", "password");
+  await page.getByPlaceholder("you@example.com").fill(email);
+  await passwordInput.fill(password);
+  await page.locator('button[type="submit"]').click({ noWaitAfter: true });
+}
+
+test.describe("Authentication and RBAC", () => {
+  test.describe.configure({ mode: "serial" });
+
+  test.beforeAll(async ({ request }) => {
+    await ensureConfirmedUsers(request);
+  });
+
+  test("teacher login reaches dashboard and student route redirects back", async ({ page }) => {
+    const tracker = collectClientErrors(page);
+
+    await loginViaForm(page, "teacher", teacherUser.email, teacherUser.password);
+
+    await expect(page).toHaveURL(/\/teacher$/, { timeout: 15000 });
+    await expect(page.locator("h1")).toContainText("инфографика");
+
+    await page.goto("/student/dashboard?lang=ru");
+
+    await expect(page).toHaveURL(/\/teacher\?lang=ru$/, { timeout: 15000 });
+    await expect(page.locator("h1")).toContainText("инфографика");
+
+    expectHealthyClient(tracker);
+  });
+
+  test("student login resolves current dashboard and teacher route redirects back", async ({ page }) => {
+    const tracker = collectClientErrors(page);
+
+    await loginViaForm(page, "student", studentUser.email, studentUser.password);
+
+    await expect(page).toHaveURL(/\/student\/dashboard$/, { timeout: 15000 });
+    await expect(page.locator("h1")).toContainText("кабинет");
+    await expect(page.locator(".profile-field").filter({ hasText: "Playwright Student" }).first()).toBeVisible();
+    await expect(page.getByText("не указан")).toHaveCount(0);
+
+    await page.goto("/teacher?lang=ru");
+
+    await expect(page).toHaveURL(/\/student\/dashboard\?lang=ru$/, { timeout: 15000 });
+    await expect(page.locator("h1")).toContainText("кабинет");
+
+    expectHealthyClient(tracker);
+  });
+});

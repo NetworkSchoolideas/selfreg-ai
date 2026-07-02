@@ -282,6 +282,41 @@ export async function fetchChildFromSupabase(childId: string): Promise<ChildProf
   return data ? mapChild(data as NestedChildRow) : null;
 }
 
+export async function fetchChildByUserIdFromSupabase(userId: string): Promise<ChildProfile | null> {
+  if (!isSupabaseAdminAvailable()) {
+    return null;
+  }
+
+  const supabaseAdmin: any = getSupabaseAdmin();
+
+  const buildQuery = (select: string) =>
+    supabaseAdmin
+      .from("children")
+      .select(select)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+  let { data, error } = await buildQuery(CHILDREN_WITH_EVENT_TYPE_SELECT);
+
+  if (error && isMissingEventTypeError(error)) {
+    const eventTypeOnly = await buildQuery(CHILDREN_EVENT_TYPE_SELECT);
+    data = eventTypeOnly.data;
+    error = eventTypeOnly.error;
+
+    if (error && isMissingEventTypeError(error)) {
+      const legacy = await buildQuery(CHILDREN_LEGACY_SELECT);
+      data = legacy.data;
+      error = legacy.error;
+    }
+  }
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data ? mapChild(data as NestedChildRow) : null;
+}
+
 export async function upsertChildInSupabase(input: ChildUpsertInput): Promise<ChildProfile> {
   if (!isSupabaseAdminAvailable()) {
     throw new Error("Supabase admin client is not configured");

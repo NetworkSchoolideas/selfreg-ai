@@ -90,6 +90,8 @@ async function main() {
           ...process.env,
           BROWSER: "none",
           SELFREG_E2E_TEACHER_ACCESS_BYPASS: "1",
+          SELFREG_E2E_ENABLED: process.env.SELFREG_E2E_ENABLED || "1",
+          SELFREG_E2E_SECRET: process.env.SELFREG_E2E_SECRET || "local-e2e-secret",
         },
       });
 

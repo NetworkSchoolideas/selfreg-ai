@@ -14,12 +14,11 @@ function StudentDashboardContent() {
   const searchParams = useSearchParams();
   const childId = searchParams.get("childId");
   const lang = normalizeAppLang(searchParams.get("lang"));
-  const hasChildId = Boolean(childId);
   const missingChildIdError = lang === "en" ? "Student ID not provided" : "ID ученика не указан";
 
   const [profile, setProfile] = useState<ChildProfile | null>(null);
-  const [loading, setLoading] = useState(hasChildId);
-  const [error, setError] = useState<string | null>(hasChildId ? null : missingChildIdError);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const ui = {
     ru: {
@@ -97,21 +96,31 @@ function StudentDashboardContent() {
   useEffect(() => {
     let active = true;
 
-    if (!childId) {
-      return () => {
-        active = false;
-      };
-    }
-
     const loadProfile = async () => {
       try {
         setLoading(true);
+
+        if (!childId) {
+          const response = await fetch("/api/children?childId=current", { cache: "no-store" });
+          const payload = response.ok ? await response.json() : null;
+          const currentChild = payload?.child as ChildProfile | null | undefined;
+
+          if (currentChild && active) {
+            setProfile(currentChild);
+            setError(null);
+            return;
+          }
+
+          if (active) {
+            setError(missingChildIdError);
+          }
+          return;
+        }
 
         const child = await DataService.getChild(childId);
         if (child && active) {
           setProfile(child);
           setError(null);
-          setLoading(false);
           return;
         }
 
@@ -135,7 +144,7 @@ function StudentDashboardContent() {
     return () => {
       active = false;
     };
-  }, [childId, t.errorConnection, t.errorNotFound]);
+  }, [childId, missingChildIdError, t.errorConnection, t.errorNotFound]);
 
   const metrics = useMemo(() => (profile ? getStudentDashboardMetrics(profile) : null), [profile]);
   const status = useMemo(() => {

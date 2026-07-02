@@ -51,7 +51,7 @@ test.describe("Public smoke flows", () => {
     expectHealthyClient(tracker);
   });
 
-  test("role selection routes teacher to registration with preselected role", async ({ page }) => {
+  test("role selection routes teacher to the dedicated teacher registration flow", async ({ page }) => {
     const tracker = collectClientErrors(page);
 
     await page.goto("/role-selection?lang=ru");
@@ -59,11 +59,11 @@ test.describe("Public smoke flows", () => {
     await expect(page).toHaveURL(/\/role-selection\?lang=ru$/);
     await expect(page.getByRole("heading", { name: "Выберите вашу роль" })).toBeVisible();
 
-    const teacherRoleCard = page.locator('a[href="/auth/register?role=teacher&lang=ru"]').first();
+    const teacherRoleCard = page.locator('a[href="/teacher/register?lang=ru"]').first();
     await expect(teacherRoleCard).toBeVisible();
 
     await Promise.all([
-      page.waitForURL(/\/auth\/register\?role=teacher&lang=ru$/, { timeout: 15000 }),
+      page.waitForURL(/\/teacher\/register\?lang=ru$/, { timeout: 15000 }),
       teacherRoleCard.click(),
     ]);
 

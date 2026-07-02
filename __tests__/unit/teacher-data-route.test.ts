@@ -26,6 +26,28 @@ describe("teacher data route", () => {
     });
   });
 
+  it("rejects unauthenticated access when teacherId query param is missing", async () => {
+    (createServerClient as jest.Mock).mockReturnValue({
+      auth: {
+        getUser: jest.fn().mockResolvedValue({
+          data: { user: null },
+        }),
+      },
+    });
+
+    const response = await GET(
+      new Request("https://selfreg.ai/api/teacher-data?analytics=true")
+    );
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({
+      error: "Teacher authentication required",
+      code: "TEACHER_AUTH_REQUIRED",
+    });
+    expect(fetchChildrenFromSupabase).not.toHaveBeenCalled();
+    expect(computeTeacherAnalytics).not.toHaveBeenCalled();
+  });
+
   it("falls back to the authenticated teacher when teacherId query param is missing", async () => {
     const maybeSingle = jest.fn().mockResolvedValue({
       data: { role: "teacher" },
