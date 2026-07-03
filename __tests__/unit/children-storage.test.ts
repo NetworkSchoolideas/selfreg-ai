@@ -1,0 +1,128 @@
+import { ChildrenStorage } from "@/lib/children-storage";
+import type { AdolescentFeedback, ChildProfile, Session } from "@/types/session";
+
+function installBrowserStorageMock() {
+  const store = new Map<string, string>();
+  const localStorageMock = {
+    getItem: jest.fn((key: string) => store.get(key) ?? null),
+    setItem: jest.fn((key: string, value: string) => {
+      store.set(key, value);
+    }),
+    removeItem: jest.fn((key: string) => {
+      store.delete(key);
+    }),
+    clear: jest.fn(() => {
+      store.clear();
+    }),
+  };
+
+  Object.defineProperty(global, "localStorage", {
+    value: localStorageMock,
+    configurable: true,
+  });
+  Object.defineProperty(global, "window", {
+    value: { localStorage: localStorageMock },
+    configurable: true,
+  });
+}
+
+function makeSession(updatedAt: string, finalNote = ""): Session {
+  return {
+    sessionId: `session-${updatedAt}`,
+    context: "exam",
+    records: [],
+    finalNote,
+    updatedAt,
+    lang: "en",
+  };
+}
+
+describe("ChildrenStorage", () => {
+  beforeEach(() => {
+    installBrowserStorageMock();
+    jest.spyOn(global, "fetch").mockResolvedValue(new Response(JSON.stringify({ ok: true })));
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("creates a child with a unique id and empty sessions", () => {
+    const child = ChildrenStorage.addChild("Test Student");
+
+    expect(child.id).toEqual(expect.any(String));
+    expect(child.name).toBe("Test Student");
+    expect(child.sessions).toEqual([]);
+    expect(ChildrenStorage.getChild(child.id)).toEqual(child);
+  });
+
+  it("saves a session for a child", () => {
+    const child = ChildrenStorage.addChild("Test Student");
+    const session = makeSession("2026-01-01T00:00:00.000Z", "done");
+
+    ChildrenStorage.saveSessionForChild(child.id, session);
+
+    expect(ChildrenStorage.getSessionsForChild(child.id)).toEqual([session]);
+  });
+
+  it("returns only completed sessions sorted newest first", () => {
+    const child = ChildrenStorage.addChild("Test Student");
+    ChildrenStorage.saveSessionForChild(child.id, makeSession("2026-01-01T00:00:00.000Z", "older"));
+    ChildrenStorage.saveSessionForChild(child.id, makeSession("2026-01-03T00:00:00.000Z"));
+    ChildrenStorage.saveSessionForChild(child.id, makeSession("2026-01-02T00:00:00.000Z", "newer"));
+
+    expect(ChildrenStorage.getCompletedSessionsForChild(child.id).map((session) => session.finalNote)).toEqual([
+      "newer",
+      "older",
+    ]);
+  });
+
+  it("deletes a child and its sessions", () => {
+    const child = ChildrenStorage.addChild("Test Student");
+    ChildrenStorage.saveSessionForChild(child.id, makeSession("2026-01-01T00:00:00.000Z", "done"));
+
+    expect(ChildrenStorage.deleteChild(child.id)).toBe(true);
+
+    expect(ChildrenStorage.getChild(child.id)).toBeUndefined();
+    expect(ChildrenStorage.getSessionsForChild(child.id)).toEqual([]);
+  });
+
+  it("attaches a history insight to the latest session", () => {
+    const child = ChildrenStorage.addChild("Test Student");
+    ChildrenStorage.saveSessionForChild(child.id, makeSession("2026-01-01T00:00:00.000Z", "older"));
+    ChildrenStorage.saveSessionForChild(child.id, makeSession("2026-01-02T00:00:00.000Z", "newer"));
+
+    expect(ChildrenStorage.attachHistoryInsight(child.id, "Keep going")).toBe(true);
+
+    const latest = ChildrenStorage.getLatestSessionForChild(child.id);
+    expect(latest?.historyInsight).toBe("Keep going");
+  });
+
+  it("saves adolescent feedback on the latest session", () => {
+    const child = ChildrenStorage.addChild("Test Student");
+    const feedback: AdolescentFeedback = {
+      rating: 5,
+      comment: "Useful",
+      timestamp: "2026-01-01T00:00:00.000Z",
+    };
+    ChildrenStorage.saveSessionForChild(child.id, makeSession("2026-01-01T00:00:00.000Z", "done"));
+
+    expect(ChildrenStorage.saveAdolescentFeedback(child.id, feedback)).toBe(true);
+
+    expect(ChildrenStorage.getLatestSessionForChild(child.id)?.adolescentFeedback).toEqual(feedback);
+  });
+
+  it("upserts an existing child instead of duplicating it", () => {
+    const child = ChildrenStorage.addChild("Test Student");
+    const updated: ChildProfile = {
+      ...child,
+      name: "Updated Student",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    };
+
+    ChildrenStorage.upsertLocalChild(updated);
+
+    expect(ChildrenStorage.getAll()).toHaveLength(1);
+    expect(ChildrenStorage.getChild(child.id)?.name).toBe("Updated Student");
+  });
+});

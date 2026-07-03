@@ -40,10 +40,14 @@ __tests__/
 │   ├── ai-service.test.ts
 │   ├── analytics.test.ts
 │   ├── auth-callback-route.test.ts
+│   ├── chat-route.test.ts
 │   ├── children-route.test.ts
+│   ├── children-storage.test.ts
+│   ├── cycle-route.test.ts
 │   ├── e2e-setup-route.test.ts
 │   ├── join-teacher-route.test.ts
 │   ├── proxy-auth.test.ts
+│   ├── provider-check-route.test.ts
 │   ├── scenario-engine.test.ts
 │   ├── selfreg-flow-machine.test.ts
 │   ├── selfreg-model.test.ts
@@ -98,9 +102,9 @@ test("page loads", async ({ page }) => {
 ## Current Tests
 
 ### Unit Tests
-- 19 Jest suites, 62 tests.
+- 23 Jest suites, 72 tests.
 - Core domain coverage: self-regulation model, flow machine, scenario engine, session helpers, session manager, AI service.
-- Auth/data coverage: callback route, children route, session sync, Supabase auth, teacher/student dashboard helpers.
+- Auth/data coverage: callback route, children route, children storage, provider-check/chat/cycle routes, session sync, Supabase auth, teacher/student dashboard helpers.
 
 ### E2E Tests
 - 2 Playwright files, 15 tests.
