@@ -37,8 +37,27 @@ npm run test:coverage
 ```
 __tests__/
 ├── unit/              # Jest unit tests
-│   └── analytics.test.ts
+│   ├── ai-service.test.ts
+│   ├── analytics.test.ts
+│   ├── auth-callback-route.test.ts
+│   ├── children-route.test.ts
+│   ├── e2e-setup-route.test.ts
+│   ├── join-teacher-route.test.ts
+│   ├── proxy-auth.test.ts
+│   ├── scenario-engine.test.ts
+│   ├── selfreg-flow-machine.test.ts
+│   ├── selfreg-model.test.ts
+│   ├── session-helpers.test.ts
+│   ├── session-manager.test.ts
+│   ├── session-sync-route.test.ts
+│   ├── session-sync.test.ts
+│   ├── student-dashboard.test.ts
+│   ├── supabase-auth.test.ts
+│   ├── teacher-dashboard-analytics.test.ts
+│   ├── teacher-data-route.test.ts
+│   └── teacher-link.test.ts
 ├── e2e/               # Playwright E2E tests
+│   ├── auth-flow.test.ts
 │   └── teacher-flow.test.ts
 └── README.md          # Test documentation
 ```
@@ -78,11 +97,15 @@ test("page loads", async ({ page }) => {
 
 ## Current Tests
 
-### Unit Tests (7 tests)
-- `analytics.test.ts` — Class distribution, progress stats, total statistics
+### Unit Tests
+- 19 Jest suites, 62 tests.
+- Core domain coverage: self-regulation model, flow machine, scenario engine, session helpers, session manager, AI service.
+- Auth/data coverage: callback route, children route, session sync, Supabase auth, teacher/student dashboard helpers.
 
-### E2E Tests (Mock)
-- `teacher-flow.test.ts` — Teacher registration workflow (mock, needs real Playwright implementation)
+### E2E Tests
+- 2 Playwright files, 15 tests.
+- `auth-flow.test.ts` — Authentication and RBAC smoke coverage.
+- `teacher-flow.test.ts` — Public, teacher, student, and dashboard smoke coverage.
 
 ## CI Integration
 
@@ -116,6 +139,5 @@ Tests run automatically on every push to `main` and on Pull Requests via GitHub 
 
 - Add integration tests for API endpoints
 - Add component tests with React Testing Library
-- Implement real Playwright E2E tests (replace mocks)
 - Add test for AI provider switching
 - Add test for bilingual (RU/EN) switching

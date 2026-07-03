@@ -9,9 +9,28 @@ This project uses **Jest** for unit tests and **Playwright** for E2E tests.
 ```
 __tests__/
 ├── e2e/           # End-to-end tests (Playwright)
+│   ├── auth-flow.test.ts
 │   └── teacher-flow.test.ts
 └── unit/          # Unit tests (Jest)
-    └── analytics.test.ts
+    ├── ai-service.test.ts
+    ├── analytics.test.ts
+    ├── auth-callback-route.test.ts
+    ├── children-route.test.ts
+    ├── e2e-setup-route.test.ts
+    ├── join-teacher-route.test.ts
+    ├── proxy-auth.test.ts
+    ├── scenario-engine.test.ts
+    ├── selfreg-flow-machine.test.ts
+    ├── selfreg-model.test.ts
+    ├── session-helpers.test.ts
+    ├── session-manager.test.ts
+    ├── session-sync-route.test.ts
+    ├── session-sync.test.ts
+    ├── student-dashboard.test.ts
+    ├── supabase-auth.test.ts
+    ├── teacher-dashboard-analytics.test.ts
+    ├── teacher-data-route.test.ts
+    └── teacher-link.test.ts
 ```
 
 ## Running Tests
@@ -30,6 +49,7 @@ npm run test:e2e
 ```bash
 npm test
 ```
+Runs Jest unit tests. E2E tests are intentionally excluded from Jest and run through `npm run test:e2e`.
 
 ### Test with Coverage
 ```bash
@@ -75,3 +95,8 @@ Tests run automatically on:
 - Release tags
 
 See `.github/workflows/ci.yml` for the CI pipeline configuration.
+
+## Current Baseline
+
+- Unit: 19 Jest suites, 62 tests.
+- E2E: 2 Playwright files, 15 tests.
