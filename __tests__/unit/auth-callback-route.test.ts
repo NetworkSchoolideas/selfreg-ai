@@ -5,6 +5,12 @@ jest.mock("@supabase/ssr", () => ({
   createServerClient: jest.fn(),
 }));
 
+jest.mock("@/lib/server-storage", () => ({
+  ensureStudentChildForAuthUserInSupabase: jest.fn(),
+}));
+
+import { ensureStudentChildForAuthUserInSupabase } from "@/lib/server-storage";
+
 interface MockCookie {
   name: string;
   value: string;
@@ -23,6 +29,7 @@ function buildRequest(url: string) {
 function mockServerClient(options?: {
   roleFromProfile?: string | null;
   exchangeError?: { message: string } | null;
+  verifyError?: { message: string } | null;
   upsertError?: { message: string } | null;
   cookiesToSet?: MockCookie[];
 }) {
@@ -53,6 +60,40 @@ function mockServerClient(options?: {
     };
   });
 
+  const verifyOtp = jest.fn().mockImplementation(async () => {
+    options?.cookiesToSet?.length &&
+      serverClientOptions?.cookies.setAll(options.cookiesToSet);
+
+    if (options?.verifyError) {
+      return {
+        data: { session: null, user: null },
+        error: options.verifyError,
+      };
+    }
+
+    return {
+      data: {
+        session: {
+          user: {
+            id: "user-1",
+            email: "student@example.com",
+            user_metadata: {
+              full_name: "Student User",
+            },
+          },
+        },
+        user: {
+          id: "user-1",
+          email: "student@example.com",
+          user_metadata: {
+            full_name: "Student User",
+          },
+        },
+      },
+      error: null,
+    };
+  });
+
   const maybeSingle = jest.fn().mockResolvedValue({
     data: options?.roleFromProfile ? { role: options.roleFromProfile } : null,
   });
@@ -67,12 +108,12 @@ function mockServerClient(options?: {
   (createServerClient as jest.Mock).mockImplementation((_url, _key, incomingOptions) => {
     serverClientOptions = incomingOptions;
     return {
-      auth: { exchangeCodeForSession },
+      auth: { exchangeCodeForSession, verifyOtp },
       from,
     };
   });
 
-  return { exchangeCodeForSession, from, select, eq, maybeSingle, upsert };
+  return { exchangeCodeForSession, verifyOtp, from, select, eq, maybeSingle, upsert };
 }
 
 describe("auth callback route", () => {
@@ -122,5 +163,28 @@ describe("auth callback route", () => {
     expect(response.headers.get("location")).toBe("https://selfreg.ai/teacher?lang=en&auth=success");
     expect(mocks.from).toHaveBeenCalledWith("profiles");
     expect(mocks.select).toHaveBeenCalledWith("role");
+  });
+
+  it("verifies email confirmation tokens and bootstraps a student child", async () => {
+    const mocks = mockServerClient({
+      cookiesToSet: [{ name: "sb-session", value: "token", options: { path: "/" } }],
+    });
+    (ensureStudentChildForAuthUserInSupabase as jest.Mock).mockResolvedValue({ id: "child-1" });
+
+    const response = await GET(
+      buildRequest("https://selfreg.ai/api/auth/callback?token_hash=hash-1&type=email&role=student&lang=ru")
+    );
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("https://selfreg.ai/student/dashboard?lang=ru&auth=success");
+    expect(mocks.verifyOtp).toHaveBeenCalledWith({
+      token_hash: "hash-1",
+      type: "email",
+    });
+    expect(ensureStudentChildForAuthUserInSupabase).toHaveBeenCalledWith({
+      userId: "user-1",
+      email: "student@example.com",
+      fullName: "Student User",
+    });
   });
 });

@@ -111,7 +111,10 @@ function TeacherRegisterContent() {
       if (result.data?.user) {
         sessionStorage.setItem("teacher_code", teacherCode);
         sessionStorage.setItem("teacher_id", result.data.user.id);
-        router.push(withLang(`/teacher/register-success?teacherCode=${teacherCode}`, lang));
+        const query = result.hasSession
+          ? `/teacher/register-success?teacherCode=${teacherCode}&next=dashboard`
+          : `/teacher/register-success?teacherCode=${teacherCode}&next=login&pendingEmail=1`;
+        router.push(withLang(query, lang));
       }
     } catch (err: any) {
       setError(err.message || t.errorRegistration);

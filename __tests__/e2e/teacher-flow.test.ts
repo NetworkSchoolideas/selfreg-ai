@@ -121,6 +121,19 @@ test.describe("Public smoke flows", () => {
     expectHealthyClient(tracker);
   });
 
+  test("teacher register success supports dashboard and pending-email states", async ({ page }) => {
+    const tracker = collectClientErrors(page);
+
+    await page.goto("/teacher/register-success?lang=en&teacherCode=T777777&next=dashboard");
+    await expect(page.getByRole("link", { name: "Go to dashboard" })).toBeVisible();
+
+    await page.goto("/teacher/register-success?lang=en&teacherCode=T888888&pendingEmail=1");
+    await expect(page.getByText("Confirm your email, then sign in.")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Go to login" })).toBeVisible();
+
+    expectHealthyClient(tracker);
+  });
+
   test("teacher register page routes login CTA to teacher auth login", async ({ page }) => {
     const tracker = collectClientErrors(page);
 

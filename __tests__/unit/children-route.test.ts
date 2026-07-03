@@ -1,10 +1,16 @@
 import { GET, POST } from "@/app/api/children/route";
-import { fetchChildByUserIdFromSupabase, fetchChildrenFromSupabase, upsertChildInSupabase } from "@/lib/server-storage";
+import {
+  ensureStudentChildForAuthUserInSupabase,
+  fetchChildByUserIdFromSupabase,
+  fetchChildrenFromSupabase,
+  upsertChildInSupabase,
+} from "@/lib/server-storage";
 import { requireTeacherAccess } from "@/lib/server-teacher-access";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 jest.mock("@/lib/server-storage", () => ({
+  ensureStudentChildForAuthUserInSupabase: jest.fn(),
   fetchChildByUserIdFromSupabase: jest.fn(),
   fetchChildFromSupabase: jest.fn(),
   fetchChildrenFromSupabase: jest.fn(),
@@ -38,7 +44,13 @@ describe("children route teacher access", () => {
     (createServerClient as jest.Mock).mockReturnValue({
       auth: {
         getUser: jest.fn().mockResolvedValue({
-          data: { user: { id: "student-auth-1" } },
+          data: {
+            user: {
+              id: "student-auth-1",
+              email: "student@example.com",
+              user_metadata: { preferred_role: "student", full_name: "Student User" },
+            },
+          },
         }),
       },
     });
@@ -58,6 +70,43 @@ describe("children route teacher access", () => {
       },
     });
     expect(fetchChildByUserIdFromSupabase).toHaveBeenCalledWith("student-auth-1");
+  });
+
+  it("bootstraps the current student child when the auth user has no child yet", async () => {
+    (createServerClient as jest.Mock).mockReturnValue({
+      auth: {
+        getUser: jest.fn().mockResolvedValue({
+          data: {
+            user: {
+              id: "student-auth-2",
+              email: "fresh-student@example.com",
+              user_metadata: { preferred_role: "student", full_name: "Fresh Student" },
+            },
+          },
+        }),
+      },
+    });
+    (fetchChildByUserIdFromSupabase as jest.Mock).mockResolvedValue(null);
+    (ensureStudentChildForAuthUserInSupabase as jest.Mock).mockResolvedValue({
+      id: "child-2",
+      name: "Fresh Student",
+    });
+
+    const response = await GET(new Request("https://selfreg.ai/api/children?childId=current"));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      ok: true,
+      child: {
+        id: "child-2",
+        name: "Fresh Student",
+      },
+    });
+    expect(ensureStudentChildForAuthUserInSupabase).toHaveBeenCalledWith({
+      userId: "student-auth-2",
+      email: "fresh-student@example.com",
+      fullName: "Fresh Student",
+    });
   });
 
   it("rejects unauthenticated list requests without teacherId", async () => {

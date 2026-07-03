@@ -15,6 +15,8 @@ function TeacherRegisterSuccessPage() {
   const [countdown, setCountdown] = useState(10);
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(false);
+  const nextTarget = searchParams.get("next") === "dashboard" ? "dashboard" : "login";
+  const pendingEmail = searchParams.get("pendingEmail") === "1";
   const teacherCode =
     searchParams.get("teacherCode") ||
     (typeof window !== "undefined" ? sessionStorage.getItem("teacher_code") || "" : "");
@@ -28,11 +30,13 @@ function TeacherRegisterSuccessPage() {
       copied: "Скопировано!",
       copyError: "Не удалось скопировать автоматически. Скопируйте код вручную.",
       saveCode: "Сохраните этот код: ученикам он понадобится, чтобы привязаться к вашему аккаунту.",
+      pendingEmailNotice: "Аккаунт создан. Подтвердите email, затем войдите в систему.",
       nextSteps: "Дальнейшие шаги:",
       step1: "Поделитесь кодом с учениками",
       step2: "Ученики вводят код при регистрации",
       step3: "Отслеживайте прогресс в дашборде",
       goToLogin: "Перейти ко входу",
+      goToDashboard: "Перейти в дашборд",
       autoRedirect: "Автоматическое перенаправление через",
       loading: "Загрузка...",
     },
@@ -44,11 +48,13 @@ function TeacherRegisterSuccessPage() {
       copied: "Copied!",
       copyError: "Automatic copy is unavailable. Copy the code manually.",
       saveCode: "Save this code: students will need it to link to your account.",
+      pendingEmailNotice: "Account created. Confirm your email, then sign in.",
       nextSteps: "Next steps:",
       step1: "Share the code with students",
       step2: "Students enter the code during registration",
       step3: "Track progress in the dashboard",
       goToLogin: "Go to login",
+      goToDashboard: "Go to dashboard",
       autoRedirect: "Automatic redirect in",
       loading: "Loading...",
     },
@@ -66,8 +72,8 @@ function TeacherRegisterSuccessPage() {
       return () => clearTimeout(timer);
     }
 
-    router.push(`/auth/login?role=teacher&lang=${lang}`);
-  }, [countdown, lang, router, teacherCode]);
+    router.push(nextTarget === "dashboard" ? `/teacher?lang=${lang}` : `/auth/login?role=teacher&lang=${lang}`);
+  }, [countdown, lang, nextTarget, router, teacherCode]);
 
   const copyToClipboard = useCallback(async () => {
     try {
@@ -112,7 +118,12 @@ function TeacherRegisterSuccessPage() {
           )}
         </div>
 
-        <div className="warning-box mb-24">{t.saveCode}</div>
+        <div className="warning-box mb-24">
+          <div>{t.saveCode}</div>
+          {pendingEmail && (
+            <div className="mt-8 fw-500">{t.pendingEmailNotice}</div>
+          )}
+        </div>
 
         <div className="text-left mb-24">
           <h3 className="fs-16 mb-12" style={{ color: "#1f2937" }}>{t.nextSteps}</h3>
@@ -124,7 +135,7 @@ function TeacherRegisterSuccessPage() {
         </div>
 
         <Link
-          href={`/auth/login?role=teacher&lang=${lang}`}
+          href={nextTarget === "dashboard" ? `/teacher?lang=${lang}` : `/auth/login?role=teacher&lang=${lang}`}
           className="no-underline fs-16 fw-500"
           style={{
             display: "block",
@@ -134,7 +145,7 @@ function TeacherRegisterSuccessPage() {
             color: "white",
           }}
         >
-          {t.goToLogin}
+          {nextTarget === "dashboard" ? t.goToDashboard : t.goToLogin}
         </Link>
 
         <div className="mt-16 fs-13" style={{ color: "#9ca3af" }}>

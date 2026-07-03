@@ -1,15 +1,17 @@
 /**
  * SelfReg AI - Auth Callback
  *
- * Handles OAuth callbacks from Supabase (Google sign-in).
- * - Exchanges auth code for a server-managed session
+ * Handles Supabase auth callbacks (OAuth and email confirmation).
+ * - Exchanges auth code or verifies email token for a server-managed session
  * - Persists auth cookies on the redirect response
  * - Upserts user profile with role in the profiles table
  * - Redirects based on role: /teacher or /student/dashboard
  */
 
 import { createServerClient } from "@supabase/ssr";
+import type { EmailOtpType } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
+import { ensureStudentChildForAuthUserInSupabase } from "@/lib/server-storage";
 
 interface ResponseCookie {
   name: string;
@@ -45,6 +47,8 @@ export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
   const error = requestUrl.searchParams.get("error");
+  const tokenHash = requestUrl.searchParams.get("token_hash");
+  const otpType = requestUrl.searchParams.get("type") as EmailOtpType | null;
   const roleParam = requestUrl.searchParams.get("role");
   const lang = requestUrl.searchParams.get("lang") || "ru";
 
@@ -53,7 +57,7 @@ export async function GET(request: NextRequest) {
     return buildRedirectResponse(requestUrl, "/auth/login", lang, { auth: "error" });
   }
 
-  if (!code) {
+  if (!code && !(tokenHash && otpType)) {
     return buildRedirectResponse(requestUrl, "/auth/login", lang);
   }
 
@@ -80,21 +84,26 @@ export async function GET(request: NextRequest) {
   });
 
   try {
-    const {
-      data: { session },
-      error: exchangeError,
-    } = await supabase.auth.exchangeCodeForSession(code);
+    const authResult = code
+      ? await supabase.auth.exchangeCodeForSession(code)
+      : await supabase.auth.verifyOtp({
+          token_hash: tokenHash!,
+          type: otpType!,
+        });
 
-    if (exchangeError || !session) {
-      console.error("[Auth Callback] Failed to exchange code:", exchangeError);
+    const session = authResult.data.session;
+    const authUser = session?.user || authResult.data.user;
+
+    if (authResult.error || !authUser) {
+      console.error("[Auth Callback] Failed to finalize auth callback:", authResult.error);
       return buildRedirectResponse(requestUrl, "/auth/login", lang, { auth: "error" });
     }
 
-    const userId = session.user.id;
-    const userEmail = session.user.email || "";
+    const userId = authUser.id;
+    const userEmail = authUser.email || "";
     const userName =
-      session.user.user_metadata?.full_name ||
-      session.user.user_metadata?.name ||
+      authUser.user_metadata?.full_name ||
+      authUser.user_metadata?.name ||
       userEmail.split("@")[0];
 
     let role = roleParam || "student";
@@ -118,8 +127,8 @@ export async function GET(request: NextRequest) {
         full_name: userName,
         role,
         avatar_url:
-          session.user.user_metadata?.avatar_url ||
-          session.user.user_metadata?.picture ||
+          authUser.user_metadata?.avatar_url ||
+          authUser.user_metadata?.picture ||
           `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=4f46e5&color=fff`,
         updated_at: new Date().toISOString(),
       },
@@ -128,6 +137,14 @@ export async function GET(request: NextRequest) {
 
     if (upsertError) {
       console.error("[Auth Callback] Failed to upsert profile:", upsertError);
+    }
+
+    if (role === "student") {
+      await ensureStudentChildForAuthUserInSupabase({
+        userId,
+        email: userEmail,
+        fullName: userName,
+      });
     }
 
     const redirectPath = role === "teacher" ? "/teacher" : "/student/dashboard";

@@ -72,6 +72,7 @@ export interface ChildUpsertInput {
   id?: string;
   name: string;
   className?: string;
+  userId?: string;
   teacherId?: string;
   consentGiven?: boolean;
   consentTimestamp?: string;
@@ -188,6 +189,7 @@ function mapChildInsert(input: ChildUpsertInput): Database["public"]["Tables"]["
     id: input.id,
     name: input.name,
     class: input.className || input.realData?.klass || "",
+    ...(input.userId !== undefined ? { user_id: input.userId } : {}),
     teacher_id: input.teacherId || null,
     consent_given: input.consentGiven ?? false,
     consent_timestamp: input.consentTimestamp || null,
@@ -201,6 +203,7 @@ function mapChildUpdate(input: ChildUpsertInput): Database["public"]["Tables"]["
   return {
     name: input.name,
     class: input.className || input.realData?.klass || "",
+    ...(input.userId !== undefined ? { user_id: input.userId } : {}),
     teacher_id: input.teacherId || null,
     consent_given: input.consentGiven ?? false,
     consent_timestamp: input.consentTimestamp || null,
@@ -315,6 +318,31 @@ export async function fetchChildByUserIdFromSupabase(userId: string): Promise<Ch
   }
 
   return data ? mapChild(data as NestedChildRow) : null;
+}
+
+export async function ensureStudentChildForAuthUserInSupabase(input: {
+  userId: string;
+  email: string;
+  fullName?: string | null;
+}): Promise<ChildProfile> {
+  const existingChild = await fetchChildByUserIdFromSupabase(input.userId);
+  if (existingChild) {
+    return existingChild;
+  }
+
+  const fio = input.fullName?.trim() || input.email.split("@")[0] || "Student";
+
+  return upsertChildInSupabase({
+    name: fio,
+    userId: input.userId,
+    teacherId: undefined,
+    consentGiven: false,
+    consentTimestamp: undefined,
+    realData: {
+      fio,
+      klass: "",
+    },
+  });
 }
 
 export async function upsertChildInSupabase(input: ChildUpsertInput): Promise<ChildProfile> {

@@ -27,6 +27,13 @@ interface AuthProfileOptions {
   redirectTo?: string;
 }
 
+export interface EmailSignUpResult {
+  data: any;
+  error: any;
+  hasSession: boolean;
+  needsEmailConfirmation: boolean;
+}
+
 interface ProfileRecord {
   id: string;
   email: string;
@@ -223,10 +230,15 @@ export async function signUpWithEmail(
   password: string,
   fullName?: string,
   options?: AuthProfileOptions
-) {
+): Promise<EmailSignUpResult> {
   if (!supabase) {
     console.warn("[Supabase] Auth not available - missing credentials");
-    return { error: { message: "Supabase not configured" } };
+    return {
+      data: null,
+      error: { message: "Supabase not configured" },
+      hasSession: false,
+      needsEmailConfirmation: false,
+    };
   }
 
   setStoredPendingRole(options?.role);
@@ -248,12 +260,23 @@ export async function signUpWithEmail(
     },
   });
 
+  const hasSession = Boolean(result.data.session);
+  const needsEmailConfirmation = Boolean(result.data.user && !result.data.session && !result.error);
+
   if (result.error || !result.data.user || !result.data.session) {
-    return result;
+    return {
+      ...result,
+      hasSession,
+      needsEmailConfirmation,
+    };
   }
 
   await ensureUserProfile(result.data.user, options);
-  return result;
+  return {
+    ...result,
+    hasSession,
+    needsEmailConfirmation,
+  };
 }
 
 // Sign out

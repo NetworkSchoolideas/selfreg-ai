@@ -69,7 +69,7 @@ This document explains how to configure Supabase Auth with Google OAuth for the 
 
 ### 1. Deploy Database Schema
 
-Run `supabase-schema.sql` in Supabase SQL Editor, then apply `supabase/migrations/001-rls-policies.sql`:
+Run `supabase-schema.sql` in Supabase SQL Editor, then keep the repository migrations aligned with the remote project history under `supabase/migrations/`:
 
 ```sql
 -- This creates:
@@ -78,8 +78,8 @@ Run `supabase-schema.sql` in Supabase SQL Editor, then apply `supabase/migration
 -- - RLS enabled on app tables
 -- - Role detection based on email domain
 --
--- RLS policies are applied separately from:
--- supabase/migrations/001-rls-policies.sql
+-- RLS policies and schema history are tracked in:
+-- supabase/migrations/*.sql
 ```
 
 ### 2. Configure Google OAuth in Supabase
@@ -98,9 +98,11 @@ In Supabase Dashboard → Authentication → URL Configuration:
 Add these redirect URLs:
 ```
 Development:
+http://localhost:3000/auth/callback
 http://localhost:3000/api/auth/callback
 
 Production:
+https://your-domain.vercel.app/auth/callback
 https://your-domain.vercel.app/api/auth/callback
 ```
 
@@ -164,7 +166,7 @@ Use any other email domain (e.g., Gmail, Outlook)
 ## Security Considerations
 
 ### Current
-- RLS policies protect profile, child, session, and session record data when `supabase/migrations/001-rls-policies.sql` is applied.
+- RLS policies protect profile, child, session, and session record data when the committed `supabase/migrations/*.sql` history is applied.
 - Users can only view and update their own profile.
 - Teachers can read and manage children linked through `children.teacher_id`.
 - Server teacher-data routes verify the authenticated Supabase teacher before returning dashboard data.

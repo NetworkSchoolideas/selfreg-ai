@@ -55,6 +55,10 @@ function RegisterContent() {
       lang === "en"
         ? "Account created! Check your email for verification."
         : "Аккаунт создан. Проверьте почту, чтобы подтвердить email.",
+    successSignedIn:
+      lang === "en"
+        ? "Account created. Redirecting..."
+        : "Аккаунт создан. Выполняем вход...",
   };
 
   const handleEmailRegister = useCallback(async (event: React.FormEvent) => {
@@ -64,9 +68,16 @@ function RegisterContent() {
     setIsLoading(true);
 
     try {
-      const { error: authError } = await signUpWithEmail(email, password, fullName || undefined, { role });
-      if (authError) {
-        throw authError;
+      const result = await signUpWithEmail(email, password, fullName || undefined, { role });
+      if (result.error) {
+        throw result.error;
+      }
+
+      if (result.hasSession) {
+        setSuccess(ui.successSignedIn);
+        router.push(withLang(role === "teacher" ? "/teacher" : "/student/dashboard", lang));
+        router.refresh();
+        return;
       }
 
       setSuccess(ui.successMessage);
@@ -79,7 +90,7 @@ function RegisterContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [email, fullName, lang, password, role, router, ui.errorGeneric, ui.successMessage]);
+  }, [email, fullName, lang, password, role, router, ui.errorGeneric, ui.successMessage, ui.successSignedIn]);
 
   const handleGoogleRegister = useCallback(async () => {
     setError(null);

@@ -4,6 +4,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { clientError, serverError } from "@/lib/api-errors";
 import {
+  ensureStudentChildForAuthUserInSupabase,
   deleteChildFromSupabase,
   fetchChildByUserIdFromSupabase,
   fetchChildFromSupabase,
@@ -27,7 +28,12 @@ const ChildPayload = z.object({
     .optional(),
 });
 
-async function getCurrentUserId(): Promise<string | null> {
+async function getCurrentUserContext(): Promise<{
+  id: string;
+  email: string;
+  fullName?: string | null;
+  role?: "teacher" | "student" | null;
+} | null> {
   try {
     const cookieStore = await cookies();
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -49,7 +55,25 @@ async function getCurrentUserId(): Promise<string | null> {
     });
 
     const { data } = await supabase.auth.getUser();
-    return data?.user?.id ?? null;
+    const user = data?.user;
+
+    if (!user) {
+      return null;
+    }
+
+    const metadataRole = user.user_metadata?.preferred_role;
+
+    return {
+      id: user.id,
+      email: user.email || "",
+      fullName:
+        typeof user.user_metadata?.full_name === "string"
+          ? user.user_metadata.full_name
+          : typeof user.user_metadata?.name === "string"
+            ? user.user_metadata.name
+            : null,
+      role: metadataRole === "teacher" || metadataRole === "student" ? metadataRole : null,
+    };
   } catch {
     return null;
   }
@@ -62,12 +86,20 @@ export async function GET(request: Request) {
     const teacherId = url.searchParams.get("teacherId") || undefined;
 
     if (childId === "current") {
-      const userId = await getCurrentUserId();
-      if (!userId) {
+      const currentUser = await getCurrentUserContext();
+      if (!currentUser) {
         return NextResponse.json({ ok: true, child: null });
       }
 
-      const child = await fetchChildByUserIdFromSupabase(userId);
+      let child = await fetchChildByUserIdFromSupabase(currentUser.id);
+      if (!child && currentUser.role === "student") {
+        child = await ensureStudentChildForAuthUserInSupabase({
+          userId: currentUser.id,
+          email: currentUser.email,
+          fullName: currentUser.fullName,
+        });
+      }
+
       return NextResponse.json({ ok: true, child });
     }
 
