@@ -48,6 +48,7 @@ __tests__/
 │   ├── confirm-dialog.test.tsx
 │   ├── cycle-route.test.ts
 │   ├── e2e-setup-route.test.ts
+│   ├── e2e-runner.test.ts
 │   ├── error-boundary.test.tsx
 │   ├── join-teacher-route.test.ts
 │   ├── language-toggle.test.tsx
@@ -110,11 +111,12 @@ test("page loads", async ({ page }) => {
 ## Current Tests
 
 ### Unit Tests
-- 31 Jest suites, 91 tests.
+- 32 Jest suites, 93 tests.
 - Core domain coverage: self-regulation model, flow machine, scenario engine, session helpers, session manager, AI service.
 - Auth/data coverage: callback route, children route, children storage, provider-check/chat/cycle routes, session sync, Supabase auth, teacher/student dashboard helpers.
 - Component coverage: ErrorBoundary, ConfirmDialog, LanguageToggle, ApiKeyManager, OnboardingModal.
 - Edge/security coverage: answer validation, proxy route protection, secret redaction.
+- Test infrastructure coverage: E2E runner process invocation.
 
 ### E2E Tests
 - 2 Playwright files, 15 tests.

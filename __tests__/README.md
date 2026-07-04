@@ -23,6 +23,7 @@ __tests__/
     ├── confirm-dialog.test.tsx
     ├── cycle-route.test.ts
     ├── e2e-setup-route.test.ts
+    ├── e2e-runner.test.ts
     ├── error-boundary.test.tsx
     ├── join-teacher-route.test.ts
     ├── language-toggle.test.tsx
@@ -110,5 +111,5 @@ See `.github/workflows/ci.yml` for the CI pipeline configuration.
 
 ## Current Baseline
 
-- Unit: 31 Jest suites, 91 tests.
+- Unit: 32 Jest suites, 93 tests.
 - E2E: 2 Playwright files, 15 tests.
