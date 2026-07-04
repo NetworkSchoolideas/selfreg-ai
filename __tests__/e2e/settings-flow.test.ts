@@ -49,6 +49,8 @@ async function loginAsSettingsUser(page: Page) {
 }
 
 test.describe("Settings flow", () => {
+  test.describe.configure({ mode: "serial" });
+
   test.beforeAll(async ({ request }) => {
     await ensureConfirmedUser(request);
   });

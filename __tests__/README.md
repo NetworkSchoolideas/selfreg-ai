@@ -114,5 +114,5 @@ See `.github/workflows/ci.yml` for the CI pipeline configuration.
 
 ## Current Baseline
 
-- Unit: 32 Jest suites, 93 tests.
+- Unit: 32 Jest suites, 94 tests.
 - E2E: 5 Playwright files, 21 tests.

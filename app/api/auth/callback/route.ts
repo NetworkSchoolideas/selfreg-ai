@@ -43,6 +43,11 @@ function copyCookies(source: NextResponse, target: NextResponse) {
   return target;
 }
 
+function generateTeacherCode(seed: string) {
+  const prefix = seed.trim().charAt(0).toUpperCase().replace(/[^A-Z]/, "") || "T";
+  return `${prefix}${Date.now().toString().slice(-6)}`;
+}
+
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
@@ -120,12 +125,51 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const { data: profileForMetadata } = await supabase
+      .from("profiles")
+      .select("metadata")
+      .eq("id", userId)
+      .maybeSingle();
+
+    const existingMetadata =
+      profileForMetadata?.metadata &&
+      typeof profileForMetadata.metadata === "object" &&
+      !Array.isArray(profileForMetadata.metadata)
+        ? profileForMetadata.metadata
+        : {};
+
+    const userMetadata =
+      authUser.user_metadata &&
+      typeof authUser.user_metadata === "object" &&
+      !Array.isArray(authUser.user_metadata)
+        ? authUser.user_metadata
+        : {};
+
+    const mergedMetadata: Record<string, unknown> = {
+      ...existingMetadata,
+    };
+
+    if (typeof userMetadata.school === "string") {
+      mergedMetadata.school = userMetadata.school;
+    }
+
+    if (typeof userMetadata.teacher_code === "string") {
+      mergedMetadata.teacher_code = userMetadata.teacher_code;
+    }
+
+    const hadTeacherCode = typeof mergedMetadata.teacher_code === "string" && mergedMetadata.teacher_code.trim();
+
+    if (role === "teacher" && !hadTeacherCode) {
+      mergedMetadata.teacher_code = generateTeacherCode(userName || userEmail);
+    }
+
     const { error: upsertError } = await supabase.from("profiles").upsert(
       {
         id: userId,
         email: userEmail,
         full_name: userName,
         role,
+        metadata: Object.keys(mergedMetadata).length > 0 ? mergedMetadata : null,
         avatar_url:
           authUser.user_metadata?.avatar_url ||
           authUser.user_metadata?.picture ||
@@ -147,10 +191,19 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const redirectPath = role === "teacher" ? "/teacher" : "/student/dashboard";
+    const generatedTeacherCode =
+      role === "teacher" && !hadTeacherCode && typeof mergedMetadata.teacher_code === "string"
+        ? mergedMetadata.teacher_code
+        : null;
+
+    const redirectPath = generatedTeacherCode ? "/teacher/register-success" : role === "teacher" ? "/teacher" : "/student/dashboard";
+    const redirectParams: Record<string, string> = generatedTeacherCode
+      ? { auth: "success", teacherCode: generatedTeacherCode, next: "dashboard" }
+      : { auth: "success" };
+
     return copyCookies(
       authResponse,
-      buildRedirectResponse(requestUrl, redirectPath, lang, { auth: "success" })
+      buildRedirectResponse(requestUrl, redirectPath, lang, redirectParams)
     );
   } catch (err) {
     console.error("[Auth Callback] Exception:", err);
