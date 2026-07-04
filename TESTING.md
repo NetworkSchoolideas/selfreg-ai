@@ -40,12 +40,17 @@ __tests__/
 │   ├── ai-service.test.ts
 │   ├── analytics.test.ts
 │   ├── auth-callback-route.test.ts
+│   ├── api-key-manager.test.tsx
 │   ├── chat-route.test.ts
 │   ├── children-route.test.ts
 │   ├── children-storage.test.ts
+│   ├── confirm-dialog.test.tsx
 │   ├── cycle-route.test.ts
 │   ├── e2e-setup-route.test.ts
+│   ├── error-boundary.test.tsx
 │   ├── join-teacher-route.test.ts
+│   ├── language-toggle.test.tsx
+│   ├── onboarding-modal.test.tsx
 │   ├── proxy-auth.test.ts
 │   ├── provider-check-route.test.ts
 │   ├── scenario-engine.test.ts
@@ -102,9 +107,10 @@ test("page loads", async ({ page }) => {
 ## Current Tests
 
 ### Unit Tests
-- 23 Jest suites, 72 tests.
+- 28 Jest suites, 83 tests.
 - Core domain coverage: self-regulation model, flow machine, scenario engine, session helpers, session manager, AI service.
 - Auth/data coverage: callback route, children route, children storage, provider-check/chat/cycle routes, session sync, Supabase auth, teacher/student dashboard helpers.
+- Component coverage: ErrorBoundary, ConfirmDialog, LanguageToggle, ApiKeyManager, OnboardingModal.
 
 ### E2E Tests
 - 2 Playwright files, 15 tests.
@@ -142,6 +148,6 @@ Tests run automatically on every push to `main` and on Pull Requests via GitHub 
 ## Future Work
 
 - Add integration tests for API endpoints
-- Add component tests with React Testing Library
+- Add deeper component interaction tests with React Testing Library/jsdom if richer DOM assertions become necessary
 - Add test for AI provider switching
 - Add test for bilingual (RU/EN) switching

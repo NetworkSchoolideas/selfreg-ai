@@ -15,12 +15,17 @@ __tests__/
     ├── ai-service.test.ts
     ├── analytics.test.ts
     ├── auth-callback-route.test.ts
+    ├── api-key-manager.test.tsx
     ├── chat-route.test.ts
     ├── children-route.test.ts
     ├── children-storage.test.ts
+    ├── confirm-dialog.test.tsx
     ├── cycle-route.test.ts
     ├── e2e-setup-route.test.ts
+    ├── error-boundary.test.tsx
     ├── join-teacher-route.test.ts
+    ├── language-toggle.test.tsx
+    ├── onboarding-modal.test.tsx
     ├── proxy-auth.test.ts
     ├── provider-check-route.test.ts
     ├── scenario-engine.test.ts
@@ -102,5 +107,5 @@ See `.github/workflows/ci.yml` for the CI pipeline configuration.
 
 ## Current Baseline
 
-- Unit: 23 Jest suites, 72 tests.
+- Unit: 28 Jest suites, 83 tests.
 - E2E: 2 Playwright files, 15 tests.
