@@ -14,6 +14,7 @@ __tests__/
 └── unit/          # Unit tests (Jest)
     ├── ai-service.test.ts
     ├── analytics.test.ts
+    ├── answer-validator.test.ts
     ├── auth-callback-route.test.ts
     ├── api-key-manager.test.tsx
     ├── chat-route.test.ts
@@ -27,8 +28,10 @@ __tests__/
     ├── language-toggle.test.tsx
     ├── onboarding-modal.test.tsx
     ├── proxy-auth.test.ts
+    ├── proxy-route.test.ts
     ├── provider-check-route.test.ts
     ├── scenario-engine.test.ts
+    ├── security.test.ts
     ├── selfreg-flow-machine.test.ts
     ├── selfreg-model.test.ts
     ├── session-helpers.test.ts
@@ -107,5 +110,5 @@ See `.github/workflows/ci.yml` for the CI pipeline configuration.
 
 ## Current Baseline
 
-- Unit: 28 Jest suites, 83 tests.
+- Unit: 31 Jest suites, 91 tests.
 - E2E: 2 Playwright files, 15 tests.

@@ -91,10 +91,21 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/auth/login";
+    withLang(url, req);
+    return NextResponse.redirect(url);
+  }
+
   const { data: profile } = await supabase
     .from("profiles")
     .select("role")
-    .eq("id", session.user.id)
+    .eq("id", user.id)
     .single();
 
   const role = profile?.role as string | null | undefined;

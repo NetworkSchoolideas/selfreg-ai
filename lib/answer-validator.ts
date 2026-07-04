@@ -12,6 +12,15 @@ export class AnswerValidator {
       };
     }
 
+    if (this.isTooShort(trimmed)) {
+      return {
+        ok: false,
+        message: lang === "en"
+          ? "Please write a little more so the answer is meaningful."
+          : "РќР°РїРёС€Рё РЅРµРјРЅРѕРіРѕ РїРѕРґСЂРѕР±РЅРµРµ, С‡С‚РѕР±С‹ РѕС‚РІРµС‚ Р±С‹Р» РѕСЃРјС‹СЃР»РµРЅРЅС‹Рј.",
+      };
+    }
+
     if (/(.)\1{5,}/.test(trimmed)) {
       return {
         ok: false,
