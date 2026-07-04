@@ -68,17 +68,25 @@ function isSupabaseAvailable(): boolean {
 }
 
 /**
- * Отправляет fire-and-forget запрос к API для синхронизации с Supabase.
+ * Отправляет запрос к API для синхронизации с Supabase.
  */
-function syncToApi(endpoint: string, body: unknown) {
+async function syncToApi(endpoint: string, body: unknown): Promise<void> {
   if (typeof window === "undefined") return;
   if (!isSupabaseAvailable()) return;
 
-  void fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  }).catch((err) => log(`Sync to ${endpoint} failed`, err));
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      log(`Sync to ${endpoint} failed with status ${response.status}`);
+    }
+  } catch (err) {
+    log(`Sync to ${endpoint} failed`, err);
+  }
 }
 
 export const ChildrenStorage = {
@@ -111,7 +119,7 @@ export const ChildrenStorage = {
     this.upsertLocalChild(child);
 
     if (shouldSyncChild(child)) {
-      syncToApi("/api/children", {
+      await syncToApi("/api/children", {
         action: "upsert",
         child: {
           id: child.id,
@@ -210,7 +218,7 @@ export const ChildrenStorage = {
 
     const child = this.getChild(childId);
     if (shouldSyncChild(child)) {
-      syncToApi("/api/session-sync", toSessionSyncUpsertPayload(childId, session));
+      await syncToApi("/api/session-sync", toSessionSyncUpsertPayload(childId, session));
     }
   },
 
@@ -249,7 +257,7 @@ export const ChildrenStorage = {
     const child = this.getChild(childId);
 
     if (removed && shouldSyncChild(child)) {
-      syncToApi("/api/session-sync", {
+      await syncToApi("/api/session-sync", {
         action: "delete",
         childId,
         sessionId: session?.sessionId,
@@ -278,7 +286,7 @@ export const ChildrenStorage = {
     const removed = this.deleteChild(childId);
 
     if (removed && shouldSyncChild(child)) {
-      syncToApi("/api/children", { action: "delete", childId });
+      await syncToApi("/api/children", { action: "delete", childId });
     }
 
     return removed;
@@ -301,7 +309,7 @@ export const ChildrenStorage = {
     writeChildren(children);
 
     if (shouldSyncChild(children[index])) {
-      syncToApi("/api/session-feedback", { childId, historyInsight: insight });
+      void syncToApi("/api/session-feedback", { childId, historyInsight: insight });
     }
 
     return true;
@@ -331,7 +339,7 @@ export const ChildrenStorage = {
     writeChildren(children);
 
     if (shouldSyncChild(children[index])) {
-      syncToApi("/api/session-feedback", { childId, adolescentFeedback: feedback });
+      void syncToApi("/api/session-feedback", { childId, adolescentFeedback: feedback });
     }
 
     return true;

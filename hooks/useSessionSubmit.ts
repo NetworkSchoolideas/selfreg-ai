@@ -107,22 +107,6 @@ export function useSessionSubmit(options: UseSessionSubmitOptions) {
     if (currentChildId) {
       await DataService.saveSession(currentChildId, payload);
       log("Session saved to storage");
-
-      void fetch("/api/session-sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sessionId: payload.sessionId,
-          childId: currentChildId,
-          context: payload.context,
-          finalNote: payload.finalNote,
-          updatedAt: payload.updatedAt,
-          lang: payload.lang,
-          historyInsight: payload.historyInsight,
-          adolescentFeedback: payload.adolescentFeedback,
-          records: payload.records,
-        }),
-      }).catch((error) => log(`Session sync failed: ${error instanceof Error ? error.message : "unknown error"}`));
     }
   }, [sessionId, context, lang, currentChildId, pendingHistoryInsight]);
 
@@ -229,7 +213,7 @@ export function useSessionSubmit(options: UseSessionSubmitOptions) {
         };
 
         const nextRecords = addProcessRecord(clarifyRecord);
-        saveSession(nextRecords, "");
+        await saveSession(nextRecords, "");
 
         if (suppressClarifyForNextStage) {
           setSuppressClarifyForNextStage(false);
@@ -272,7 +256,7 @@ export function useSessionSubmit(options: UseSessionSubmitOptions) {
         setFinalNote(note);
       }
 
-      saveSession(adv.nextRecords, note);
+      await saveSession(adv.nextRecords, note);
 
       return {
         success: true,
@@ -327,4 +311,3 @@ export function useSessionSubmit(options: UseSessionSubmitOptions) {
     setAnswerQualityWarning,
   };
 }
-

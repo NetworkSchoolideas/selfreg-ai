@@ -176,6 +176,16 @@ export async function POST(request: Request) {
         return serverError(deleteRecordsError.message, "SUPABASE_RECORDS_DELETE_ERROR");
       }
     } else {
+      const sessionPatch: Database["public"]["Tables"]["sessions"]["Update"] = {
+        context: payload.context,
+        final_note: payload.finalNote,
+        status: isCompleted ? "completed" : "in_progress",
+        completed_at: isCompleted ? payload.updatedAt : null,
+        updated_at: payload.updatedAt,
+        lang: payload.lang || null,
+        history_insight: payload.historyInsight || null,
+        adolescent_feedback: payload.adolescentFeedback || null,
+      };
       const sessionInsert: Database["public"]["Tables"]["sessions"]["Insert"] = {
         id: payload.sessionId,
         child_id: payload.childId,
@@ -197,10 +207,50 @@ export async function POST(request: Request) {
         .single();
 
       if (insertError || !insertedSession) {
-        return serverError(insertError?.message || "Failed to insert session", "SUPABASE_SESSION_INSERT_ERROR");
-      }
+        const duplicateSession =
+          Boolean(payload.sessionId) &&
+          (insertError?.code === "23505" || insertError?.message?.includes("duplicate key"));
 
-      sessionId = insertedSession.id;
+        if (!duplicateSession) {
+          return serverError(insertError?.message || "Failed to insert session", "SUPABASE_SESSION_INSERT_ERROR");
+        }
+
+        const { data: racedSession, error: racedSessionError } = await supabaseAdmin
+          .from("sessions")
+          .select("*")
+          .eq("id", payload.sessionId)
+          .eq("child_id", payload.childId)
+          .maybeSingle();
+
+        if (racedSessionError || !racedSession) {
+          return serverError(
+            racedSessionError?.message || insertError?.message || "Failed to resolve existing session",
+            "SUPABASE_SESSION_INSERT_ERROR",
+          );
+        }
+
+        sessionId = racedSession.id;
+
+        const { error: updateError } = await supabaseAdmin
+          .from("sessions")
+          .update(sessionPatch)
+          .eq("id", sessionId);
+
+        if (updateError) {
+          return serverError(updateError.message, "SUPABASE_SESSION_UPDATE_ERROR");
+        }
+
+        const { error: deleteRecordsError } = await supabaseAdmin
+          .from("session_records")
+          .delete()
+          .eq("session_id", sessionId);
+
+        if (deleteRecordsError) {
+          return serverError(deleteRecordsError.message, "SUPABASE_RECORDS_DELETE_ERROR");
+        }
+      } else {
+        sessionId = insertedSession.id;
+      }
     }
 
     if (payload.records.length > 0) {

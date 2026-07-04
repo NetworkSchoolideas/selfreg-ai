@@ -9,7 +9,10 @@ This project uses **Jest** for unit tests and **Playwright** for E2E tests.
 ```
 __tests__/
 ├── e2e/           # End-to-end tests (Playwright)
+│   ├── adolescent-flow.test.ts
 │   ├── auth-flow.test.ts
+│   ├── responsive.test.ts
+│   ├── settings-flow.test.ts
 │   └── teacher-flow.test.ts
 └── unit/          # Unit tests (Jest)
     ├── ai-service.test.ts
@@ -112,4 +115,4 @@ See `.github/workflows/ci.yml` for the CI pipeline configuration.
 ## Current Baseline
 
 - Unit: 32 Jest suites, 93 tests.
-- E2E: 2 Playwright files, 15 tests.
+- E2E: 5 Playwright files, 21 tests.
