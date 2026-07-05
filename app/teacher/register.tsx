@@ -173,7 +173,7 @@ function TeacherRegisterContent() {
 
         <div className="divider">
           <div className="divider-line" />
-          <span>{lang === "en" ? "or" : "РёР»Рё"}</span>
+          <span>{lang === "en" ? "or" : "или"}</span>
           <div className="divider-line" />
         </div>
 
