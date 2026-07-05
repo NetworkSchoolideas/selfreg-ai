@@ -188,6 +188,7 @@ function StudentDashboardContent() {
 
   const displayName = profile.realData?.fio || profile.name || (lang === "en" ? "Student" : "Ученик");
   const displayClass = profile.realData?.klass || "";
+  const effectiveChildId = childId || profile.id;
   const sortedSessions = metrics
     ? [...profile.sessions].sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime())
     : [];
@@ -221,7 +222,7 @@ function StudentDashboardContent() {
 
         <div className="action-bar">
           <Link
-            href={`/adolescent?childId=${childId}&lang=${lang}`}
+            href={`/adolescent?childId=${effectiveChildId}&lang=${lang}`}
             className="no-underline fw-500"
             style={{
               padding: "12px 24px",
