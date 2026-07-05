@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { AuthButton } from "@/app/components/AuthButton";
 import { LanguageToggle } from "@/app/components/LanguageToggle";
@@ -12,6 +13,34 @@ const projectLandingUrl =
 export function HomeClient() {
   const searchParams = useSearchParams();
   const lang = normalizeAppLang(searchParams.get("lang"));
+
+  useEffect(() => {
+    const hasAuthCode = searchParams.has("code");
+    const hasOtpToken = searchParams.has("token_hash") && searchParams.has("type");
+    const hasAuthError = searchParams.has("error");
+
+    if (!hasAuthCode && !hasOtpToken && !hasAuthError) {
+      return;
+    }
+
+    const callbackUrl = new URL("/auth/callback", window.location.origin);
+    searchParams.forEach((value, key) => {
+      callbackUrl.searchParams.set(key, value);
+    });
+
+    if (!callbackUrl.searchParams.has("role")) {
+      const pendingRole = window.localStorage.getItem("selfreg_pending_role");
+      if (pendingRole === "teacher" || pendingRole === "student") {
+        callbackUrl.searchParams.set("role", pendingRole);
+      }
+    }
+
+    if (!callbackUrl.searchParams.has("lang")) {
+      callbackUrl.searchParams.set("lang", lang);
+    }
+
+    window.location.replace(callbackUrl.toString());
+  }, [lang, searchParams]);
 
   return (
     <main className="shell">

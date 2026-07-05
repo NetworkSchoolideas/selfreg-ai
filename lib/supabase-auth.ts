@@ -184,6 +184,7 @@ async function ensureUserProfile(user: User, options?: AuthProfileOptions): Prom
 // Sign in with Google OAuth
 export async function signInWithGoogle(options?: {
   redirectTo?: string;
+  role?: UserProfile["role"];
 }): Promise<{ error: any } | { data: any }> {
   if (!supabase) {
     console.warn("[Supabase] Auth not available - missing credentials");
@@ -191,6 +192,18 @@ export async function signInWithGoogle(options?: {
   }
 
   const redirectUrl = options?.redirectTo || `${window.location.origin}/auth/callback`;
+  const roleFromRedirect =
+    options?.role ||
+    (() => {
+      try {
+        const role = new URL(redirectUrl).searchParams.get("role");
+        return role === "teacher" || role === "student" ? role : undefined;
+      } catch {
+        return undefined;
+      }
+    })();
+
+  setStoredPendingRole(roleFromRedirect);
 
   return await supabase.auth.signInWithOAuth({
     provider: "google",
@@ -198,7 +211,7 @@ export async function signInWithGoogle(options?: {
       redirectTo: redirectUrl,
       queryParams: {
         access_type: "offline",
-        prompt: "consent",
+        prompt: "select_account consent",
       },
     },
   });
