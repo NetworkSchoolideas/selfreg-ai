@@ -43,9 +43,9 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
           ? authUser.user_metadata.picture
           : undefined,
     role:
-      authUser.user_metadata?.preferred_role === "teacher"
-        ? "teacher"
-        : "student",
+      authUser.user_metadata?.preferred_role === "teacher" || authUser.user_metadata?.preferred_role === "student"
+        ? authUser.user_metadata.preferred_role
+        : null,
     metadata:
       authUser.user_metadata && typeof authUser.user_metadata === "object"
         ? authUser.user_metadata

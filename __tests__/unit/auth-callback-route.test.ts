@@ -230,6 +230,22 @@ describe("auth callback route", () => {
     expect(mocks.select).toHaveBeenCalledWith("role, metadata");
   });
 
+  it("redirects to role selection when no role can be resolved", async () => {
+    const mocks = mockServerClient({
+      cookiesToSet: [{ name: "sb-session", value: "token", options: { path: "/" } }],
+    });
+
+    const response = await GET(
+      buildRequest("https://selfreg.ai/api/auth/callback?code=oauth-code&lang=ru")
+    );
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("https://selfreg.ai/role-selection?lang=ru&auth=role_required");
+    expect(response.cookies.get("sb-session")?.value).toBe("token");
+    expect(mocks.upsert).not.toHaveBeenCalled();
+    expect(ensureStudentChildForAuthUserInSupabase).not.toHaveBeenCalled();
+  });
+
   it("verifies email confirmation tokens and bootstraps a student child", async () => {
     const mocks = mockServerClient({
       cookiesToSet: [{ name: "sb-session", value: "token", options: { path: "/" } }],

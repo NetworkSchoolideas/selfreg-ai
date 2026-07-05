@@ -137,7 +137,14 @@ export async function GET(request: NextRequest) {
         ? metadataPreferredRole
         : isValidRole(existingProfile?.role)
           ? existingProfile.role
-          : "student";
+          : null;
+
+    if (!role) {
+      return copyCookies(
+        authResponse,
+        buildRedirectResponse(requestUrl, "/role-selection", lang, { auth: "role_required" })
+      );
+    }
 
     const existingMetadata =
       existingProfile?.metadata &&

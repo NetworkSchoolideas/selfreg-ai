@@ -17,7 +17,7 @@ export interface UserProfile {
   email: string;
   full_name?: string;
   avatar_url?: string;
-  role: "teacher" | "student";
+  role: "teacher" | "student" | null;
   metadata?: Record<string, any>;
 }
 
@@ -315,7 +315,7 @@ export async function signUpWithEmail(
   setStoredPendingRole(options?.role);
 
   const redirectUrl = normalizeAuthRedirectUrl(
-    options?.redirectTo || buildAuthCallbackUrl({ role: options?.role })
+    options?.redirectTo || buildAuthCallbackUrl({ role: options?.role ?? undefined })
   );
 
   const result = await supabase.auth.signUp({

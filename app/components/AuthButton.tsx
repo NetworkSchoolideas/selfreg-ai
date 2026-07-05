@@ -97,7 +97,11 @@ export function AuthButton({ lang }: AuthButtonProps) {
         <div style={{ display: "flex", flexDirection: "column", fontSize: 11 }}>
           <strong style={{ fontSize: 12 }}>{user.full_name || user.email}</strong>
           <span className="muted" style={{ fontSize: 10 }}>
-            {isTeacher ? (lang === "en" ? "Teacher" : "Педагог") : (lang === "en" ? "Student" : "Ученик")}
+            {user.role === null
+              ? (lang === "en" ? "Choose role" : "Выберите роль")
+              : isTeacher
+                ? (lang === "en" ? "Teacher" : "Педагог")
+                : (lang === "en" ? "Student" : "Ученик")}
           </span>
         </div>
       </div>
