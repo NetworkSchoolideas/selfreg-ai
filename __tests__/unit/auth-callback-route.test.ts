@@ -95,18 +95,18 @@ function mockServerClient(options?: {
     };
   });
 
-  const roleMaybeSingle = jest.fn().mockResolvedValue({
-    data: options?.roleFromProfile ? { role: options.roleFromProfile } : null,
-  });
-  const metadataMaybeSingle = jest.fn().mockResolvedValue({
-    data: options?.metadataFromProfile ? { metadata: options.metadataFromProfile } : null,
+  const profileMaybeSingle = jest.fn().mockResolvedValue({
+    data:
+      options?.roleFromProfile || options?.metadataFromProfile
+        ? {
+            role: options.roleFromProfile ?? null,
+            metadata: options.metadataFromProfile ?? null,
+          }
+        : null,
   });
 
-  const roleEq = jest.fn().mockReturnValue({ maybeSingle: roleMaybeSingle });
-  const metadataEq = jest.fn().mockReturnValue({ maybeSingle: metadataMaybeSingle });
-  const select = jest.fn().mockImplementation((columns: string) => ({
-    eq: columns === "metadata" ? metadataEq : roleEq,
-  }));
+  const profileEq = jest.fn().mockReturnValue({ maybeSingle: profileMaybeSingle });
+  const select = jest.fn().mockReturnValue({ eq: profileEq });
   const upsert = jest.fn().mockResolvedValue({ error: options?.upsertError ?? null });
   const from = jest.fn().mockReturnValue({ select, upsert });
 
@@ -125,10 +125,8 @@ function mockServerClient(options?: {
     verifyOtp,
     from,
     select,
-    eq: roleEq,
-    maybeSingle: roleMaybeSingle,
-    metadataEq,
-    metadataMaybeSingle,
+    eq: profileEq,
+    maybeSingle: profileMaybeSingle,
     upsert,
   };
 }
@@ -192,6 +190,30 @@ describe("auth callback route", () => {
     expect(response.headers.get("location")).toBe("https://selfreg.ai/teacher?lang=ru&auth=success");
   });
 
+  it("uses explicit teacher role even when the existing profile is a student", async () => {
+    const mocks = mockServerClient({
+      roleFromProfile: "student",
+      cookiesToSet: [{ name: "sb-session", value: "token", options: { path: "/" } }],
+    });
+
+    const response = await GET(
+      buildRequest("https://selfreg.ai/api/auth/callback?code=oauth-code&role=teacher&lang=ru")
+    );
+
+    expect(response.headers.get("location")).toMatch(
+      /^https:\/\/selfreg\.ai\/teacher\/register-success\?lang=ru&auth=success&teacherCode=T\d{6}&next=dashboard$/,
+    );
+    expect(mocks.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        role: "teacher",
+        metadata: expect.objectContaining({
+          teacher_code: expect.stringMatching(/^T\d{6}$/),
+        }),
+      }),
+      { onConflict: "id" },
+    );
+  });
+
   it("uses existing profile role when role parameter is missing", async () => {
     const mocks = mockServerClient({
       roleFromProfile: "teacher",
@@ -205,7 +227,7 @@ describe("auth callback route", () => {
 
     expect(response.headers.get("location")).toBe("https://selfreg.ai/teacher?lang=en&auth=success");
     expect(mocks.from).toHaveBeenCalledWith("profiles");
-    expect(mocks.select).toHaveBeenCalledWith("role");
+    expect(mocks.select).toHaveBeenCalledWith("role, metadata");
   });
 
   it("verifies email confirmation tokens and bootstraps a student child", async () => {

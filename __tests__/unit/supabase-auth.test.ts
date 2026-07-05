@@ -1,4 +1,6 @@
 const mockSignUp = jest.fn();
+const mockSignInWithOAuth = jest.fn();
+const mockSignOut = jest.fn();
 const mockMaybeSingle = jest.fn();
 const mockEq = jest.fn(() => ({ maybeSingle: mockMaybeSingle }));
 const mockSelect = jest.fn(() => ({ eq: mockEq }));
@@ -14,19 +16,22 @@ jest.mock("@/lib/supabase", () => ({
   supabase: {
     auth: {
       signUp: mockSignUp,
+      signInWithOAuth: mockSignInWithOAuth,
+      signOut: mockSignOut,
     },
     from: mockFrom,
   },
 }));
 
-import { signUpWithEmail } from "@/lib/supabase-auth";
+import { buildAuthCallbackUrl, signInWithGoogle, signUpWithEmail } from "@/lib/supabase-auth";
 
-function installWindowMock() {
+function installWindowMock(origin = "https://selfreg.test") {
   const store = new Map<string, string>();
+  const url = new URL(origin);
 
   Object.defineProperty(global, "window", {
     value: {
-      location: { origin: "https://selfreg.test" },
+      location: { origin: url.origin, hostname: url.hostname },
       localStorage: {
         getItem: (key: string) => store.get(key) ?? null,
         setItem: (key: string, value: string) => {
@@ -39,12 +44,16 @@ function installWindowMock() {
     },
     configurable: true,
   });
+
+  return store;
 }
 
 describe("signUpWithEmail", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     installWindowMock();
+    mockSignOut.mockResolvedValue({ error: null });
+    mockSignInWithOAuth.mockResolvedValue({ data: { provider: "google" } });
     mockMaybeSingle.mockResolvedValue({ data: null, error: null });
     mockSingle.mockResolvedValue({
       data: {
@@ -105,5 +114,46 @@ describe("signUpWithEmail", () => {
     expect(result.needsEmailConfirmation).toBe(false);
     expect(mockFrom).toHaveBeenCalledWith("profiles");
     expect(mockUpsert).toHaveBeenCalled();
+  });
+});
+
+describe("signInWithGoogle", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    delete process.env.NEXT_PUBLIC_AUTH_REDIRECT_ORIGIN;
+    delete process.env.NEXT_PUBLIC_SITE_URL;
+    delete process.env.NEXT_PUBLIC_APP_URL;
+    mockSignOut.mockResolvedValue({ error: null });
+    mockSignInWithOAuth.mockResolvedValue({ data: { provider: "google" } });
+  });
+
+  it("normalizes Vercel preview callback URLs to production and forces account selection", async () => {
+    const store = installWindowMock("https://selfreg-ai-alex-smirnov-s-projects.vercel.app");
+
+    await signInWithGoogle({
+      redirectTo: "https://selfreg-ai-alex-smirnov-s-projects.vercel.app/auth/callback?role=teacher&lang=ru",
+      role: "teacher",
+    });
+
+    expect(mockSignOut).toHaveBeenCalledWith({ scope: "local" });
+    expect(store.get("selfreg_pending_role")).toBe("teacher");
+    expect(mockSignInWithOAuth).toHaveBeenCalledWith({
+      provider: "google",
+      options: {
+        redirectTo: "https://selfreg-ai.vercel.app/auth/callback?role=teacher&lang=ru",
+        queryParams: {
+          access_type: "offline",
+          prompt: "select_account consent",
+        },
+      },
+    });
+  });
+
+  it("builds production callback URLs on Vercel preview domains", () => {
+    installWindowMock("https://selfreg-ai-alex-smirnov-s-projects.vercel.app");
+
+    expect(buildAuthCallbackUrl({ role: "teacher", lang: "ru" })).toBe(
+      "https://selfreg-ai.vercel.app/auth/callback?role=teacher&lang=ru"
+    );
   });
 });

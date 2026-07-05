@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { LanguageToggle } from "@/app/components/LanguageToggle";
 import { ErrorBoundary } from "@/app/components/ErrorBoundary";
 import { normalizeAppLang, withLang } from "@/lib/app-i18n";
-import { signInWithGoogle, signUpWithEmail } from "@/lib/supabase-auth";
+import { buildAuthCallbackUrl, signInWithGoogle, signUpWithEmail } from "@/lib/supabase-auth";
 
 function RegisterContent() {
   const searchParams = useSearchParams();
@@ -101,13 +101,13 @@ function RegisterContent() {
         localStorage.setItem("selfreg_pending_role", role);
       } catch {}
 
-      const redirectTo = `${window.location.origin}/auth/callback?role=${role}`;
-      await signInWithGoogle({ redirectTo });
+      const redirectTo = buildAuthCallbackUrl({ role, lang });
+      await signInWithGoogle({ redirectTo, role });
     } catch (err: any) {
       setError(err.message || ui.errorGeneric);
       setIsLoading(false);
     }
-  }, [role, ui.errorGeneric]);
+  }, [lang, role, ui.errorGeneric]);
 
   return (
     <main className="shell">

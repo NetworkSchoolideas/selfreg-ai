@@ -44,6 +44,58 @@ interface ProfileRecord {
 }
 
 const PENDING_ROLE_KEY = "selfreg_pending_role";
+const PRODUCTION_APP_ORIGIN = "https://selfreg-ai.vercel.app";
+
+function isVercelPreviewHost(hostname: string) {
+  return hostname.endsWith(".vercel.app") && hostname !== "selfreg-ai.vercel.app";
+}
+
+function getAuthRedirectOrigin() {
+  if (typeof window === "undefined") {
+    return PRODUCTION_APP_ORIGIN;
+  }
+
+  const configuredOrigin =
+    process.env.NEXT_PUBLIC_AUTH_REDIRECT_ORIGIN ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.NEXT_PUBLIC_APP_URL;
+
+  if (configuredOrigin) {
+    return configuredOrigin.replace(/\/$/, "");
+  }
+
+  if (isVercelPreviewHost(window.location.hostname)) {
+    return PRODUCTION_APP_ORIGIN;
+  }
+
+  return window.location.origin;
+}
+
+export function buildAuthCallbackUrl(params?: Record<string, string | undefined>) {
+  const callbackUrl = new URL("/auth/callback", getAuthRedirectOrigin());
+
+  for (const [key, value] of Object.entries(params || {})) {
+    if (value) {
+      callbackUrl.searchParams.set(key, value);
+    }
+  }
+
+  return callbackUrl.toString();
+}
+
+function normalizeAuthRedirectUrl(redirectTo: string) {
+  try {
+    const parsed = new URL(redirectTo);
+    if (!isVercelPreviewHost(parsed.hostname)) {
+      return parsed.toString();
+    }
+
+    const normalized = new URL(`${parsed.pathname}${parsed.search}${parsed.hash}`, getAuthRedirectOrigin());
+    return normalized.toString();
+  } catch {
+    return redirectTo;
+  }
+}
 
 function getStoredPendingRole(): UserProfile["role"] | null {
   if (typeof window === "undefined") {
@@ -191,7 +243,7 @@ export async function signInWithGoogle(options?: {
     return { error: { message: "Supabase not configured" } };
   }
 
-  const redirectUrl = options?.redirectTo || `${window.location.origin}/auth/callback`;
+  const redirectUrl = normalizeAuthRedirectUrl(options?.redirectTo || buildAuthCallbackUrl());
   const roleFromRedirect =
     options?.role ||
     (() => {
@@ -202,6 +254,12 @@ export async function signInWithGoogle(options?: {
         return undefined;
       }
     })();
+
+  try {
+    await supabase.auth.signOut({ scope: "local" });
+  } catch {
+    // The user may not have an active Supabase session yet. OAuth can continue.
+  }
 
   setStoredPendingRole(roleFromRedirect);
 
@@ -256,8 +314,9 @@ export async function signUpWithEmail(
 
   setStoredPendingRole(options?.role);
 
-  const redirectUrl = options?.redirectTo
-    || `${window.location.origin}/auth/callback${options?.role ? `?role=${options.role}` : ""}`;
+  const redirectUrl = normalizeAuthRedirectUrl(
+    options?.redirectTo || buildAuthCallbackUrl({ role: options?.role })
+  );
 
   const result = await supabase.auth.signUp({
     email,

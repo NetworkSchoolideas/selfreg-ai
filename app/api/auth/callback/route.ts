@@ -48,6 +48,10 @@ function generateTeacherCode(seed: string) {
   return `${prefix}${Date.now().toString().slice(-6)}`;
 }
 
+function isValidRole(role: string | null | undefined): role is "teacher" | "student" {
+  return role === "teacher" || role === "student";
+}
+
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
@@ -111,38 +115,35 @@ export async function GET(request: NextRequest) {
       authUser.user_metadata?.name ||
       userEmail.split("@")[0];
 
-    let role = roleParam || "student";
-
-    if (!roleParam) {
-      const { data: existingProfile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", userId)
-        .maybeSingle();
-
-      if (existingProfile?.role) {
-        role = existingProfile.role;
-      }
-    }
-
-    const { data: profileForMetadata } = await supabase
-      .from("profiles")
-      .select("metadata")
-      .eq("id", userId)
-      .maybeSingle();
-
-    const existingMetadata =
-      profileForMetadata?.metadata &&
-      typeof profileForMetadata.metadata === "object" &&
-      !Array.isArray(profileForMetadata.metadata)
-        ? profileForMetadata.metadata
-        : {};
-
     const userMetadata =
       authUser.user_metadata &&
       typeof authUser.user_metadata === "object" &&
       !Array.isArray(authUser.user_metadata)
         ? authUser.user_metadata
+        : {};
+
+    const { data: existingProfile } = await supabase
+      .from("profiles")
+      .select("role, metadata")
+      .eq("id", userId)
+      .maybeSingle();
+
+    const metadataPreferredRole =
+      typeof userMetadata.preferred_role === "string" ? userMetadata.preferred_role : null;
+
+    const role = isValidRole(roleParam)
+      ? roleParam
+      : isValidRole(metadataPreferredRole)
+        ? metadataPreferredRole
+        : isValidRole(existingProfile?.role)
+          ? existingProfile.role
+          : "student";
+
+    const existingMetadata =
+      existingProfile?.metadata &&
+      typeof existingProfile.metadata === "object" &&
+      !Array.isArray(existingProfile.metadata)
+        ? existingProfile.metadata
         : {};
 
     const mergedMetadata: Record<string, unknown> = {

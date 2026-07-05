@@ -5,7 +5,7 @@ import { Suspense, useCallback, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ErrorBoundary } from "@/app/components/ErrorBoundary";
 import { normalizeAppLang, withLang } from "@/lib/app-i18n";
-import { signInWithGoogle, signUpWithEmail } from "@/lib/supabase-auth";
+import { buildAuthCallbackUrl, signInWithGoogle, signUpWithEmail } from "@/lib/supabase-auth";
 
 function TeacherRegisterContent() {
   const router = useRouter();
@@ -101,7 +101,7 @@ function TeacherRegisterContent() {
           school,
           teacher_code: teacherCode,
         },
-        redirectTo: `${window.location.origin}/auth/callback?role=teacher`,
+        redirectTo: buildAuthCallbackUrl({ role: "teacher" }),
       });
 
       if (result.error) {
@@ -129,7 +129,8 @@ function TeacherRegisterContent() {
 
     try {
       await signInWithGoogle({
-        redirectTo: `${window.location.origin}/auth/callback?role=teacher&lang=${lang}`,
+        redirectTo: buildAuthCallbackUrl({ role: "teacher", lang }),
+        role: "teacher",
       });
     } catch (err: any) {
       setError(err.message || t.errorRegistration);

@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type { AuthChangeEvent, Session, User } from "@supabase/supabase-js";
-import { supabase, signInWithGoogle, signOut, getUserProfile, UserProfile } from "@/lib/supabase-auth";
+import { buildAuthCallbackUrl, supabase, signInWithGoogle, signOut, getUserProfile, UserProfile } from "@/lib/supabase-auth";
 
 interface UseSupabaseAuthReturn {
   user: UserProfile | null;
@@ -132,7 +132,7 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
     try {
       setError(null);
       await signInWithGoogle({
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: buildAuthCallbackUrl(),
       });
     } catch (err: any) {
       console.error("[useSupabaseAuth] Sign in error:", err);

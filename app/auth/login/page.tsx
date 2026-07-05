@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { LanguageToggle } from "@/app/components/LanguageToggle";
 import { ErrorBoundary } from "@/app/components/ErrorBoundary";
 import { normalizeAppLang, withLang } from "@/lib/app-i18n";
-import { signInWithEmail, signInWithGoogle } from "@/lib/supabase-auth";
+import { buildAuthCallbackUrl, signInWithEmail, signInWithGoogle } from "@/lib/supabase-auth";
 
 function LoginContent() {
   const searchParams = useSearchParams();
@@ -64,14 +64,17 @@ function LoginContent() {
 
     try {
       const redirectTo = roleParam
-        ? `${window.location.origin}/auth/callback?role=${roleParam}`
-        : `${window.location.origin}/auth/callback`;
-      await signInWithGoogle({ redirectTo });
+        ? buildAuthCallbackUrl({ role: roleParam, lang })
+        : buildAuthCallbackUrl({ lang });
+      await signInWithGoogle({
+        redirectTo,
+        role: roleParam === "teacher" || roleParam === "student" ? roleParam : undefined,
+      });
     } catch (err: any) {
       setError(err.message || ui.errorGeneric);
       setIsLoading(false);
     }
-  }, [roleParam, ui.errorGeneric]);
+  }, [lang, roleParam, ui.errorGeneric]);
 
   return (
     <main className="shell">
