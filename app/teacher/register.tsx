@@ -5,12 +5,14 @@ import { Suspense, useCallback, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ErrorBoundary } from "@/app/components/ErrorBoundary";
 import { normalizeAppLang, withLang } from "@/lib/app-i18n";
+import { isGoogleAuthEnabled } from "@/lib/auth-config";
 import { buildAuthCallbackUrl, signInWithGoogle, signUpWithEmail } from "@/lib/supabase-auth";
 
 function TeacherRegisterContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const lang = normalizeAppLang(searchParams.get("lang"));
+  const googleAuthEnabled = isGoogleAuthEnabled();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -157,6 +159,8 @@ function TeacherRegisterContent() {
 
         {error && <div className="error-box">{error}</div>}
 
+        {googleAuthEnabled && (
+          <>
         <button
           type="button"
           onClick={handleGoogleRegister}
@@ -177,6 +181,8 @@ function TeacherRegisterContent() {
           <span>{lang === "en" ? "or" : "или"}</span>
           <div className="divider-line" />
         </div>
+          </>
+        )}
 
         <form className="flex-col gap-16" onSubmit={handleRegister}>
           <div>
