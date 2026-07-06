@@ -67,7 +67,7 @@ test.describe("Public smoke flows", () => {
       teacherRoleCard.click(),
     ]);
 
-    await expect(page.getByRole("heading", { name: "Регистрация" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Регистрация педагога" })).toBeVisible();
     await expect(page.locator('button[type="submit"]')).toContainText("Создать аккаунт");
 
     expectHealthyClient(tracker);
