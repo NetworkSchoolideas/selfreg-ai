@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ConfirmDialog } from "@/app/components/ConfirmDialog";
 import { LanguageToggle } from "@/app/components/LanguageToggle";
 import { OnboardingModal } from "@/app/components/OnboardingModal";
 import { ToastNotice } from "@/app/components/ToastNotice";
 import { normalizeAppLang, withLang } from "@/lib/app-i18n";
+import { copyTextToClipboard } from "@/lib/clipboard";
 import type { RecordItem } from "@/lib/children-storage";
 import ClassStats from "@/components/analytics/ClassStats";
 import ProgressChart from "@/components/analytics/ProgressChart";
@@ -49,6 +50,9 @@ export function TeacherDashboard() {
           : "Этот инструмент предназначен для педагогов и психологов, работающих с подростками.",
       home: lang === "en" ? "Home" : "Главная",
       prototype: lang === "en" ? "Open session app" : "Открыть сессию",
+      teacherCode: lang === "en" ? "Teacher code" : "Код педагога",
+      copyTeacherCode: lang === "en" ? "Copy" : "Копировать",
+      teacherCodeCopied: lang === "en" ? "Copied" : "Скопировано",
       students: lang === "en" ? "Students" : "Ученики",
       searchPlaceholder:
         lang === "en" ? "Search by ID, name or class..." : "Поиск по ID, ФИО или классу...",
@@ -211,6 +215,38 @@ export function TeacherDashboard() {
     deferInitialLoad,
   });
 
+  const [isTeacherCodeCopied, setIsTeacherCodeCopied] = useState(false);
+  const teacherCodeCopyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const teacherCode =
+    typeof authUser?.metadata?.teacher_code === "string" && authUser.metadata.teacher_code.trim()
+      ? authUser.metadata.teacher_code.trim()
+      : null;
+
+  useEffect(() => {
+    return () => {
+      if (teacherCodeCopyTimeoutRef.current) {
+        clearTimeout(teacherCodeCopyTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleCopyTeacherCode = async () => {
+    if (!teacherCode) {
+      return;
+    }
+
+    try {
+      await copyTextToClipboard(teacherCode);
+      setIsTeacherCodeCopied(true);
+      if (teacherCodeCopyTimeoutRef.current) {
+        clearTimeout(teacherCodeCopyTimeoutRef.current);
+      }
+      teacherCodeCopyTimeoutRef.current = setTimeout(() => setIsTeacherCodeCopied(false), 1600);
+    } catch (copyError) {
+      console.error(copyError);
+    }
+  };
+
   return (
     <main className="shell">
       <OnboardingModal isOpen={showOnboarding} onClose={closeOnboarding} lang={lang} type="teacher" />
@@ -233,6 +269,30 @@ export function TeacherDashboard() {
           <p className="mt-8 fs-13 c-muted">{ui.introSubtitle}</p>
         </div>
         <div className="action-row">
+          {teacherCode && (
+            <div
+              className="profile-field"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "6px 10px",
+                background: "#f8fafc",
+                border: "1px solid #dbe4ef",
+              }}
+            >
+              <span className="fs-12 c-muted">{ui.teacherCode}</span>
+              <strong className="fs-14">{teacherCode}</strong>
+              <button
+                type="button"
+                className="button secondary"
+                onClick={handleCopyTeacherCode}
+                style={{ fontSize: 12, padding: "4px 8px" }}
+              >
+                {isTeacherCodeCopied ? ui.teacherCodeCopied : ui.copyTeacherCode}
+              </button>
+            </div>
+          )}
           <LanguageToggle />
           <button className="button secondary" onClick={exportToCsv} style={{ fontSize: 13, padding: "6px 12px" }}>
             {lang === "en" ? "📥 CSV Export" : "📥 CSV экспорт"}

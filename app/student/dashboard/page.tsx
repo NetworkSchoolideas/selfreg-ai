@@ -19,6 +19,10 @@ function StudentDashboardContent() {
   const [profile, setProfile] = useState<ChildProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [teacherCodeInput, setTeacherCodeInput] = useState("");
+  const [isLinkingTeacher, setIsLinkingTeacher] = useState(false);
+  const [teacherLinkError, setTeacherLinkError] = useState<string | null>(null);
+  const [teacherLinkMessage, setTeacherLinkMessage] = useState<string | null>(null);
 
   const ui = {
     ru: {
@@ -54,6 +58,14 @@ function StudentDashboardContent() {
       teacherConnection: "Связь с педагогом",
       teacherConnected: "Активна",
       teacherMissing: "Не настроена",
+      teacherCodeLabel: "\u041a\u043e\u0434 \u043f\u0435\u0434\u0430\u0433\u043e\u0433\u0430",
+      teacherCodePlaceholder: "\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043a\u043e\u0434 \u043f\u0435\u0434\u0430\u0433\u043e\u0433\u0430",
+      teacherCodeHint: "\u0423\u0447\u0435\u043d\u0438\u043a \u043c\u043e\u0436\u0435\u0442 \u043f\u0440\u0438\u0432\u044f\u0437\u0430\u0442\u044c \u0441\u0432\u043e\u0439 \u043a\u0430\u0431\u0438\u043d\u0435\u0442 \u043a \u043f\u0435\u0434\u0430\u0433\u043e\u0433\u0443 \u043f\u043e \u043a\u043e\u0434\u0443.",
+      connectTeacher: "\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0438\u0442\u044c",
+      connectingTeacher: "\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0430\u0435\u043c...",
+      teacherCodeRequired: "\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043a\u043e\u0434 \u043f\u0435\u0434\u0430\u0433\u043e\u0433\u0430",
+      teacherLinkSuccess: "\u0421\u0432\u044f\u0437\u044c \u0441 \u043f\u0435\u0434\u0430\u0433\u043e\u0433\u043e\u043c \u043d\u0430\u0441\u0442\u0440\u043e\u0435\u043d\u0430.",
+      teacherLinkError: "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0438\u0442\u044c \u043f\u0435\u0434\u0430\u0433\u043e\u0433\u0430",
     },
     en: {
       title: "Dashboard",
@@ -88,6 +100,14 @@ function StudentDashboardContent() {
       teacherConnection: "Teacher connection",
       teacherConnected: "Active",
       teacherMissing: "Not configured",
+      teacherCodeLabel: "Teacher code",
+      teacherCodePlaceholder: "Enter teacher code",
+      teacherCodeHint: "Use the code from your teacher to connect this dashboard.",
+      connectTeacher: "Connect",
+      connectingTeacher: "Connecting...",
+      teacherCodeRequired: "Enter a teacher code",
+      teacherLinkSuccess: "Teacher connection is active.",
+      teacherLinkError: "Failed to connect teacher",
     },
   };
 
@@ -154,6 +174,53 @@ function StudentDashboardContent() {
 
     return getStudentDashboardStatus(profile, metrics, lang);
   }, [lang, metrics, profile]);
+
+  const handleJoinTeacher = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (!profile) {
+      return;
+    }
+
+    const teacherCode = teacherCodeInput.trim();
+    setTeacherLinkError(null);
+    setTeacherLinkMessage(null);
+
+    if (!teacherCode) {
+      setTeacherLinkError(t.teacherCodeRequired);
+      return;
+    }
+
+    setIsLinkingTeacher(true);
+
+    try {
+      const response = await fetch("/api/join-teacher", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ teacherCode, childId: profile.id }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        throw new Error(payload?.error || t.teacherLinkError);
+      }
+
+      setProfile((currentProfile) =>
+        currentProfile
+          ? {
+              ...currentProfile,
+              teacherId: payload.teacherId || currentProfile.teacherId,
+            }
+          : currentProfile
+      );
+      setTeacherCodeInput("");
+      setTeacherLinkMessage(t.teacherLinkSuccess);
+    } catch (joinError) {
+      setTeacherLinkError(joinError instanceof Error ? joinError.message : t.teacherLinkError);
+    } finally {
+      setIsLinkingTeacher(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -325,7 +392,7 @@ function StudentDashboardContent() {
                 </div>
               </div>
 
-              {profile.teacherId && (
+              {profile.teacherId ? (
                 <div className="profile-field" style={{ background: "#ecfdf5", border: "1px solid #10b981" }}>
                   <div className="fs-14 mb-4" style={{ color: "#065f46" }}>
                     {t.linkedToTeacher}
@@ -334,6 +401,47 @@ function StudentDashboardContent() {
                     ✓ {t.connectedToSystem}
                   </div>
                 </div>
+              ) : (
+                <form
+                  className="profile-field"
+                  onSubmit={handleJoinTeacher}
+                  style={{ background: "#f8fafc", border: "1px solid #dbe4ef" }}
+                >
+                  <label className="fs-14 c-muted mb-8" htmlFor="teacher-code-input" style={{ display: "block" }}>
+                    {t.teacherCodeLabel}
+                  </label>
+                  <div className="flex-row gap-8" style={{ alignItems: "stretch", flexWrap: "wrap" }}>
+                    <input
+                      id="teacher-code-input"
+                      type="text"
+                      value={teacherCodeInput}
+                      onChange={(event) => setTeacherCodeInput(event.target.value)}
+                      placeholder={t.teacherCodePlaceholder}
+                      className="form-input"
+                      style={{ minWidth: 220, flex: "1 1 220px" }}
+                      autoComplete="off"
+                    />
+                    <button
+                      type="submit"
+                      className="button"
+                      disabled={isLinkingTeacher}
+                      style={{ padding: "10px 16px", minHeight: 42 }}
+                    >
+                      {isLinkingTeacher ? t.connectingTeacher : t.connectTeacher}
+                    </button>
+                  </div>
+                  <div className="fs-13 c-muted mt-8">{t.teacherCodeHint}</div>
+                  {teacherLinkError && (
+                    <div className="fs-13 mt-8" style={{ color: "#b91c1c" }}>
+                      {teacherLinkError}
+                    </div>
+                  )}
+                  {teacherLinkMessage && (
+                    <div className="fs-13 mt-8" style={{ color: "#047857" }}>
+                      {teacherLinkMessage}
+                    </div>
+                  )}
+                </form>
               )}
             </div>
           </div>

@@ -1,7 +1,13 @@
 export async function copyTextToClipboard(text: string): Promise<void> {
   if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(text);
-    return;
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch (clipboardError) {
+      if (typeof document === "undefined") {
+        throw clipboardError;
+      }
+    }
   }
 
   if (typeof document === "undefined") {

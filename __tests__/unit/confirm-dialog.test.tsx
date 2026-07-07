@@ -41,6 +41,10 @@ describe("ConfirmDialog", () => {
     const html = renderToStaticMarkup(element);
     expect(html).toContain("Delete session");
     expect(html).toContain("Are you sure?");
+    expect(html).toContain('role="dialog"');
+    expect(html).toContain('aria-modal="true"');
+    expect(html).toContain('data-testid="confirm-dialog"');
+    expect(html).toContain('data-testid="confirm-dialog-confirm"');
 
     const buttons = findButtons(element);
     const cancelButton = buttons.find((button) => button.props.children === "Cancel");

@@ -96,7 +96,9 @@ function TeacherRegisterContent() {
     setIsLoading(true);
 
     try {
-      const teacherCode = `${name.split(" ")[0]?.charAt(0).toUpperCase() || "T"}${Date.now().toString().slice(-6)}`;
+      const rawPrefix = name.trim().charAt(0).toUpperCase();
+      const prefix = /^[A-Z]$/.test(rawPrefix) ? rawPrefix : "T";
+      const teacherCode = `${prefix}${Date.now().toString().slice(-6)}`;
       const result = await signUpWithEmail(email, password, name, {
         role: "teacher",
         metadata: {
