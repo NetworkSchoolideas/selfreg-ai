@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { Child } from "@/lib/children-storage";
+import { getChildDisplayName, getChildTechnicalLabel } from "@/lib/child-display";
 
 interface TeacherChildHeaderUi {
   studentIdLabel: string;
@@ -44,12 +45,16 @@ export function TeacherChildHeader({
   onCopyLink,
   onDeleteChild,
 }: TeacherChildHeaderProps) {
+  const displayName = getChildDisplayName(selectedChild);
+  const technicalLabel = getChildTechnicalLabel(selectedChild);
+
   return (
     <div className="panel mb-16 child-header-panel">
       <div className="flex-row justify-between items-start gap-12 flex-wrap">
         <div>
           <div className="fs-11 c-muted tracking-wide">{ui.studentIdLabel}</div>
-          <div className="fs-18 fw-700 font-mono mt-1">{selectedChild.id}</div>
+          <div className="fs-18 fw-700 mt-1">{displayName}</div>
+          <div className="fs-12 c-muted font-mono mt-1">{technicalLabel}</div>
 
           {selectedChild.realData && (
             <div className="mt-6 fs-13">

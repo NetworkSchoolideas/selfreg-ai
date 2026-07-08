@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { Child } from "@/lib/children-storage";
+import { getChildDisplayName, getChildTechnicalLabel } from "@/lib/child-display";
 
 interface TeacherSidebarUi {
   students: string;
@@ -111,6 +112,8 @@ export function TeacherSidebar({
             const isActive = selectedChildId === child.id;
             const sessionCount = child.sessions?.length || 0;
             const lastUpdated = child.updatedAt ? new Date(child.updatedAt).toLocaleDateString(locale) : "-";
+            const displayName = getChildDisplayName(child);
+            const technicalLabel = getChildTechnicalLabel(child);
 
             return (
               <div
@@ -125,7 +128,10 @@ export function TeacherSidebar({
                 <div className="child-item-top">
                   <div style={{ minWidth: 0 }}>
                     <div className="child-item-id" style={{ color: isActive ? "var(--accent)" : "var(--text)" }}>
-                      {child.id}
+                      {displayName}
+                    </div>
+                    <div className="child-item-technical-id">
+                      {technicalLabel}
                     </div>
                     <div className="child-item-meta">
                       {sessionCount} {sessionCount === 1 ? ui.session : ui.sessions} · {lastUpdated}

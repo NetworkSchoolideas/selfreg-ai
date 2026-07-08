@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { AppLang } from "@/lib/app-i18n";
+import { childMatchesQuery, getChildDisplayName } from "@/lib/child-display";
 import { ChildrenStorage, createChildId, type Child, type Session } from "@/lib/children-storage";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import { DataService } from "@/lib/data-service";
@@ -68,10 +69,10 @@ export function useTeacherData({
   const messages = useMemo(
     () => ({
       deleteStudentTitle: lang === "en" ? "Delete student" : "Удалить ученика",
-      deleteStudentMessage: (childId: string) =>
+      deleteStudentMessage: (childLabel: string) =>
         lang === "en"
-          ? `Delete student ${childId} and all linked sessions? This action cannot be undone.`
-          : `Удалить ученика ${childId} и все связанные сессии? Это действие нельзя отменить.`,
+          ? `Delete student ${childLabel} and all linked sessions? This action cannot be undone.`
+          : `Удалить ученика ${childLabel} и все связанные сессии? Это действие нельзя отменить.`,
       deleteSessionTitle: lang === "en" ? "Delete session" : "Удалить сессию",
       deleteSessionMessage:
         lang === "en"
@@ -450,22 +451,7 @@ export function useTeacherData({
           const timeB = b.updatedAt ? new Date(b.updatedAt).getTime() : new Date(b.createdAt).getTime();
           return timeB - timeA;
         })
-        .filter((child) => {
-          const query = childSearch.toLowerCase();
-          if (!query) {
-            return true;
-          }
-          if (child.id.toLowerCase().includes(query)) {
-            return true;
-          }
-          if (child.realData) {
-            return (
-              child.realData.fio.toLowerCase().includes(query) ||
-              child.realData.klass.toLowerCase().includes(query)
-            );
-          }
-          return false;
-        }),
+        .filter((child) => childMatchesQuery(child, childSearch)),
     [children, childSearch],
   );
 
@@ -503,7 +489,7 @@ export function useTeacherData({
 
     setConfirmDialog({
       title: messages.deleteStudentTitle,
-      message: messages.deleteStudentMessage(selectedChild.id),
+      message: messages.deleteStudentMessage(getChildDisplayName(selectedChild)),
       confirmLabel: messages.confirmDelete,
       cancelLabel: messages.cancel,
       onConfirm: () => {

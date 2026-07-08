@@ -1075,9 +1075,16 @@ th {
 
 /* Child item id */
 .child-item-id {
-  font-family: monospace;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
+}
+
+.child-item-technical-id {
+  margin-top: 2px;
+  color: var(--muted);
+  font-family: monospace;
+  font-size: 10px;
+  overflow-wrap: anywhere;
 }
 
 /* Child item meta */
@@ -2099,7 +2106,11 @@ td {
 
 .child-item-id {
   color: var(--text);
-  font-size: 12px;
+  font-size: 13px;
+  letter-spacing: 0;
+}
+
+.child-item-technical-id {
   letter-spacing: 0;
 }
 
