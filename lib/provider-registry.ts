@@ -2,6 +2,9 @@ import type { AppLang } from "@/lib/app-i18n";
 
 export type ProviderId = "mock" | "gigachat" | "openrouter" | "github-models" | "vercel-gateway";
 
+export const DEFAULT_LIVE_PROVIDER: ProviderId = "github-models";
+export const DEFAULT_LIVE_MODEL = "openai/gpt-4o-mini";
+
 type ProviderMeta = {
   id: ProviderId;
   title: string;
@@ -24,15 +27,15 @@ export const PROVIDERS: ProviderMeta[] = [
     docsUrl: "/"
   },
   {
-    id: "gigachat",
-    title: "GigaChat (Direct)",
-    keyLabel: "GIGACHAT_AUTH_KEY",
-    defaultModel: "GigaChat",
+    id: "github-models",
+    title: "GitHub Models",
+    keyLabel: "GITHUB_TOKEN",
+    defaultModel: DEFAULT_LIVE_MODEL,
     note: {
-      ru: "Прямой доступ к GigaChat через ваш личный Authorization Key. Требует base64(Client_ID:Client_Secret).",
-      en: "Direct GigaChat access via your personal Authorization Key. Requires base64(Client_ID:Client_Secret)."
+      ru: "Рекомендуемый провайдер для текущего тестирования. Требует GitHub token с правом read:models.",
+      en: "Recommended provider for current testing. Requires a GitHub token with read:models scope."
     },
-    docsUrl: "https://developers.sber.ru/docs/ru/gigachat/api/reference/rest/gigachat-api"
+    docsUrl: "https://docs.github.com/ru/github-models/use-github-models/prototyping-with-ai-models"
   },
   {
     id: "openrouter",
@@ -40,21 +43,21 @@ export const PROVIDERS: ProviderMeta[] = [
     keyLabel: "OPENROUTER_API_KEY",
     defaultModel: "openrouter/free",
     note: {
-      ru: "Основной провайдер. Через OpenRouter доступны GigaChat, OpenAI, Anthropic и другие модели.",
-      en: "Primary provider. Access GigaChat, OpenAI, Anthropic and more through OpenRouter."
+      ru: "Альтернативный провайдер-маршрутизатор. Используйте после отдельной проверки ключа и выбранной модели.",
+      en: "Alternative routing provider. Use after checking the key and selected model separately."
     },
     docsUrl: "https://openrouter.ai/docs/models"
   },
   {
-    id: "github-models",
-    title: "GitHub Models",
-    keyLabel: "GITHUB_TOKEN",
-    defaultModel: "openai/gpt-4o-mini",
+    id: "gigachat",
+    title: "GigaChat (Direct)",
+    keyLabel: "GIGACHAT_AUTH_KEY",
+    defaultModel: "GigaChat",
     note: {
-      ru: "Бесплатный доступ к моделям через GitHub. Требует GitHub token с правом read:models.",
-      en: "Free access to models via GitHub. Requires GitHub token with read:models scope."
+      ru: "Экспериментальный прямой доступ. Требует base64(Client_ID:Client_Secret) и отдельной проверки подключения.",
+      en: "Experimental direct access. Requires base64(Client_ID:Client_Secret) and a separate connection check."
     },
-    docsUrl: "https://docs.github.com/ru/github-models/use-github-models/prototyping-with-ai-models"
+    docsUrl: "https://developers.sber.ru/docs/ru/gigachat/api/reference/rest/gigachat-api"
   },
   {
     id: "vercel-gateway",
@@ -62,8 +65,8 @@ export const PROVIDERS: ProviderMeta[] = [
     keyLabel: "AI_GATEWAY_API_KEY",
     defaultModel: "openai/gpt-oss-120b",
     note: {
-      ru: "Вариант для Vercel-first инфраструктуры и управления несколькими провайдерами.",
-      en: "Option for Vercel-first infrastructure and multi-provider routing."
+      ru: "Экспериментальный вариант для Vercel-first инфраструктуры. Требует отдельной настройки AI Gateway.",
+      en: "Experimental option for Vercel-first infrastructure. Requires separate AI Gateway setup."
     },
     docsUrl: "https://vercel.com/docs/ai-gateway"
   }

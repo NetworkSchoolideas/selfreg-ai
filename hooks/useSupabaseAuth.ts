@@ -55,6 +55,7 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
   // Check if Supabase is configured and listen to auth state changes
   useEffect(() => {
     const supabaseClient = supabase;
+    let isMounted = true;
 
     // Check if Supabase is available
     if (!supabaseClient) {
@@ -68,6 +69,7 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
     }
 
     const syncAuthenticatedUser = async (session: Session | null) => {
+      if (!isMounted) return;
       setSession(session);
 
       if (!session) {
@@ -76,36 +78,61 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
         return;
       }
 
-      const {
-        data: { user },
-      } = await supabaseClient.auth.getUser();
+      let authUser: User | null = null;
 
-      if (!user) {
+      try {
+        const {
+          data: { user },
+        } = await supabaseClient.auth.getUser();
+        authUser = user;
+      } catch {
+        if (!isMounted) return;
         setUser(null);
         setIsLoading(false);
         return;
       }
 
-      const profile = await getUserProfile(user.id);
-      setUser(profile || buildFallbackProfile(user));
+      if (!authUser) {
+        setUser(null);
+        setIsLoading(false);
+        return;
+      }
+
+      const profile = await getUserProfile(authUser.id);
+      if (!isMounted) return;
+      setUser(profile || buildFallbackProfile(authUser));
       setIsLoading(false);
     };
 
-    supabaseClient.auth.getUser().then(({ data: { user } }) => {
-      console.log("[useSupabaseAuth] Initial user present:", Boolean(user));
+    const syncInitialUser = async () => {
+      try {
+        const {
+          data: { user },
+        } = await supabaseClient.auth.getUser();
 
-      if (!user) {
+        if (!isMounted) return;
+        console.log("[useSupabaseAuth] Initial user present:", Boolean(user));
+
+        if (!user) {
+          setSession(null);
+          setUser(null);
+          setIsLoading(false);
+          return;
+        }
+
+        const profile = await getUserProfile(user.id);
+        if (!isMounted) return;
+        setUser(profile || buildFallbackProfile(user as User));
+        setIsLoading(false);
+      } catch {
+        if (!isMounted) return;
         setSession(null);
         setUser(null);
         setIsLoading(false);
-        return;
       }
+    };
 
-      getUserProfile(user.id).then((profile) => {
-        setUser(profile || buildFallbackProfile(user as User));
-        setIsLoading(false);
-      });
-    });
+    void syncInitialUser();
 
     // Listen for changes
     const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((
@@ -117,6 +144,7 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
     });
 
     return () => {
+      isMounted = false;
       subscription.unsubscribe();
     };
   }, []);

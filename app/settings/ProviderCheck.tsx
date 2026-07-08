@@ -100,15 +100,15 @@ export function ProviderCheck() {
             }}
           >
             <option value="mock">Mock</option>
-            <option value="gigachat">GigaChat</option>
-            <option value="openrouter">OpenRouter</option>
             <option value="github-models">GitHub Models</option>
+            <option value="openrouter">OpenRouter</option>
+            <option value="gigachat">GigaChat</option>
             <option value="vercel-gateway">Vercel AI Gateway</option>
           </select>
         </label>
         <label className="field compact">
           <span>{ui.model}</span>
-          <input value={model} onChange={(event) => setModel(event.target.value)} placeholder="GigaChat, openrouter/free, or openai/gpt-4o-mini" />
+          <input value={model} onChange={(event) => setModel(event.target.value)} placeholder="openai/gpt-4o-mini, openrouter/free, or GigaChat" />
         </label>
       </div>
       <label className="field">

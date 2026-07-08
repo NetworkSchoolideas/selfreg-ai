@@ -24,8 +24,8 @@ export const mockProvider = {
       feedback: result.feedback,
       dashboardNote:
         input.lang === "en"
-          ? "Mock mode: the stage logic works without an external API. To test live output, choose GigaChat, OpenRouter, or Vercel AI Gateway."
-          : "Mock-режим: логика этапов работает без внешнего API. Чтобы проверить живой ответ, выбери GigaChat, OpenRouter или Vercel AI Gateway.",
+          ? "Mock mode: the stage logic works without an external API. To test live output, choose GitHub Models."
+          : "Mock-режим: логика этапов работает без внешнего API. Чтобы проверить живой ответ, выбери GitHub Models.",
       responseMode: "mock"
     };
   }

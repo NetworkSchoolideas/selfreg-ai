@@ -11,7 +11,7 @@ import { AdolescentFeedbackForm } from "@/app/components/AdolescentFeedbackForm"
 import { OnboardingModal } from "@/app/components/OnboardingModal";
 import { useAdolescentSession } from "./useAdolescentSession";
 import { withLang, type AppLang } from "@/lib/app-i18n";
-import type { ProviderId } from "@/lib/provider-registry";
+import { DEFAULT_LIVE_MODEL, DEFAULT_LIVE_PROVIDER, type ProviderId } from "@/lib/provider-registry";
 import { ConsentModal } from "@/app/components/ConsentModal";
 import { createChildId } from "@/lib/children-storage";
 import { DataService } from "@/lib/data-service";
@@ -57,8 +57,8 @@ export function AdolescentPrototype() {
   } = session;
 
   // Provider and model state
-  const [provider, setProvider] = useState<ProviderId>("openrouter");
-  const [model, setModel] = useState("openrouter/free");
+  const [provider, setProvider] = useState<ProviderId>(DEFAULT_LIVE_PROVIDER);
+  const [model, setModel] = useState(DEFAULT_LIVE_MODEL);
   const [userApiKey, setUserApiKey] = useState("");
 
   // Key verification status from ApiKeyManager
@@ -210,7 +210,7 @@ export function AdolescentPrototype() {
   });
 
   // Submit hook
-  const [providerStatus, setProviderStatus] = useState("openrouter: ready");
+  const [providerStatus, setProviderStatus] = useState(`${DEFAULT_LIVE_PROVIDER}: ready`);
   const { isSending, answerQualityWarning, submitAnswer, saveSessionSnapshot, setAnswerQualityWarning } = useSessionSubmit({
     sessionId, context, stageId, stageTitle: stage.title, currentQuestion, records, finalNote, lang,
     provider, model, userApiKey, currentChildId, pendingHistoryInsight,
@@ -307,7 +307,7 @@ export function AdolescentPrototype() {
     // Set default model based on provider
     if (nextProvider === "gigachat") setModel("GigaChat");
     else if (nextProvider === "openrouter") setModel("openrouter/free");
-    else if (nextProvider === "github-models") setModel("openai/gpt-4o-mini");
+    else if (nextProvider === "github-models") setModel(DEFAULT_LIVE_MODEL);
     else if (nextProvider === "vercel-gateway") setModel("openai/gpt-oss-120b");
     else setModel("local-mock");
     
@@ -430,10 +430,10 @@ export function AdolescentPrototype() {
                 <span>{ui.provider}</span>
                 <select value={provider} onChange={(e) => handleProviderChange(e.target.value as ProviderId)}>
                   <option value="mock">Mock</option>
-                  <option value="gigachat">GigaChat (Direct)</option>
+                  <option value="github-models">GitHub Models (recommended)</option>
                   <option value="openrouter">OpenRouter</option>
-                  <option value="github-models">GitHub Models</option>
-                  <option value="vercel-gateway">Vercel AI Gateway</option>
+                  <option value="gigachat">GigaChat (Direct)</option>
+                  <option value="vercel-gateway">Vercel AI Gateway (experimental)</option>
                 </select>
               </label>
               <label className="field compact">
