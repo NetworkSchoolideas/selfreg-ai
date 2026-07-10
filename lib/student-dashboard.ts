@@ -1,5 +1,7 @@
 import type { AppLang } from "@/lib/app-i18n";
-import type { ChildProfile, Session } from "@/types/session";
+import type { ChildProfile, Session, SessionStatus } from "@/types/session";
+
+const ABANDONED_AFTER_DAYS = 7;
 
 export interface StudentDashboardMetrics {
   completedSessions: Session[];
@@ -14,19 +16,54 @@ export interface StudentDashboardStatus {
   description: string;
 }
 
-export function getStudentDashboardMetrics(profile: ChildProfile): StudentDashboardMetrics {
-  const completedSessions = profile.sessions.filter((session) => session.status === "completed" || Boolean(session.finalNote?.trim()));
-  const inProgressSessions = profile.sessions.filter(
-    (session) => session.status === "in_progress" || (!session.finalNote?.trim() && (session.records?.length ?? 0) > 0),
+export function isSessionArchivedForStudent(session: Session): boolean {
+  return Boolean(session.studentArchivedAt);
+}
+
+export function isSessionAbandoned(session: Session, now = new Date()): boolean {
+  if (session.status === "completed" || Boolean(session.finalNote?.trim())) {
+    return false;
+  }
+
+  const updatedAt = new Date(session.updatedAt).getTime();
+  if (!Number.isFinite(updatedAt)) {
+    return false;
+  }
+
+  const ageMs = now.getTime() - updatedAt;
+  return ageMs >= ABANDONED_AFTER_DAYS * 24 * 60 * 60 * 1000;
+}
+
+export function getEffectiveSessionStatus(session: Session, now = new Date()): SessionStatus {
+  if (session.status === "completed" || Boolean(session.finalNote?.trim())) {
+    return "completed";
+  }
+
+  if (session.status === "abandoned" || isSessionAbandoned(session, now)) {
+    return "abandoned";
+  }
+
+  if ((session.records?.length ?? 0) === 0 || session.status === "draft") {
+    return "draft";
+  }
+
+  return "in_progress";
+}
+
+export function getStudentDashboardMetrics(profile: ChildProfile, now = new Date()): StudentDashboardMetrics {
+  const visibleSessions = profile.sessions.filter((session) => !isSessionArchivedForStudent(session));
+  const completedSessions = visibleSessions.filter((session) => getEffectiveSessionStatus(session, now) === "completed");
+  const inProgressSessions = visibleSessions.filter(
+    (session) => getEffectiveSessionStatus(session, now) === "in_progress",
   );
-  const latestSession = [...profile.sessions].sort((left, right) => {
+  const latestSession = [...visibleSessions].sort((left, right) => {
     return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
   })[0] ?? null;
 
   return {
     completedSessions,
     inProgressSessions,
-    totalSessions: completedSessions.length + inProgressSessions.length,
+    totalSessions: visibleSessions.length,
     latestSession,
   };
 }

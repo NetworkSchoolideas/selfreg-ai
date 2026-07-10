@@ -7,6 +7,7 @@ import { getSessionSignals } from "@/lib/teacher-dashboard-analytics";
 
 interface TeacherSessionsPanelUi {
   sessionsLabel: string;
+  archivedByStudent: string;
   createNewSession: string;
   deleteSelected: string;
   newSessionHint: string;
@@ -140,6 +141,11 @@ export function TeacherSessionsPanel({
                   {recordCount} {ui.stepsShort}
                   <span className="ml-8">{processBits}</span>
                 </div>
+                {session.studentArchivedAt && (
+                  <div className="fs-12 mt-6" style={{ color: "#92400e" }}>
+                    {ui.archivedByStudent}
+                  </div>
+                )}
               </button>
             );
           })}

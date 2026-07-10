@@ -1,4 +1,8 @@
-import { getStudentDashboardMetrics, getStudentDashboardStatus } from "@/lib/student-dashboard";
+import {
+  getEffectiveSessionStatus,
+  getStudentDashboardMetrics,
+  getStudentDashboardStatus,
+} from "@/lib/student-dashboard";
 import type { ChildProfile } from "@/types/session";
 
 function createProfile(overrides: Partial<ChildProfile> = {}): ChildProfile {
@@ -34,7 +38,7 @@ describe("student dashboard helpers", () => {
       ],
     });
 
-    const metrics = getStudentDashboardMetrics(profile);
+    const metrics = getStudentDashboardMetrics(profile, new Date("2026-06-12T10:30:00.000Z"));
 
     expect(metrics.completedSessions).toHaveLength(1);
     expect(metrics.inProgressSessions).toHaveLength(1);
@@ -56,7 +60,7 @@ describe("student dashboard helpers", () => {
       ],
     });
 
-    const metrics = getStudentDashboardMetrics(profile);
+    const metrics = getStudentDashboardMetrics(profile, new Date("2026-06-12T10:30:00.000Z"));
     const status = getStudentDashboardStatus(profile, metrics, "ru");
 
     expect(status.tone).toBe("active");
@@ -72,5 +76,50 @@ describe("student dashboard helpers", () => {
     expect(status.tone).toBe("neutral");
     expect(status.title).toBe("Ready for the first session");
     expect(status.description).toContain("linked to a teacher");
+  });
+
+  it("excludes student-archived sessions from student metrics", () => {
+    const profile = createProfile({
+      sessions: [
+        {
+          sessionId: "visible",
+          context: "Visible completed",
+          records: [],
+          finalNote: "Finished",
+          status: "completed",
+          updatedAt: "2026-06-10T10:00:00.000Z",
+        },
+        {
+          sessionId: "hidden",
+          context: "Hidden completed",
+          records: [],
+          finalNote: "Finished",
+          status: "completed",
+          updatedAt: "2026-06-11T10:00:00.000Z",
+          studentArchivedAt: "2026-06-12T10:00:00.000Z",
+        },
+      ],
+    });
+
+    const metrics = getStudentDashboardMetrics(profile);
+
+    expect(metrics.totalSessions).toBe(1);
+    expect(metrics.completedSessions.map((session) => session.sessionId)).toEqual(["visible"]);
+  });
+
+  it("treats old unfinished sessions as abandoned", () => {
+    expect(
+      getEffectiveSessionStatus(
+        {
+          sessionId: "old-draft",
+          context: "Old work",
+          records: [{ stageId: "1", stageTitle: "Goal", scenario: "A", answer: "Draft", feedback: "OK", question: "Q", timestamp: "2026-06-01T09:00:00.000Z" }],
+          finalNote: "",
+          status: "in_progress",
+          updatedAt: "2026-06-01T10:00:00.000Z",
+        },
+        new Date("2026-06-10T10:00:00.000Z")
+      )
+    ).toBe("abandoned");
   });
 });

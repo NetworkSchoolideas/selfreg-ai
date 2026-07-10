@@ -85,39 +85,42 @@ export interface Database {
           child_id: string;
           context: string;
           final_note: string | null;
-          status: "in_progress" | "completed";
+          status: "draft" | "in_progress" | "completed" | "abandoned";
           created_at: string;
           updated_at: string;
           completed_at: string | null;
           lang: string | null;
           history_insight: string | null;
           adolescent_feedback: Json | null;
+          student_archived_at: string | null;
         };
         Insert: {
           id?: string;
           child_id: string;
           context: string;
           final_note?: string | null;
-          status?: "in_progress" | "completed";
+          status?: "draft" | "in_progress" | "completed" | "abandoned";
           created_at?: string;
           updated_at?: string;
           completed_at?: string | null;
           lang?: string | null;
           history_insight?: string | null;
           adolescent_feedback?: Json | null;
+          student_archived_at?: string | null;
         };
         Update: {
           id?: string;
           child_id?: string;
           context?: string;
           final_note?: string | null;
-          status?: "in_progress" | "completed";
+          status?: "draft" | "in_progress" | "completed" | "abandoned";
           created_at?: string;
           updated_at?: string;
           completed_at?: string | null;
           lang?: string | null;
           history_insight?: string | null;
           adolescent_feedback?: Json | null;
+          student_archived_at?: string | null;
         };
       };
       session_records: {

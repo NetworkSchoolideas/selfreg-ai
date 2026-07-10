@@ -44,6 +44,7 @@ export async function GET(request: Request) {
           lang,
           history_insight,
           adolescent_feedback,
+          student_archived_at,
           session_records (
             id,
             session_id,

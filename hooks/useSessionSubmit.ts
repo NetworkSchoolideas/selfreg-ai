@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { aiService } from "@/services/ai-service";
 import { answerValidator } from "@/lib/answer-validator";
 import { sessionManager } from "@/lib/session-manager";
@@ -77,6 +77,7 @@ export function useSessionSubmit(options: UseSessionSubmitOptions) {
 
   const [isSending, setIsSending] = useState(false);
   const [answerQualityWarning, setAnswerQualityWarning] = useState<string | null>(null);
+  const inFlightRef = useRef(false);
 
   const validateAnswer = useCallback((answer: string): AnswerQualityResult => {
     return answerValidator.validateAnswer(answer, lang);
@@ -102,11 +103,11 @@ export function useSessionSubmit(options: UseSessionSubmitOptions) {
       payload.historyInsight = pendingHistoryInsight;
     }
 
-    sessionManager.saveSession(payload);
-
     if (currentChildId) {
       await DataService.saveSession(currentChildId, payload);
       log("Session saved to storage");
+    } else {
+      sessionManager.saveSession(payload);
     }
   }, [sessionId, context, lang, currentChildId, pendingHistoryInsight]);
 
@@ -114,6 +115,13 @@ export function useSessionSubmit(options: UseSessionSubmitOptions) {
     answer: string,
     suppressClarifyForNextStage: boolean
   ): Promise<SubmitResult> => {
+    if (inFlightRef.current) {
+      return {
+        success: false,
+        error: lang === "en" ? "A request is already in progress" : "Запрос уже выполняется",
+      };
+    }
+
     const cleanAnswer = answer.trim();
 
     const quality = validateAnswer(cleanAnswer);
@@ -124,6 +132,7 @@ export function useSessionSubmit(options: UseSessionSubmitOptions) {
       return { success: false, error: quality.message };
     }
     setAnswerQualityWarning(null);
+    inFlightRef.current = true;
     setIsSending(true);
 
     const controller = new AbortController();
@@ -190,11 +199,19 @@ export function useSessionSubmit(options: UseSessionSubmitOptions) {
         );
       } catch (apiError) {
         const message = apiError instanceof Error ? apiError.message : lang === "en" ? "unknown error" : "неизвестная ошибка";
-        setProviderStatus(
+        const providerErrorMessage =
           lang === "en"
-            ? `Could not get an LLM reply: ${message}. A safe mock feedback was shown.`
-            : `Не удалось получить LLM-ответ: ${message}. Показан безопасный mock-фидбек.`
-        );
+            ? `Could not get an LLM reply: ${message}. Check the key, provider, or model and try again.`
+            : `Не удалось получить LLM-ответ: ${message}. Проверьте ключ, провайдера или модель и попробуйте снова.`;
+        setProviderStatus(providerErrorMessage);
+        setAnswerQualityWarning(providerErrorMessage);
+
+        if (provider !== "mock") {
+          return {
+            success: false,
+            error: providerErrorMessage,
+          };
+        }
       }
 
       if (apiResult.scenario === "clarify") {
@@ -279,6 +296,7 @@ export function useSessionSubmit(options: UseSessionSubmitOptions) {
       };
     } finally {
       clearTimeout(timeoutId);
+      inFlightRef.current = false;
       setIsSending(false);
     }
   }, [

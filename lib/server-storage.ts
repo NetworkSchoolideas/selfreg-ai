@@ -38,6 +38,7 @@ const CHILDREN_WITH_EVENT_TYPE_SELECT = `
     lang,
     history_insight,
     adolescent_feedback,
+    student_archived_at,
     session_records (
       id,
       session_id,
@@ -57,6 +58,7 @@ const CHILDREN_WITH_EVENT_TYPE_SELECT = `
 `;
 
 const CHILDREN_EVENT_TYPE_SELECT = CHILDREN_WITH_EVENT_TYPE_SELECT
+  .replace(/\s*student_archived_at,\n/, "\n")
   .replace(/\s*provider,\n/, "\n")
   .replace(/\s*model,\n/, "\n")
   .replace(/\s*response_mode,\n/, "\n");
@@ -65,7 +67,12 @@ const CHILDREN_LEGACY_SELECT = CHILDREN_EVENT_TYPE_SELECT.replace(/\s*event_type
 
 function isMissingEventTypeError(error: { message?: string } | null | undefined) {
   const message = error?.message?.toLowerCase() || "";
-  return message.includes("event_type") || message.includes("could not find") || message.includes("does not exist");
+  return (
+    message.includes("event_type") ||
+    message.includes("student_archived_at") ||
+    message.includes("could not find") ||
+    message.includes("does not exist")
+  );
 }
 
 export interface ChildUpsertInput {
@@ -138,7 +145,7 @@ function mapSession(row: NestedSessionRow): Session {
 
   return {
     sessionId: row.id,
-    status: row.status === "completed" ? "completed" : "in_progress",
+    status: row.status,
     context: row.context,
     records,
     finalNote: row.final_note || "",
@@ -146,6 +153,7 @@ function mapSession(row: NestedSessionRow): Session {
     lang: (row.lang as Session["lang"]) || undefined,
     historyInsight: row.history_insight || undefined,
     adolescentFeedback: asAdolescentFeedback(row.adolescent_feedback),
+    studentArchivedAt: (row as NestedSessionRow & { student_archived_at?: string | null }).student_archived_at || undefined,
   };
 }
 

@@ -124,6 +124,7 @@ export function TeacherDashboard() {
       responseModeLabel: (mode: RecordItem["responseMode"]) => getResponseModeLabel(mode, lang),
       noStageData: lang === "en" ? "No stage data yet" : "Пока нет данных по этапам",
       sessionsLabel: lang === "en" ? "Sessions" : "Сессии",
+      archivedByStudent: lang === "en" ? "Hidden by student" : "Скрыто учеником",
       createNewSession: lang === "en" ? "+ New session" : "+ Новая сессия",
       deleteSelected: lang === "en" ? "Delete selected" : "Удалить выбранную",
       newSessionHint:

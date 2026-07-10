@@ -108,6 +108,7 @@ export const DataService = {
       try {
         const children = await fetchChildrenFromSupabase(teacherId);
         if (children.length > 0) {
+          children.forEach((child) => ChildrenStorage.upsertLocalChild(child));
           log(`Loaded ${children.length} children from Supabase`);
           return children;
         }
@@ -134,6 +135,7 @@ export const DataService = {
       try {
         const child = await fetchChildFromSupabase(childId);
         if (child) {
+          ChildrenStorage.upsertLocalChild(child);
           log(`Loaded child ${childId} from Supabase`);
           return child;
         }

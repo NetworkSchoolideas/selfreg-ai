@@ -8,11 +8,13 @@ const SessionSyncUpsertPayload = z.object({
   action: z.literal("upsert").optional(),
   sessionId: z.string().uuid().optional(),
   childId: z.string().min(1),
+  status: z.enum(["draft", "in_progress", "completed", "abandoned"]).optional(),
   context: z.string().min(1),
   finalNote: z.string(),
   updatedAt: z.string().min(1),
   lang: z.enum(["ru", "en"]).optional(),
   historyInsight: z.string().optional(),
+  studentArchivedAt: z.string().optional(),
   adolescentFeedback: z
     .object({
       rating: z.number().optional(),
@@ -144,18 +146,20 @@ export async function POST(request: Request) {
     }
 
     let sessionId = existingSession?.id;
-    const isCompleted = Boolean(payload.finalNote.trim());
+    const sessionStatus = payload.status || (payload.finalNote.trim() ? "completed" : "in_progress");
+    const isCompleted = sessionStatus === "completed";
 
     if (sessionId) {
       const sessionPatch: Database["public"]["Tables"]["sessions"]["Update"] = {
         context: payload.context,
         final_note: payload.finalNote,
-        status: isCompleted ? "completed" : "in_progress",
+        status: sessionStatus,
         completed_at: isCompleted ? payload.updatedAt : null,
         updated_at: payload.updatedAt,
         lang: payload.lang || null,
         history_insight: payload.historyInsight || null,
         adolescent_feedback: payload.adolescentFeedback || null,
+        student_archived_at: payload.studentArchivedAt || null,
       };
 
       const { error: updateError } = await supabaseAdmin
@@ -179,25 +183,27 @@ export async function POST(request: Request) {
       const sessionPatch: Database["public"]["Tables"]["sessions"]["Update"] = {
         context: payload.context,
         final_note: payload.finalNote,
-        status: isCompleted ? "completed" : "in_progress",
+        status: sessionStatus,
         completed_at: isCompleted ? payload.updatedAt : null,
         updated_at: payload.updatedAt,
         lang: payload.lang || null,
         history_insight: payload.historyInsight || null,
         adolescent_feedback: payload.adolescentFeedback || null,
+        student_archived_at: payload.studentArchivedAt || null,
       };
       const sessionInsert: Database["public"]["Tables"]["sessions"]["Insert"] = {
         id: payload.sessionId,
         child_id: payload.childId,
         context: payload.context,
         final_note: payload.finalNote,
-        status: isCompleted ? "completed" : "in_progress",
+        status: sessionStatus,
         completed_at: isCompleted ? payload.updatedAt : null,
         created_at: payload.updatedAt,
         updated_at: payload.updatedAt,
         lang: payload.lang || null,
         history_insight: payload.historyInsight || null,
         adolescent_feedback: payload.adolescentFeedback || null,
+        student_archived_at: payload.studentArchivedAt || null,
       };
 
       const { data: insertedSession, error: insertError } = await supabaseAdmin

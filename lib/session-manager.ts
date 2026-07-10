@@ -122,6 +122,7 @@ export class SessionManager {
    */
   createSession(context: string, lang: "ru" | "en", childId?: string): Session {
     return {
+      status: "draft",
       context,
       records: [],
       finalNote: "",

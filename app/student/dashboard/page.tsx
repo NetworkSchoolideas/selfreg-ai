@@ -5,10 +5,16 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ErrorBoundary } from "@/app/components/ErrorBoundary";
 import { LanguageToggle } from "@/app/components/LanguageToggle";
+import { ConfirmDialog } from "@/app/components/ConfirmDialog";
 import { normalizeAppLang, withLang } from "@/lib/app-i18n";
 import { DataService } from "@/lib/data-service";
-import { getStudentDashboardMetrics, getStudentDashboardStatus } from "@/lib/student-dashboard";
-import type { ChildProfile } from "@/types/session";
+import {
+  getEffectiveSessionStatus,
+  getStudentDashboardMetrics,
+  getStudentDashboardStatus,
+  isSessionArchivedForStudent,
+} from "@/lib/student-dashboard";
+import type { ChildProfile, Session } from "@/types/session";
 
 function StudentDashboardContent() {
   const searchParams = useSearchParams();
@@ -23,6 +29,8 @@ function StudentDashboardContent() {
   const [isLinkingTeacher, setIsLinkingTeacher] = useState(false);
   const [teacherLinkError, setTeacherLinkError] = useState<string | null>(null);
   const [teacherLinkMessage, setTeacherLinkMessage] = useState<string | null>(null);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [archiveCandidateId, setArchiveCandidateId] = useState<string | null>(null);
 
   const ui = {
     ru: {
@@ -33,6 +41,22 @@ function StudentDashboardContent() {
       errorConnection: "Ошибка загрузки профиля",
       backToSession: "Вернуться к сессии",
       newSession: "Новая сессия",
+      continueSession: "Продолжить",
+      openSession: "Открыть",
+      closeDetails: "Закрыть",
+      sessionDetails: "Детали сессии",
+      answers: "Ответы",
+      aiInsight: "Рекомендация ИИ",
+      aiInsightMissing: "Рекомендация еще не создана. Откройте рабочий экран, подключите провайдера и получите комментарий перед новой сессией.",
+      getAiInsight: "Получить рекомендацию",
+      stepsCount: "шагов",
+      abandonedLabel: "Устарела",
+      draftLabel: "Черновик",
+      hideSession: "Скрыть",
+      hideSessionTitle: "Скрыть сессию",
+      hideSessionMessage: "Сессия исчезнет из вашего списка, но останется доступна педагогу.",
+      hideSessionConfirm: "Скрыть",
+      cancel: "Отмена",
       home: "На главную",
       totalSessions: "Всего сессий",
       completed: "Завершено",
@@ -75,6 +99,22 @@ function StudentDashboardContent() {
       errorConnection: "Failed to load profile",
       backToSession: "Back to session",
       newSession: "New session",
+      continueSession: "Continue",
+      openSession: "Open",
+      closeDetails: "Close",
+      sessionDetails: "Session details",
+      answers: "Answers",
+      aiInsight: "AI recommendation",
+      aiInsightMissing: "No recommendation has been created yet. Open the working screen, connect a provider, and generate a comment before the next session.",
+      getAiInsight: "Get recommendation",
+      stepsCount: "steps",
+      abandonedLabel: "Abandoned",
+      draftLabel: "Draft",
+      hideSession: "Hide",
+      hideSessionTitle: "Hide session",
+      hideSessionMessage: "The session will disappear from your list, but your teacher will still be able to see it.",
+      hideSessionConfirm: "Hide",
+      cancel: "Cancel",
       home: "Home",
       totalSessions: "Total sessions",
       completed: "Completed",
@@ -257,8 +297,13 @@ function StudentDashboardContent() {
   const displayClass = profile.realData?.klass || "";
   const effectiveChildId = childId || profile.id;
   const sortedSessions = metrics
-    ? [...profile.sessions].sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime())
+    ? profile.sessions
+        .filter((session) => !isSessionArchivedForStudent(session))
+        .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime())
     : [];
+  const archiveCandidate = archiveCandidateId
+    ? profile.sessions.find((session) => getSessionKey(session) === archiveCandidateId) ?? null
+    : null;
   const nextStepText =
     metrics && metrics.inProgressSessions.length > 0
       ? t.nextStepInProgress
@@ -271,9 +316,55 @@ function StudentDashboardContent() {
     active: { background: "#fff7ed", border: "#fed7aa", accent: "#c2410c" },
   } as const;
   const statusTone = status ? statusToneStyles[status.tone] : statusToneStyles.neutral;
+  const selectedSession = selectedSessionId
+    ? sortedSessions.find((session) => getSessionKey(session) === selectedSessionId) ?? null
+    : null;
+  const newSessionHref = `/adolescent?childId=${effectiveChildId}&mode=new&lang=${lang}`;
+  const insightHref = `/adolescent?childId=${effectiveChildId}&lang=${lang}`;
+
+  const handleConfirmArchiveSession = async () => {
+    if (!archiveCandidate) {
+      setArchiveCandidateId(null);
+      return;
+    }
+
+    const archivedSession: Session = {
+      ...archiveCandidate,
+      studentArchivedAt: archiveCandidate.studentArchivedAt || new Date().toISOString(),
+    };
+
+    setProfile((currentProfile) => {
+      if (!currentProfile) return currentProfile;
+
+      return {
+        ...currentProfile,
+        sessions: currentProfile.sessions.map((session) =>
+          getSessionKey(session) === getSessionKey(archiveCandidate) ? archivedSession : session
+        ),
+      };
+    });
+    setSelectedSessionId((current) => (current === getSessionKey(archiveCandidate) ? null : current));
+    setArchiveCandidateId(null);
+
+    try {
+      await DataService.saveSession(profile.id, archivedSession);
+    } catch (archiveError) {
+      console.error(archiveError);
+    }
+  };
 
   return (
     <div style={{ minHeight: "100vh", background: "#f3f4f6", padding: 20 }}>
+      <ConfirmDialog
+        isOpen={Boolean(archiveCandidate)}
+        title={t.hideSessionTitle}
+        message={t.hideSessionMessage}
+        confirmLabel={t.hideSessionConfirm}
+        cancelLabel={t.cancel}
+        tone="neutral"
+        onConfirm={handleConfirmArchiveSession}
+        onCancel={() => setArchiveCandidateId(null)}
+      />
       <div className="content-container-wide">
         <header className="section-header">
           <div className="flex-row justify-between items-start">
@@ -289,7 +380,7 @@ function StudentDashboardContent() {
 
         <div className="action-bar">
           <Link
-            href={`/adolescent?childId=${effectiveChildId}&lang=${lang}`}
+            href={newSessionHref}
             className="no-underline fw-500"
             style={{
               padding: "12px 24px",
@@ -459,21 +550,43 @@ function StudentDashboardContent() {
             {(metrics?.totalSessions ?? 0) > 0 && (
               <div className="flex-col gap-16">
                 {sortedSessions.map((session) => {
-                  const isCompleted = Boolean(session.finalNote?.trim()) || session.status === "completed";
+                  const effectiveStatus = getEffectiveSessionStatus(session);
+                  const isCompleted = effectiveStatus === "completed";
+                  const isInProgress = effectiveStatus === "in_progress";
+                  const statusLabel =
+                    effectiveStatus === "completed"
+                      ? t.completedLabel
+                      : effectiveStatus === "in_progress"
+                        ? t.inProgressLabel
+                        : effectiveStatus === "abandoned"
+                          ? t.abandonedLabel
+                          : t.draftLabel;
+                  const statusColors =
+                    effectiveStatus === "completed"
+                      ? { background: "#d1fae5", color: "#065f46" }
+                      : effectiveStatus === "in_progress"
+                        ? { background: "#fef3c7", color: "#92400e" }
+                        : effectiveStatus === "abandoned"
+                          ? { background: "#fee2e2", color: "#991b1b" }
+                          : { background: "#e0f2fe", color: "#075985" };
+                  const sessionKey = getSessionKey(session);
+                  const continueHref = session.sessionId
+                    ? `/adolescent?childId=${effectiveChildId}&resumeSessionId=${session.sessionId}&lang=${lang}`
+                    : newSessionHref;
 
                   return (
-                    <div key={session.sessionId || session.updatedAt} className="profile-field">
+                    <div key={sessionKey} className="profile-field">
                       <div className="flex-row justify-between items-center mb-8">
                         <div className="fs-16 fw-500">{session.context || t.sessionLabel}</div>
                         <span
                           className="br-999 fs-12 fw-500"
                           style={{
                             padding: "4px 12px",
-                            background: isCompleted ? "#d1fae5" : "#fef3c7",
-                            color: isCompleted ? "#065f46" : "#92400e",
+                            background: statusColors.background,
+                            color: statusColors.color,
                           }}
                         >
-                          {isCompleted ? t.completedLabel : t.inProgressLabel}
+                          {statusLabel}
                         </span>
                       </div>
                       {session.finalNote && (
@@ -483,6 +596,8 @@ function StudentDashboardContent() {
                       )}
                       <div className="fs-12" style={{ color: "#9ca3af" }}>
                         {new Date(session.updatedAt).toLocaleString(lang === "en" ? "en-US" : "ru-RU")}
+                        {" · "}
+                        {session.records?.length ?? 0} {t.stepsCount}
                       </div>
                       {session.historyInsight && (
                         <div
@@ -496,16 +611,122 @@ function StudentDashboardContent() {
                           💡 {session.historyInsight}
                         </div>
                       )}
+                      <div className="flex-row gap-8 mt-12" style={{ flexWrap: "wrap" }}>
+                        <button
+                          type="button"
+                          className="button secondary"
+                          onClick={() => setSelectedSessionId(sessionKey)}
+                          style={{ padding: "8px 12px" }}
+                        >
+                          {t.openSession}
+                        </button>
+                        {isInProgress && (
+                          <Link
+                            href={continueHref}
+                            className="button no-underline"
+                            style={{ padding: "8px 12px" }}
+                          >
+                            {t.continueSession}
+                          </Link>
+                        )}
+                        {isCompleted && !session.historyInsight && (
+                          <Link
+                            href={insightHref}
+                            className="button secondary no-underline"
+                            style={{ padding: "8px 12px" }}
+                          >
+                            {t.getAiInsight}
+                          </Link>
+                        )}
+                        <button
+                          type="button"
+                          className="button secondary"
+                          onClick={() => setArchiveCandidateId(sessionKey)}
+                          style={{ padding: "8px 12px" }}
+                        >
+                          {t.hideSession}
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
               </div>
             )}
           </div>
+
+          {selectedSession && (
+            <div className="bg-white br-12 p-24" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
+              <div className="flex-row justify-between items-start mb-16" style={{ gap: 16 }}>
+                <div>
+                  <h2 className="fs-20 mb-8">{t.sessionDetails}</h2>
+                  <p className="c-muted" style={{ margin: 0 }}>
+                    {selectedSession.context || t.sessionLabel}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="button secondary"
+                  onClick={() => setSelectedSessionId(null)}
+                  style={{ padding: "8px 12px" }}
+                >
+                  {t.closeDetails}
+                </button>
+                <button
+                  type="button"
+                  className="button secondary"
+                  onClick={() => setArchiveCandidateId(getSessionKey(selectedSession))}
+                  style={{ padding: "8px 12px" }}
+                >
+                  {t.hideSession}
+                </button>
+              </div>
+
+              {selectedSession.finalNote && (
+                <div className="profile-field mb-16" style={{ background: "#f8fafc" }}>
+                  <div className="fs-14 c-muted mb-4">{t.completedLabel}</div>
+                  <div className="fs-15">{selectedSession.finalNote}</div>
+                </div>
+              )}
+
+              <div className="profile-field mb-16" style={{ background: selectedSession.historyInsight ? "#f0fdf4" : "#fff7ed" }}>
+                <div className="fs-14 fw-600 mb-6">{t.aiInsight}</div>
+                <div className="fs-14 c-muted">
+                  {selectedSession.historyInsight || t.aiInsightMissing}
+                </div>
+                {!selectedSession.historyInsight && (
+                  <Link
+                    href={insightHref}
+                    className="button secondary no-underline mt-12"
+                    style={{ padding: "8px 12px", display: "inline-flex" }}
+                  >
+                    {t.getAiInsight}
+                  </Link>
+                )}
+              </div>
+
+              <h3 className="fs-16 mb-12">{t.answers}</h3>
+              <div className="flex-col gap-12">
+                {(selectedSession.records ?? []).map((record, index) => (
+                  <div key={`${record.stageId}-${record.timestamp}-${index}`} className="profile-field">
+                    <div className="fs-13 c-muted mb-4">
+                      {record.stageTitle} · {record.scenario}
+                    </div>
+                    <div className="fs-14 fw-500 mb-6">{record.question}</div>
+                    <div className="fs-14 mb-8">{record.answer}</div>
+                    <div className="fs-13 c-muted">{record.feedback}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
+}
+
+function getSessionKey(session: Session): string {
+  return session.sessionId || session.updatedAt;
 }
 
 export default function StudentDashboardPage() {

@@ -18,12 +18,14 @@ export interface SessionSyncUpsertPayload {
   action: "upsert";
   sessionId?: string;
   childId: string;
+  status?: Session["status"];
   context: string;
   finalNote: string;
   updatedAt: string;
   lang?: "ru" | "en";
   historyInsight?: string;
   adolescentFeedback?: AdolescentFeedback;
+  studentArchivedAt?: string;
   records: SessionSyncRecordPayload[];
 }
 
@@ -44,12 +46,14 @@ export function toSessionSyncUpsertPayload(childId: string, session: Session): S
     action: "upsert",
     sessionId: session.sessionId,
     childId,
+    status: session.status,
     context: session.context,
     finalNote: session.finalNote,
     updatedAt: session.updatedAt,
     lang: session.lang,
     historyInsight: session.historyInsight,
     adolescentFeedback: session.adolescentFeedback,
+    studentArchivedAt: session.studentArchivedAt,
     records: session.records.map((record) => ({
       stageId: String(record.stageId),
       stageTitle: record.stageTitle,

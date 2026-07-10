@@ -3,7 +3,7 @@ import type { Scenario, StageId } from "@/lib/selfreg-model";
 import type { ProviderId } from "@/lib/provider-registry";
 
 export type RecordEventType = "answer" | "clarify_request" | "back" | "retry" | "skip";
-export type SessionStatus = "in_progress" | "completed";
+export type SessionStatus = "draft" | "in_progress" | "completed" | "abandoned";
 
 /**
  * Единый источник доменных типов сессии саморегуляции.
@@ -46,6 +46,8 @@ export interface Session {
   historyInsight?: string;
   /** Обратная связь подростка после завершения сессии. */
   adolescentFeedback?: AdolescentFeedback;
+  /** Сессия скрыта учеником из личного кабинета, но остаётся видимой педагогу. */
+  studentArchivedAt?: string;
 }
 
 /** Завершенная сессия гарантированно содержит итоговую заметку. */

@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { createChildId } from "@/lib/children-storage";
 import { getNextStageInfo, isProgressRecord, isSessionComplete } from "@/lib/session-helpers";
 import { getStageMeta, getStageOrder, getStageQuestion, type StageId } from "@/lib/selfreg-model";
-import type { AdvanceResult, RecordItem } from "@/types/session";
+import type { AdvanceResult, RecordItem, Session } from "@/types/session";
 import type { AppLang } from "@/lib/app-i18n";
 
 interface UseAdolescentSessionParams {
@@ -185,6 +185,35 @@ export function useAdolescentSession({ initialContext, lang }: UseAdolescentSess
     return adv;
   }, [stageId, lang, addRecordAndAdvance, clearClarification]);
 
+  const restoreSession = useCallback((savedSession: Session) => {
+    const savedRecords = savedSession.records ?? [];
+    const progressRecords = savedRecords.filter(isProgressRecord);
+    const lastProgressRecord = progressRecords.at(-1);
+
+    setSessionId(savedSession.sessionId || createChildId());
+    setContext(savedSession.context || initialContext);
+    setRecords(savedRecords);
+    setFinalNote(savedSession.finalNote || "");
+    setLastClarificationFeedback(null);
+    setAnswer("");
+    setPendingHistoryInsight(savedSession.historyInsight || null);
+    setSuppressClarifyForNextStage(false);
+    setQuestionOverride(null);
+
+    if (!lastProgressRecord || savedSession.finalNote?.trim()) {
+      setStageId("1");
+      return;
+    }
+
+    const { nextStageId } = getNextStageInfo({
+      currentStageId: lastProgressRecord.stageId as StageId,
+      context: savedSession.context || initialContext,
+      records: savedRecords,
+      lang,
+    });
+    setStageId(nextStageId);
+  }, [initialContext, lang]);
+
   return {
     sessionId,
     context,
@@ -214,6 +243,7 @@ export function useAdolescentSession({ initialContext, lang }: UseAdolescentSess
     goBackOneStep,
     clearClarification,
     skipClarification,
+    restoreSession,
     resetSession,
   };
 }

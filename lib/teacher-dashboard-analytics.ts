@@ -1,4 +1,5 @@
 import type { Session, RecordItem } from "@/lib/children-storage";
+import type { SessionStatus } from "@/types/session";
 import { inferRecordEventType } from "@/lib/session-helpers";
 import { reduceFlowState } from "@/lib/selfreg-flow-machine";
 import type { AppLang } from "@/lib/app-i18n";
@@ -62,7 +63,7 @@ export function getSessionSignals(records: RecordItem[]) {
   };
 }
 
-export function getSessionStatus(session: Session): "in_progress" | "completed" {
+export function getSessionStatus(session: Session): SessionStatus {
   if (session.status) return session.status;
   return session.finalNote?.trim() ? "completed" : "in_progress";
 }

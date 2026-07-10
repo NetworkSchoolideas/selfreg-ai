@@ -8,6 +8,7 @@ import { getSessionSignals } from "@/lib/teacher-dashboard-analytics";
 interface TeacherSessionDetailUi {
   selectSessionAbove: string;
   records: string;
+  archivedByStudent: string;
   emptySession: string;
   sessionSignals: string;
   noSpecialSignals: string;
@@ -82,6 +83,13 @@ export function TeacherSessionDetail({ currentSession, locale, ui }: TeacherSess
         </div>
         <div className="muted session-records-count">{currentSession.records.length} {ui.records}</div>
       </div>
+
+      {currentSession.studentArchivedAt && (
+        <div className="profile-field mb-16" style={{ background: "#fff7ed", border: "1px solid #fed7aa" }}>
+          <div className="fs-14 fw-600" style={{ color: "#92400e" }}>{ui.archivedByStudent}</div>
+          <div className="fs-12 c-muted mt-4">{new Date(currentSession.studentArchivedAt).toLocaleString(locale)}</div>
+        </div>
+      )}
 
       {currentSession.records.length === 0 && <div className="empty-session-placeholder">{ui.emptySession}</div>}
 

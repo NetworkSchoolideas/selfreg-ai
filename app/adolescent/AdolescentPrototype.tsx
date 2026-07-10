@@ -36,6 +36,8 @@ export function AdolescentPrototype() {
   const searchParams = useSearchParams();
   const lang = (searchParams.get("lang") === "en" ? "en" : "ru") as AppLang;
   const childIdFromUrl = searchParams.get("childId");
+  const sessionMode = searchParams.get("mode");
+  const resumeSessionId = searchParams.get("resumeSessionId");
   const explicitTeacherIdFromUrl = searchParams.get("teacherId");
   const explicitTeacherCodeFromUrl = searchParams.get("teacherCode");
   const legacyTeacherLink = resolveTeacherLinkContext(searchParams.get("teacher"));
@@ -53,7 +55,7 @@ export function AdolescentPrototype() {
     currentQuestion, isCompleted, completedStages, stageCount,
     addProcessRecord, addRecordAndAdvance, skipClarification, resetSession,
     suppressClarifyForNextStage, setSuppressClarifyForNextStage,
-    canGoBack, addClarificationRequest, goBackOneStep
+    canGoBack, addClarificationRequest, goBackOneStep, restoreSession
   } = session;
 
   // Provider and model state
@@ -77,7 +79,7 @@ export function AdolescentPrototype() {
   const [teacherCode, setTeacherCode] = useState(initialTeacherCode);
 
   // UI-only state
-  const [showHistory, setShowHistory] = useState(true);
+  const [showHistory, setShowHistory] = useState(() => sessionMode !== "new" && !resumeSessionId);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
   const [justClearedClarify, setJustClearedClarify] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
@@ -141,6 +143,16 @@ export function AdolescentPrototype() {
       const found = await DataService.getChild(childIdFromUrl);
       if (found && active) {
         await linkChildToTeacherByCode(found.id, teacherCode);
+        const resumeSession = resumeSessionId
+          ? found.sessions?.find((item) => item.sessionId === resumeSessionId)
+          : null;
+        if (resumeSession) {
+          restoreSession(resumeSession);
+          setShowHistory(false);
+        } else if (sessionMode === "new") {
+          resetSession();
+          setShowHistory(false);
+        }
         const sessionsCount = found.sessions?.length || 0;
         const name = sessionsCount > 0 ? `${found.name} (${sessionsCount})` : found.name;
         setCurrentChildName(name);
@@ -162,6 +174,16 @@ export function AdolescentPrototype() {
         if (!active || !payload?.child) throw new Error("No child in response");
 
         await DataService.saveChild(payload.child);
+        const resumeSession = resumeSessionId
+          ? payload.child.sessions?.find((item: import("@/types/session").Session) => item.sessionId === resumeSessionId)
+          : null;
+        if (resumeSession) {
+          restoreSession(resumeSession);
+          setShowHistory(false);
+        } else if (sessionMode === "new") {
+          resetSession();
+          setShowHistory(false);
+        }
 
         const sessionsCount = payload.child.sessions?.length || 0;
         const name = sessionsCount > 0 ? `${payload.child.name} (${sessionsCount})` : payload.child.name;
@@ -184,7 +206,7 @@ export function AdolescentPrototype() {
     return () => {
       active = false;
     };
-  }, [childIdFromUrl, teacherCode, linkChildToTeacherByCode]);
+  }, [childIdFromUrl, teacherCode, linkChildToTeacherByCode, resetSession, restoreSession, resumeSessionId, sessionMode]);
 
   // Restore pending history insight after refresh
   useEffect(() => {
@@ -380,8 +402,9 @@ export function AdolescentPrototype() {
         } catch {}
       }
     }
+    resetSession();
     setShowHistory(false);
-  }, [historyAIComment, childIdFromUrl, currentChildId, setPendingHistoryInsight]);
+  }, [historyAIComment, childIdFromUrl, currentChildId, resetSession, setPendingHistoryInsight]);
 
   // Handle form submit
   const handleSubmit = useCallback(async () => {
