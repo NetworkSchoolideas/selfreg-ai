@@ -1,6 +1,7 @@
 import type { AppLang } from "@/lib/app-i18n";
 
 export type ProviderId = "mock" | "gigachat" | "openrouter" | "github-models" | "vercel-gateway";
+export type ProviderReleaseStatus = "recommended" | "advanced" | "in-development" | "fallback" | "hidden";
 
 export const DEFAULT_LIVE_PROVIDER: ProviderId = "github-models";
 export const DEFAULT_LIVE_MODEL = "openai/gpt-4o-mini";
@@ -8,6 +9,7 @@ export const DEFAULT_LIVE_MODEL = "openai/gpt-4o-mini";
 type ProviderMeta = {
   id: ProviderId;
   title: string;
+  releaseStatus: ProviderReleaseStatus;
   keyLabel: string;
   defaultModel: string;
   note: { ru: string; en: string };
@@ -18,6 +20,7 @@ export const PROVIDERS: ProviderMeta[] = [
   {
     id: "mock",
     title: "Mock",
+    releaseStatus: "fallback",
     keyLabel: "not required",
     defaultModel: "local-mock",
     note: {
@@ -29,6 +32,7 @@ export const PROVIDERS: ProviderMeta[] = [
   {
     id: "github-models",
     title: "GitHub Models",
+    releaseStatus: "recommended",
     keyLabel: "GITHUB_TOKEN",
     defaultModel: DEFAULT_LIVE_MODEL,
     note: {
@@ -40,6 +44,7 @@ export const PROVIDERS: ProviderMeta[] = [
   {
     id: "openrouter",
     title: "OpenRouter",
+    releaseStatus: "advanced",
     keyLabel: "OPENROUTER_API_KEY",
     defaultModel: "openrouter/free",
     note: {
@@ -51,17 +56,19 @@ export const PROVIDERS: ProviderMeta[] = [
   {
     id: "gigachat",
     title: "GigaChat (Direct)",
+    releaseStatus: "in-development",
     keyLabel: "GIGACHAT_AUTH_KEY",
     defaultModel: "GigaChat",
     note: {
-      ru: "Экспериментальный прямой доступ. Требует base64(Client_ID:Client_Secret) и отдельной проверки подключения.",
-      en: "Experimental direct access. Requires base64(Client_ID:Client_Secret) and a separate connection check."
+      ru: "В разработке. Подключение будет доступно после отдельной технической проверки.",
+      en: "In development. Connection will be available after a separate technical verification."
     },
     docsUrl: "https://developers.sber.ru/docs/ru/gigachat/api/reference/rest/gigachat-api"
   },
   {
     id: "vercel-gateway",
     title: "Vercel AI Gateway",
+    releaseStatus: "hidden",
     keyLabel: "AI_GATEWAY_API_KEY",
     defaultModel: "openai/gpt-oss-120b",
     note: {
@@ -78,4 +85,13 @@ export function getProviderMeta(providerId: ProviderId, lang: AppLang = "ru") {
     ...provider,
     note: lang === "en" ? provider.note.en : provider.note.ru
   };
+}
+
+export function getReleaseProviders() {
+  return PROVIDERS.filter((provider) => provider.releaseStatus !== "hidden");
+}
+
+export function isProviderEnabledInRelease(providerId: ProviderId) {
+  const provider = PROVIDERS.find((item) => item.id === providerId);
+  return provider?.releaseStatus === "recommended" || provider?.releaseStatus === "advanced" || provider?.releaseStatus === "fallback";
 }

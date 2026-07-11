@@ -11,7 +11,14 @@ import { AdolescentFeedbackForm } from "@/app/components/AdolescentFeedbackForm"
 import { OnboardingModal } from "@/app/components/OnboardingModal";
 import { useAdolescentSession } from "./useAdolescentSession";
 import { withLang, type AppLang } from "@/lib/app-i18n";
-import { DEFAULT_LIVE_MODEL, DEFAULT_LIVE_PROVIDER, type ProviderId } from "@/lib/provider-registry";
+import {
+  DEFAULT_LIVE_MODEL,
+  DEFAULT_LIVE_PROVIDER,
+  getProviderMeta,
+  getReleaseProviders,
+  isProviderEnabledInRelease,
+  type ProviderId,
+} from "@/lib/provider-registry";
 import { ConsentModal } from "@/app/components/ConsentModal";
 import { createChildId } from "@/lib/children-storage";
 import { DataService } from "@/lib/data-service";
@@ -51,7 +58,7 @@ export function AdolescentPrototype() {
   const {
     sessionId, context, setContext, stageId, stage, records, finalNote,
     lastClarificationFeedback, setLastClarificationFeedback,
-    answer, updateAnswer, pendingHistoryInsight, setPendingHistoryInsight,
+    answer, updateAnswer,
     currentQuestion, isCompleted, completedStages, stageCount,
     addProcessRecord, addRecordAndAdvance, skipClarification, resetSession,
     suppressClarifyForNextStage, setSuppressClarifyForNextStage,
@@ -208,22 +215,8 @@ export function AdolescentPrototype() {
     };
   }, [childIdFromUrl, teacherCode, linkChildToTeacherByCode, resetSession, restoreSession, resumeSessionId, sessionMode]);
 
-  // Restore pending history insight after refresh
-  useEffect(() => {
-    const effectiveId = childIdFromUrl || currentChildId;
-    if (effectiveId && !pendingHistoryInsight) {
-      try {
-        const saved = sessionStorage.getItem(`history_insight_${effectiveId}`);
-        if (saved) {
-          setPendingHistoryInsight(saved);
-          sessionStorage.removeItem(`history_insight_${effectiveId}`);
-        }
-      } catch {}
-    }
-  }, [childIdFromUrl, currentChildId, pendingHistoryInsight, setPendingHistoryInsight]);
-
-  // History hook
-  const { pastSessions, historyAIComment, isLoadingHistoryAI, generateHistoryInsight } = useSessionHistory({
+  // History is read-only in the release contour. AI summary over past sessions is deferred.
+  const { pastSessions } = useSessionHistory({
     childId: currentChildId,
     lang,
     provider,
@@ -235,7 +228,7 @@ export function AdolescentPrototype() {
   const [providerStatus, setProviderStatus] = useState(`${DEFAULT_LIVE_PROVIDER}: ready`);
   const { isSending, answerQualityWarning, submitAnswer, saveSessionSnapshot, setAnswerQualityWarning } = useSessionSubmit({
     sessionId, context, stageId, stageTitle: stage.title, currentQuestion, records, finalNote, lang,
-    provider, model, userApiKey, currentChildId, pendingHistoryInsight,
+    provider, model, userApiKey, currentChildId, pendingHistoryInsight: null,
     addProcessRecord,
     addRecordAndAdvance,
     setFinalNote: session.setFinalNote,
@@ -324,14 +317,12 @@ export function AdolescentPrototype() {
 
   // Provider change handler
   const handleProviderChange = useCallback((nextProvider: ProviderId) => {
+    if (!isProviderEnabledInRelease(nextProvider)) {
+      return;
+    }
     setProvider(nextProvider);
     setKeyStatus({ isValid: null, isTesting: false, hasSavedKey: false });
-    // Set default model based on provider
-    if (nextProvider === "gigachat") setModel("GigaChat");
-    else if (nextProvider === "openrouter") setModel("openrouter/free");
-    else if (nextProvider === "github-models") setModel(DEFAULT_LIVE_MODEL);
-    else if (nextProvider === "vercel-gateway") setModel("openai/gpt-oss-120b");
-    else setModel("local-mock");
+    setModel(getProviderMeta(nextProvider).defaultModel);
     
     setProviderStatus(nextProvider === "mock" ? ui.mockStatus : `${nextProvider}: ready`);
   }, [setProviderStatus, ui.mockStatus]);
@@ -386,25 +377,11 @@ export function AdolescentPrototype() {
     setSuppressClarifyForNextStage(false);
   }, [goBackOneStep, saveSessionSnapshot, setAnswerQualityWarning, setSuppressClarifyForNextStage]);
 
-  // Generate history insight handler
-  const handleGenerateInsight = useCallback(async () => {
-    await generateHistoryInsight();
-  }, [generateHistoryInsight]);
-
   // Start new session after history review
   const handleStartNew = useCallback(() => {
-    if (historyAIComment) {
-      setPendingHistoryInsight(historyAIComment);
-      const effectiveId = childIdFromUrl || currentChildId;
-      if (effectiveId) {
-        try {
-          sessionStorage.setItem(`history_insight_${effectiveId}`, historyAIComment);
-        } catch {}
-      }
-    }
     resetSession();
     setShowHistory(false);
-  }, [historyAIComment, childIdFromUrl, currentChildId, resetSession, setPendingHistoryInsight]);
+  }, [resetSession]);
 
   // Handle form submit
   const handleSubmit = useCallback(async () => {
@@ -452,16 +429,29 @@ export function AdolescentPrototype() {
               <label className="field compact">
                 <span>{ui.provider}</span>
                 <select value={provider} onChange={(e) => handleProviderChange(e.target.value as ProviderId)}>
-                  <option value="mock">Mock</option>
-                  <option value="github-models">GitHub Models (recommended)</option>
-                  <option value="openrouter">OpenRouter</option>
-                  <option value="gigachat">GigaChat (Direct)</option>
-                  <option value="vercel-gateway">Vercel AI Gateway (experimental)</option>
+                  {getReleaseProviders().map((providerMeta) => {
+                    const suffix = providerMeta.releaseStatus === "recommended"
+                      ? lang === "en" ? " (recommended)" : " (рекомендуется)"
+                      : providerMeta.releaseStatus === "advanced"
+                        ? lang === "en" ? " (advanced)" : " (расширенный)"
+                        : providerMeta.releaseStatus === "in-development"
+                          ? lang === "en" ? " (in development)" : " (в разработке)"
+                          : lang === "en" ? " (without external AI)" : " (без внешнего ИИ)";
+                    return (
+                      <option
+                        key={providerMeta.id}
+                        value={providerMeta.id}
+                        disabled={!isProviderEnabledInRelease(providerMeta.id)}
+                      >
+                        {providerMeta.title}{suffix}
+                      </option>
+                    );
+                  })}
                 </select>
               </label>
               <label className="field compact">
                 <span>{ui.model}</span>
-                <input value={model} onChange={(e) => setModel(e.target.value)} placeholder="GigaChat, openai/gpt-4o-mini" />
+                <input value={model} onChange={(e) => setModel(e.target.value)} placeholder="openai/gpt-4o-mini" />
               </label>
             </div>
 
@@ -552,12 +542,6 @@ export function AdolescentPrototype() {
             <HistoryReviewPanel
               ui={ui}
               pastSessions={pastSessions}
-              provider={provider}
-              model={model}
-              userApiKey={userApiKey}
-              historyAIComment={historyAIComment}
-              isLoadingHistoryAI={isLoadingHistoryAI}
-              onGenerateInsight={handleGenerateInsight}
               onStartNew={handleStartNew}
               lang={lang}
             />
@@ -699,17 +683,10 @@ function generateAnonId(_fio: string, _klass: string): string {
 // ========== Sub-components ==========
 
 function HistoryReviewPanel({
-  ui, pastSessions, provider, historyAIComment, isLoadingHistoryAI,
-  onGenerateInsight, onStartNew, lang
+  ui, pastSessions, onStartNew, lang
 }: {
   ui: ReturnType<typeof useUiText>;
   pastSessions: CompletedSession[];
-  provider: ProviderId;
-  model?: string;
-  userApiKey?: string;
-  historyAIComment: string | null;
-  isLoadingHistoryAI: boolean;
-  onGenerateInsight: () => Promise<void>;
   onStartNew: () => void;
   lang: AppLang;
 }) {
@@ -727,25 +704,6 @@ function HistoryReviewPanel({
           <div className="fs-12 c-muted mb-4">{new Date(pastSessions[0].updatedAt).toLocaleDateString(lang === 'en' ? 'en-US' : 'ru-RU')}</div>
           <div className="fw-600 mb-6">{pastSessions[0].context}</div>
           <div style={{ fontSize: 13, lineHeight: 1.4 }}>{pastSessions[0].finalNote}</div>
-        </div>
-      )}
-
-      <div className="mt-12">
-        {provider !== 'mock' ? (
-          <button className="button" disabled={isLoadingHistoryAI} onClick={onGenerateInsight}>
-            {isLoadingHistoryAI ? ui.historyAiGenerating : ui.historyAiButton}
-          </button>
-        ) : (
-          <div className="p-12 bg-white b-dashed br-6 fs-13 c-muted">
-            {lang === "en" ? "Connect a provider to get AI insights" : "Подключите провайдера для AI-комментариев"}
-          </div>
-        )}
-      </div>
-
-      {historyAIComment && (
-        <div style={{ marginTop: 12, padding: 12, background: '#f0f7ff', border: '1px solid var(--accent)', borderRadius: 6, fontSize: 13, lineHeight: 1.45 }}>
-          <div className="fw-600 mb-4 c-accent">{ui.historyAiLabel}</div>
-          <p className="m-0">{historyAIComment}</p>
         </div>
       )}
 

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { normalizeAppLang } from "@/lib/app-i18n";
-import { PROVIDERS, type ProviderId } from "@/lib/provider-registry";
+import { PROVIDERS, getReleaseProviders, isProviderEnabledInRelease, type ProviderId } from "@/lib/provider-registry";
 
 function getProviderDefaultModel(provider: ProviderId) {
   return PROVIDERS.find((item) => item.id === provider)?.defaultModel || "";
@@ -99,11 +99,15 @@ export function ProviderCheck() {
               setModel(getProviderDefaultModel(nextProvider));
             }}
           >
-            <option value="mock">Mock</option>
-            <option value="github-models">GitHub Models</option>
-            <option value="openrouter">OpenRouter</option>
-            <option value="gigachat">GigaChat</option>
-            <option value="vercel-gateway">Vercel AI Gateway</option>
+            {getReleaseProviders().map((providerMeta) => (
+              <option
+                key={providerMeta.id}
+                value={providerMeta.id}
+                disabled={!isProviderEnabledInRelease(providerMeta.id)}
+              >
+                {providerMeta.title}{providerMeta.releaseStatus === "in-development" ? ` (${lang === "en" ? "in development" : "в разработке"})` : ""}
+              </option>
+            ))}
           </select>
         </label>
         <label className="field compact">
@@ -119,10 +123,11 @@ export function ProviderCheck() {
           onChange={(event) => setUserApiKey(event.target.value)}
           placeholder={ui.apiKeyPlaceholder}
           autoComplete="off"
+          disabled={!isProviderEnabledInRelease(provider)}
         />
       </label>
       <div className="action-row" style={{ marginTop: 14 }}>
-        <button className="button" type="button" onClick={checkProvider} disabled={isChecking}>
+        <button className="button" type="button" onClick={checkProvider} disabled={isChecking || !isProviderEnabledInRelease(provider)}>
           {isChecking ? ui.checking : ui.check}
         </button>
       </div>

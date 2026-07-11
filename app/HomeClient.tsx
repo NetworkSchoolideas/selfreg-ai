@@ -94,8 +94,8 @@ export function HomeClient() {
           <h2>{lang === "en" ? "Bring your own key" : "Свой ИИ-ключ"}</h2>
           <p>
             {lang === "en"
-              ? "GitHub Models is the recommended live provider. OpenRouter, GigaChat, and Vercel Gateway remain available after a separate key check."
-              : "GitHub Models — рекомендуемый рабочий провайдер. OpenRouter, GigaChat и Vercel Gateway доступны после отдельной проверки ключа."}
+              ? "GitHub Models is the recommended live provider. OpenRouter is an advanced option, GigaChat is in development, and mock mode works without external AI."
+              : "GitHub Models — рекомендуемый рабочий провайдер. OpenRouter — расширенный вариант, GigaChat находится в разработке, а mock-режим работает без внешнего ИИ."}
           </p>
         </article>
       </section>

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { LanguageToggle } from "@/app/components/LanguageToggle";
 import { normalizeAppLang, withLang } from "@/lib/app-i18n";
-import { getProviderMeta, PROVIDERS } from "@/lib/provider-registry";
+import { getProviderMeta, getReleaseProviders } from "@/lib/provider-registry";
 import { ProviderCheck } from "./ProviderCheck";
 
 export function SettingsScreen() {
@@ -16,15 +16,15 @@ export function SettingsScreen() {
     title: lang === "en" ? "Connect your own AI API" : "Подключение собственного ИИ API",
     intro:
       lang === "en"
-        ? "This app supports BYOK architecture: a team or organization chooses a provider and connects its own key. A safe mock mode is available for demos without external spend."
-        : "Приложение поддерживает BYOK-архитектуру: команда или организация выбирает провайдера и подключает свой ключ. Для демонстрации без внешних списаний доступен безопасный mock-режим.",
+        ? "Connect your own key for GitHub Models or OpenRouter. GigaChat is shown as in development. Mock mode is available without external AI."
+        : "Подключите собственный ключ GitHub Models или OpenRouter. GigaChat помечен как «В разработке». Mock-режим доступен без внешнего ИИ.",
     home: lang === "en" ? "Home" : "Главная",
     sessionApp: lang === "en" ? "Session app" : "Сессия",
     securityTitle: lang === "en" ? "Security rule" : "Правило безопасности",
     securityText:
       lang === "en"
-        ? "An API key must not end up in the repository, public HTML, or client logs. In the pilot we use Vercel environment variables or a one-time key check on the server API layer."
-        : "API-ключ не должен попадать в репозиторий, публичный HTML или клиентские логи. В пилоте используем переменные окружения Vercel или одноразовую проверку ключа на серверном API-слое.",
+        ? "Use only your own key. Do not place it in the repository, public HTML, logs, or Vercel environment variables."
+        : "Используйте только собственный ключ. Не размещайте его в репозитории, публичном HTML, логах или переменных окружения Vercel.",
     variable: lang === "en" ? "Variable" : "Переменная",
     model: lang === "en" ? "Model" : "Модель",
     docs: lang === "en" ? "Documentation" : "Документация",
@@ -57,11 +57,14 @@ export function SettingsScreen() {
       <ProviderCheck />
 
       <section className="grid" style={{ marginTop: 16 }}>
-        {PROVIDERS.map((provider) => {
+        {getReleaseProviders().map((provider) => {
           const meta = getProviderMeta(provider.id, lang);
           return (
             <article className="panel" key={provider.id}>
               <h2>{meta.title}</h2>
+              {provider.releaseStatus === "in-development" && (
+                <p className="muted">{lang === "en" ? "Status: in development" : "Статус: в разработке"}</p>
+              )}
               <p className="muted">{meta.note}</p>
               <p>
                 <strong>{ui.variable}:</strong> {meta.keyLabel}
