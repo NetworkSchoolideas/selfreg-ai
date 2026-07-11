@@ -78,19 +78,7 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
         return;
       }
 
-      let authUser: User | null = null;
-
-      try {
-        const {
-          data: { user },
-        } = await supabaseClient.auth.getUser();
-        authUser = user;
-      } catch {
-        if (!isMounted) return;
-        setUser(null);
-        setIsLoading(false);
-        return;
-      }
+      const authUser = session.user;
 
       if (!authUser) {
         setUser(null);
@@ -107,10 +95,20 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
     const syncInitialUser = async () => {
       try {
         const {
-          data: { user },
-        } = await supabaseClient.auth.getUser();
+          data: { session },
+        } = await supabaseClient.auth.getSession();
 
         if (!isMounted) return;
+        setSession(session);
+
+        if (!session) {
+          console.log("[useSupabaseAuth] Initial session present: false");
+          setUser(null);
+          setIsLoading(false);
+          return;
+        }
+
+        const user = session.user;
         console.log("[useSupabaseAuth] Initial user present:", Boolean(user));
 
         if (!user) {
