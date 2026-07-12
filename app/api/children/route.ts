@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
 import { clientError, serverError } from "@/lib/api-errors";
 import {
   ensureStudentChildForAuthUserInSupabase,
@@ -12,6 +10,7 @@ import {
   upsertChildInSupabase,
 } from "@/lib/server-storage";
 import { requireTeacherAccess } from "@/lib/server-teacher-access";
+import { requireChildAccess, requireServerRole } from "@/lib/server-user-access";
 
 const ChildPayload = z.object({
   id: z.string().min(1).optional(),
@@ -28,57 +27,6 @@ const ChildPayload = z.object({
     .optional(),
 });
 
-async function getCurrentUserContext(): Promise<{
-  id: string;
-  email: string;
-  fullName?: string | null;
-  role?: "teacher" | "student" | null;
-} | null> {
-  try {
-    const cookieStore = await cookies();
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey =
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
-    if (!supabaseUrl || !supabaseAnonKey) {
-      return null;
-    }
-
-    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll() {},
-      },
-    });
-
-    const { data } = await supabase.auth.getUser();
-    const user = data?.user;
-
-    if (!user) {
-      return null;
-    }
-
-    const metadataRole = user.user_metadata?.preferred_role;
-
-    return {
-      id: user.id,
-      email: user.email || "",
-      fullName:
-        typeof user.user_metadata?.full_name === "string"
-          ? user.user_metadata.full_name
-          : typeof user.user_metadata?.name === "string"
-            ? user.user_metadata.name
-            : null,
-      role: metadataRole === "teacher" || metadataRole === "student" ? metadataRole : null,
-    };
-  } catch {
-    return null;
-  }
-}
-
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
@@ -86,17 +34,17 @@ export async function GET(request: Request) {
     const teacherId = url.searchParams.get("teacherId") || undefined;
 
     if (childId === "current") {
-      const currentUser = await getCurrentUserContext();
-      if (!currentUser) {
-        return NextResponse.json({ ok: true, child: null });
+      const access = await requireServerRole("student");
+      if (access.response) {
+        return access.response;
       }
 
-      let child = await fetchChildByUserIdFromSupabase(currentUser.id);
-      if (!child && currentUser.role === "student") {
+      let child = await fetchChildByUserIdFromSupabase(access.context.userId);
+      if (!child) {
         child = await ensureStudentChildForAuthUserInSupabase({
-          userId: currentUser.id,
-          email: currentUser.email,
-          fullName: currentUser.fullName,
+          userId: access.context.userId,
+          email: access.context.email,
+          fullName: access.context.fullName,
         });
       }
 
@@ -104,6 +52,11 @@ export async function GET(request: Request) {
     }
 
     if (childId) {
+      const access = await requireChildAccess(childId);
+      if (access.response) {
+        return access.response;
+      }
+
       const child = await fetchChildFromSupabase(childId);
       return NextResponse.json({ ok: true, child });
     }

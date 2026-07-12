@@ -8,6 +8,7 @@ import { LanguageToggle } from "@/app/components/LanguageToggle";
 import { ConfirmDialog } from "@/app/components/ConfirmDialog";
 import { normalizeAppLang, withLang } from "@/lib/app-i18n";
 import { DataService } from "@/lib/data-service";
+import { supabase } from "@/lib/supabase-auth";
 import {
   getEffectiveSessionStatus,
   getStudentDashboardMetrics,
@@ -161,6 +162,17 @@ function StudentDashboardContent() {
         setLoading(true);
 
         if (!childId) {
+          const {
+            data: { user },
+          } = await supabase?.auth.getUser() ?? { data: { user: null } };
+
+          if (!user) {
+            if (active) {
+              setError(missingChildIdError);
+            }
+            return;
+          }
+
           const response = await fetch("/api/children?childId=current", { cache: "no-store" });
           const payload = response.ok ? await response.json() : null;
           const currentChild = payload?.child as ChildProfile | null | undefined;

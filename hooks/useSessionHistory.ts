@@ -57,21 +57,6 @@ export function useSessionHistory(options: UseSessionHistoryOptions): UseSession
       return;
     }
 
-    try {
-      const response = await fetch(`/api/children?childId=${encodeURIComponent(childId)}`, {
-        cache: "no-store",
-      });
-
-      if (response.ok) {
-        const payload = await response.json();
-        if (payload?.child) {
-          await DataService.saveChild(payload.child);
-        }
-      }
-    } catch {
-      log("Server history load failed, using local mirror");
-    }
-
     const sessions = await DataService.getCompletedSessions(childId);
     setPastSessions(sessions);
     log(`Loaded ${sessions.length} completed sessions`);

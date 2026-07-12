@@ -9,6 +9,8 @@ export type ChildAccessKind = "owner" | "linked-teacher";
 export interface ServerUserAccessContext {
   userId: string;
   role: AppRole;
+  email: string;
+  fullName: string | null;
 }
 
 export interface ChildAccessContext extends ServerUserAccessContext {
@@ -87,7 +89,7 @@ export async function requireServerUserAccess(): Promise<ServerUserAccessResult>
 
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("role")
+      .select("role, email, full_name")
       .eq("id", user.id)
       .maybeSingle();
 
@@ -99,7 +101,14 @@ export async function requireServerUserAccess(): Promise<ServerUserAccessResult>
       return { response: createErrorResponse("A permitted account role is required", 403, "ROLE_REQUIRED") };
     }
 
-    return { context: { userId: user.id, role: profile.role } };
+    return {
+      context: {
+        userId: user.id,
+        role: profile.role,
+        email: profile.email || user.email || "",
+        fullName: profile.full_name || null,
+      },
+    };
   } catch {
     return { response: serverError("Unable to verify authenticated user", "AUTH_CONTEXT_ERROR") };
   }

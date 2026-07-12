@@ -82,9 +82,14 @@ describe("server user access", () => {
 
     const result = await requireServerUserAccess();
 
-    expect(result.context).toEqual({ userId: "student-1", role: "student" });
+    expect(result.context).toEqual({
+      userId: "student-1",
+      role: "student",
+      email: "",
+      fullName: null,
+    });
     expect(profile.from).toHaveBeenCalledWith("profiles");
-    expect(profile.select).toHaveBeenCalledWith("role");
+    expect(profile.select).toHaveBeenCalledWith("role, email, full_name");
     expect(profile.eq).toHaveBeenCalledWith("id", "student-1");
   });
 
@@ -109,6 +114,8 @@ describe("server user access", () => {
     expect(result.context).toEqual({
       userId: "student-1",
       role: "student",
+      email: "",
+      fullName: null,
       childId: "child-1",
       accessKind: "owner",
     });
@@ -157,6 +164,8 @@ describe("server user access", () => {
     expect(result.context).toEqual({
       userId: "teacher-1",
       role: "teacher",
+      email: "",
+      fullName: null,
       childId: "child-1",
       accessKind: "linked-teacher",
     });

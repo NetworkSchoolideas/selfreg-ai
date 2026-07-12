@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSupabaseAdmin, isSupabaseAdminAvailable } from "@/lib/supabase";
 import { clientError, serverError } from "@/lib/api-errors";
+import { requireChildAccess } from "@/lib/server-user-access";
 
 /**
  * API route для CRUD операций с сессиями.
@@ -14,15 +15,20 @@ import { clientError, serverError } from "@/lib/api-errors";
 
 export async function GET(request: Request) {
   try {
-    if (!isSupabaseAdminAvailable()) {
-      return serverError("Supabase admin client is not configured", "SUPABASE_ADMIN_UNAVAILABLE");
-    }
-
     const url = new URL(request.url);
     const childId = url.searchParams.get("childId");
 
     if (!childId) {
       return clientError("childId is required", "VALIDATION_ERROR");
+    }
+
+    const access = await requireChildAccess(childId);
+    if (access.response) {
+      return access.response;
+    }
+
+    if (!isSupabaseAdminAvailable()) {
+      return serverError("Supabase admin client is not configured", "SUPABASE_ADMIN_UNAVAILABLE");
     }
 
     const supabaseAdmin: any = getSupabaseAdmin();

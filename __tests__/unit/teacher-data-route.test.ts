@@ -80,7 +80,7 @@ describe("teacher data route", () => {
     });
 
     expect(from).toHaveBeenCalledWith("profiles");
-    expect(select).toHaveBeenCalledWith("role");
+    expect(select).toHaveBeenCalledWith("role, email, full_name");
     expect(eq).toHaveBeenCalledWith("id", "teacher-auth-1");
     expect(fetchChildrenFromSupabase).toHaveBeenCalledWith("teacher-auth-1");
     expect(computeTeacherAnalytics).toHaveBeenCalledWith("teacher-auth-1");
