@@ -2646,33 +2646,56 @@ td {
 .home-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 16px; }
 .home-section-heading .eyebrow { margin-bottom: 6px; }
 .home-section-heading h2 { margin: 0; font-size: clamp(28px, 3.2vw, 42px); letter-spacing: -0.045em; }
-.home-guide-list { display: grid; gap: 10px; }
-
-.home-guide {
-  overflow: hidden;
+.home-guide-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 6px;
   border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--panel);
+  border-radius: 16px;
+  background: #f4f8fa;
 }
 
-.home-guide summary {
-  display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) 24px;
-  gap: 12px;
-  align-items: center;
-  padding: 19px 21px;
+.home-guide-tabs button {
+  min-height: 43px;
+  flex: 1;
+  padding: 9px 14px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  background: transparent;
+  color: #526579;
   cursor: pointer;
-  list-style: none;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
 }
 
-.home-guide summary::-webkit-details-marker { display: none; }
-.home-guide summary span { color: var(--green); font-size: 13px; font-weight: 850; }
-.home-guide summary strong { font-size: 18px; }
-.home-guide summary b { color: var(--accent); font-size: 24px; font-weight: 400; text-align: center; transition: transform 160ms ease; }
-.home-guide[open] summary { border-bottom: 1px solid #e4ebf1; background: #fbfefe; }
-.home-guide[open] summary b { transform: rotate(45deg); }
-.home-guide > div { padding: 18px 75px 22px; }
-.home-guide p { max-width: 780px; margin: 0 0 8px; line-height: 1.55; }
+.home-guide-tabs button:hover { color: var(--text); background: rgba(255, 255, 255, 0.72); }
+.home-guide-tabs button:focus-visible { outline: 3px solid rgba(47, 128, 237, 0.38); outline-offset: 2px; }
+.home-guide-tabs button.is-active { border-color: #d5e5ec; background: white; box-shadow: 0 3px 12px rgba(19, 34, 56, 0.08); color: var(--text); }
+
+.home-guide-panel {
+  overflow: hidden;
+  border: 1px solid #cddfe7;
+  border-radius: 20px;
+  background:
+    linear-gradient(140deg, rgba(234, 247, 244, 0.88), rgba(255, 255, 255, 0.98) 42%),
+    var(--panel);
+}
+
+.home-guide-intro { padding: clamp(23px, 4vw, 38px) clamp(22px, 5vw, 50px) 24px; border-bottom: 1px solid #dce9ed; }
+.home-guide-tab-kicker { margin: 0 0 8px; color: var(--green); font-size: 12px; font-weight: 850; letter-spacing: 0.08em; text-transform: uppercase; }
+.home-guide-intro h3 { max-width: 790px; margin: 0 0 10px; font-size: clamp(24px, 3vw, 35px); letter-spacing: -0.04em; line-height: 1.05; }
+.home-guide-intro > p:last-child { max-width: 780px; margin: 0; color: #506276; line-height: 1.55; }
+
+.home-guide-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin: 0; padding: 0; list-style: none; }
+.home-guide-steps li { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; padding: 25px clamp(18px, 3vw, 31px) 29px; }
+.home-guide-steps li + li { border-left: 1px solid #dce9ed; }
+.home-guide-steps li > span { display: grid; width: 36px; height: 36px; place-items: center; border-radius: 12px; background: var(--text); color: white; font-size: 11px; font-weight: 850; }
+.home-guide-steps p { margin: 0; color: #5a6c7e; font-size: 14px; line-height: 1.5; }
+.home-guide-steps div > p:first-child { margin-bottom: 5px; color: var(--green); font-size: 11px; font-weight: 850; letter-spacing: 0.06em; text-transform: uppercase; }
+.home-guide-steps h4 { margin: 0 0 8px; font-size: 18px; letter-spacing: -0.025em; line-height: 1.15; }
+.home-guide-actions { display: flex; align-items: center; gap: 20px; padding: 0 clamp(22px, 5vw, 50px) 34px; }
 
 .home-contact {
   display: grid;
@@ -2729,9 +2752,12 @@ td {
   .home-hero-actions { display: grid; grid-template-columns: 1fr; }
   .home-role-grid { grid-template-columns: 1fr; margin-bottom: 34px; }
   .home-section-heading { display: block; }
-  .home-guide summary { grid-template-columns: 31px minmax(0, 1fr) 20px; padding: 16px; }
-  .home-guide summary strong { font-size: 16px; }
-  .home-guide > div { padding: 16px; }
+  .home-guide-tabs { overflow-x: auto; }
+  .home-guide-tabs button { min-width: max-content; }
+  .home-guide-steps { grid-template-columns: 1fr; }
+  .home-guide-steps li { padding: 21px 20px; }
+  .home-guide-steps li + li { border-top: 1px solid #dce9ed; border-left: 0; }
+  .home-guide-actions { align-items: flex-start; flex-direction: column; gap: 13px; padding: 0 20px 26px; }
   .home-contact { margin-top: 32px; padding: 25px 20px; border-radius: 18px; }
   .home-footer { align-items: flex-start; flex-direction: column; }
 }

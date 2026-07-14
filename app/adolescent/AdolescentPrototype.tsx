@@ -19,13 +19,13 @@ import {
   isProviderEnabledInRelease,
   type ProviderId,
 } from "@/lib/provider-registry";
-import { ChildrenStorage, createChildId } from "@/lib/children-storage";
 import { DataService } from "@/lib/data-service";
 import type { RecordItem, CompletedSession } from "@/types/session";
 import { useSessionSubmit } from "@/hooks/useSessionSubmit";
 import { useSessionHistory } from "@/hooks/useSessionHistory";
 import { buildSessionSummary } from "@/lib/session-summary";
 import { resolveTeacherLinkContext } from "@/lib/teacher-link";
+import { supabase } from "@/lib/supabase-auth";
 
 const STORAGE_KEY = "selfreg_demo_session";
 
@@ -78,19 +78,15 @@ export function AdolescentPrototype() {
   // Registration state
   const [currentChildName, setCurrentChildName] = useState<string | null>(null);
   const [currentChildId, setCurrentChildId] = useState<string | null>(null);
-  const [participantName, setParticipantName] = useState("");
-  const [participantClass, setParticipantClass] = useState("");
   const [isRegistered, setIsRegistered] = useState(false);
-  const [consentGiven, setConsentGiven] = useState(false);
   const [teacherCode, setTeacherCode] = useState(initialTeacherCode);
 
   // UI-only state
   const [showHistory, setShowHistory] = useState(() => sessionMode !== "new" && !resumeSessionId);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
   const [justClearedClarify, setJustClearedClarify] = useState(false);
-  const [isRegistering, setIsRegistering] = useState(false);
-  const [childLookupAttempted, setChildLookupAttempted] = useState(false);
-  const [childLookupFailed, setChildLookupFailed] = useState(false);
+  const [accessState, setAccessState] = useState<"checking" | "ready" | "signed-out" | "wrong-role" | "consent" | "error">("checking");
+  const [isAcceptingConsent, setIsAcceptingConsent] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const clarifyResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasActiveChild = isRegistered || Boolean(currentChildId);
@@ -126,48 +122,35 @@ export function AdolescentPrototype() {
     });
   }, []);
 
-  // Load child info from URL on mount
+  // The release flow always derives the student profile from the signed-in account.
+  // A childId in the URL may identify a session to resume, but never authorizes a guest profile.
   useEffect(() => {
     let active = true;
 
     const loadChild = async () => {
-      if (!childIdFromUrl) return;
-
-      // 1. Пробуем DataService (Supabase → localStorage)
-      const found = await DataService.getChild(childIdFromUrl);
-      if (found && active) {
-        await linkChildToTeacherByCode(found.id, teacherCode);
-        const resumeSession = resumeSessionId
-          ? found.sessions?.find((item) => item.sessionId === resumeSessionId)
-          : null;
-        if (resumeSession) {
-          restoreSession(resumeSession);
-          setShowHistory(false);
-        } else if (sessionMode === "new") {
-          resetSession();
-          setShowHistory(false);
-        }
-        const sessionsCount = found.sessions?.length || 0;
-        const name = sessionsCount > 0 ? `${found.name} (${sessionsCount})` : found.name;
-        setCurrentChildName(name);
-        setCurrentChildId(found.id);
-        setIsRegistered(true);
-        setChildLookupAttempted(true);
-        setChildLookupFailed(false);
-        return;
-      }
-
-      // 2. Запасной вариант: API
       try {
-        const response = await fetch(`/api/children?childId=${encodeURIComponent(childIdFromUrl)}`, {
+        const { data: { session: authSession } } = await supabase?.auth.getSession() ?? { data: { session: null } };
+        if (!authSession) {
+          if (active) setAccessState("signed-out");
+          return;
+        }
+
+        const response = await fetch("/api/children?childId=current", {
           cache: "no-store",
         });
-        if (!response.ok) throw new Error("API not available");
+        if (response.status === 401) {
+          if (active) setAccessState("signed-out");
+          return;
+        }
+        if (response.status === 403) {
+          if (active) setAccessState("wrong-role");
+          return;
+        }
+        if (!response.ok) throw new Error("Current student profile is unavailable");
 
         const payload = await response.json();
         if (!active || !payload?.child) throw new Error("No child in response");
 
-        ChildrenStorage.upsertLocalChild(payload.child);
         const resumeSession = resumeSessionId
           ? payload.child.sessions?.find((item: import("@/types/session").Session) => item.sessionId === resumeSessionId)
           : null;
@@ -184,14 +167,10 @@ export function AdolescentPrototype() {
         setCurrentChildName(name);
         setCurrentChildId(payload.child.id);
         setIsRegistered(true);
-        setChildLookupAttempted(true);
-        setChildLookupFailed(false);
-        return;
-      } catch {}
-
-      if (active) {
-        setChildLookupAttempted(true);
-        setChildLookupFailed(true);
+        await linkChildToTeacherByCode(payload.child.id, teacherCode);
+        if (active) setAccessState(payload.child.consentGiven ? "ready" : "consent");
+      } catch {
+        if (active) setAccessState("error");
       }
     };
 
@@ -235,68 +214,27 @@ export function AdolescentPrototype() {
   // Progress
   const progress = isCompleted ? 100 : Math.min(100, Math.round((completedStages / stageCount) * 100));
 
-  // Registration handler
-  const handleRegister = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    const fio = participantName.trim();
-    const klass = participantClass.trim();
-    if (!fio || !klass || !consentGiven || isRegistering) return;
-
-    const anonId = generateAnonId(fio, klass);
-    const enteredTeacherCode = teacherCode.trim();
-    const teacherId = teacherIdFromUrl || undefined;
-    const consentTimestamp = new Date().toISOString();
-
-    setIsRegistering(true);
+  const handleAcceptConsent = useCallback(async () => {
+    if (isAcceptingConsent) return;
+    setIsAcceptingConsent(true);
     try {
       const response = await fetch("/api/children", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: anonId,
-          name: fio,
-          className: klass,
-          teacherId,
-          consentGiven: true,
-          consentTimestamp,
-          realData: { fio, klass },
-        }),
+        body: JSON.stringify({ action: "accept-consent" }),
       });
-
-      if (response.ok) {
-        const payload = await response.json();
-        if (payload?.child) {
-          await DataService.saveChild(payload.child);
-          await linkChildToTeacherByCode(payload.child.id, enteredTeacherCode);
-          setCurrentChildId(payload.child.id);
-          setCurrentChildName(`${fio} (${klass})`);
-          setIsRegistered(true);
-          setChildLookupFailed(false);
-          return;
-        }
-      }
-    } catch {}
-
-    const now = new Date().toISOString();
-    const localChild: import("@/types/session").ChildProfile = {
-      id: anonId,
-      name: anonId,
-      createdAt: now,
-      updatedAt: now,
-      sessions: [],
-      realData: { fio: fio.trim(), klass: klass.trim() },
-      teacherId,
-      consentGiven: true,
-      consentTimestamp,
-    };
-    await DataService.saveChild(localChild);
-    await linkChildToTeacherByCode(localChild.id, enteredTeacherCode);
-    setCurrentChildId(localChild.id);
-    setCurrentChildName(`${fio} (${klass})`);
-    setIsRegistered(true);
-    setChildLookupFailed(false);
-    setIsRegistering(false);
-  }, [participantName, participantClass, consentGiven, teacherCode, teacherIdFromUrl, isRegistering, linkChildToTeacherByCode]);
+      const payload = await response.json();
+      if (!response.ok || !payload?.child) throw new Error("Consent was not saved");
+      setCurrentChildId(payload.child.id);
+      setCurrentChildName(payload.child.name);
+      setIsRegistered(true);
+      setAccessState("ready");
+    } catch {
+      setAccessState("error");
+    } finally {
+      setIsAcceptingConsent(false);
+    }
+  }, [isAcceptingConsent]);
 
   // Restart handler
   const handleRestart = useCallback(() => {
@@ -481,7 +419,17 @@ export function AdolescentPrototype() {
             </div>
           </div>
 
+          {accessState !== "ready" && (
+            <StudentAccessGate
+              lang={lang}
+              state={accessState}
+              isAcceptingConsent={isAcceptingConsent}
+              onAcceptConsent={handleAcceptConsent}
+            />
+          )}
+
           {/* Registration form */}
+          {/*
           {!isRegistered && (!childIdFromUrl || childLookupFailed) && (
             <div className="panel mb-24">
               <h3 className="mt-0">{ui.registrationTitle}</h3>
@@ -532,9 +480,10 @@ export function AdolescentPrototype() {
               </p>
             </div>
           )}
+          */}
 
           {/* History review */}
-          {hasActiveChild && pastSessions.length > 0 && showHistory && (
+          {accessState === "ready" && hasActiveChild && pastSessions.length > 0 && showHistory && (
             <HistoryReviewPanel
               ui={ui}
               pastSessions={pastSessions}
@@ -544,7 +493,7 @@ export function AdolescentPrototype() {
           )}
 
           {/* Main session content */}
-          {hasActiveChild && (!showHistory || pastSessions.length === 0) && (
+          {accessState === "ready" && hasActiveChild && (!showHistory || pastSessions.length === 0) && (
             <>
               <label className="field">
                 <span>{ui.context}</span>
@@ -684,8 +633,75 @@ function useUiText(lang: "ru" | "en") {
   };
 }
 
-function generateAnonId(_fio: string, _klass: string): string {
-  return createChildId();
+function StudentAccessGate({
+  lang,
+  state,
+  isAcceptingConsent,
+  onAcceptConsent,
+}: {
+  lang: AppLang;
+  state: "checking" | "signed-out" | "wrong-role" | "consent" | "error";
+  isAcceptingConsent: boolean;
+  onAcceptConsent: () => void;
+}) {
+  const copy = lang === "en"
+    ? {
+        checking: "Checking your student account…",
+        signOutTitle: "Sign in to start a personal session",
+        signOutText: "Sessions belong to a student account so your history does not mix with another browser profile.",
+        consentTitle: "Confirm data processing before your first session",
+        consentText: "Your account keeps your session history. Confirm consent to save your answers in your personal dashboard.",
+        wrongRoleTitle: "This screen is for student accounts",
+        wrongRoleText: "Open the teacher dashboard with a teacher account, or sign in with a student account to begin a session.",
+        errorTitle: "We could not open the student profile",
+        errorText: "Refresh the page or sign in again. No guest session was created.",
+        signIn: "Sign in",
+        register: "Create student account",
+        accept: "I agree and continue",
+        teacher: "Open teacher dashboard",
+      }
+    : {
+        checking: "Проверяем аккаунт ученика…",
+        signOutTitle: "Войдите, чтобы начать личную сессию",
+        signOutText: "Сессии привязаны к аккаунту ученика: так история не смешивается с данными другого профиля в браузере.",
+        consentTitle: "Подтвердите обработку данных до первой сессии",
+        consentText: "Аккаунт хранит историю ваших сессий. Подтвердите согласие, чтобы сохранять ответы в личном кабинете.",
+        wrongRoleTitle: "Этот экран предназначен для аккаунта ученика",
+        wrongRoleText: "Откройте кабинет педагога с аккаунтом педагога или войдите как ученик, чтобы начать сессию.",
+        errorTitle: "Не удалось открыть профиль ученика",
+        errorText: "Обновите страницу или войдите снова. Гостевая сессия не была создана.",
+        signIn: "Войти",
+        register: "Создать аккаунт ученика",
+        accept: "Соглашаюсь и продолжаю",
+        teacher: "Открыть кабинет педагога",
+      };
+
+  if (state === "checking") {
+    return <div className="panel mb-24"><p className="muted m-0">{copy.checking}</p></div>;
+  }
+
+  const isSignedOut = state === "signed-out";
+  const isConsent = state === "consent";
+  const title = isSignedOut ? copy.signOutTitle : isConsent ? copy.consentTitle : state === "wrong-role" ? copy.wrongRoleTitle : copy.errorTitle;
+  const text = isSignedOut ? copy.signOutText : isConsent ? copy.consentText : state === "wrong-role" ? copy.wrongRoleText : copy.errorText;
+
+  return (
+    <section className="panel mb-24" aria-live="polite">
+      <h3 className="mt-0">{title}</h3>
+      <p className="muted mb-16">{text}</p>
+      <div className="action-row">
+        {isSignedOut && (
+          <>
+            <Link className="button" href={withLang("/auth/login?role=student", lang)}>{copy.signIn}</Link>
+            <Link className="button secondary" href={withLang("/auth/register?role=student", lang)}>{copy.register}</Link>
+          </>
+        )}
+        {isConsent && <button className="button" type="button" onClick={onAcceptConsent} disabled={isAcceptingConsent}>{isAcceptingConsent ? "…" : copy.accept}</button>}
+        {state === "wrong-role" && <Link className="button" href={withLang("/teacher", lang)}>{copy.teacher}</Link>}
+        {state === "error" && <Link className="button" href={withLang("/auth/login?role=student", lang)}>{copy.signIn}</Link>}
+      </div>
+    </section>
+  );
 }
 
 // ========== Sub-components ==========

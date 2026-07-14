@@ -20,6 +20,7 @@ function RegisterContent() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState("");
+  const [consentGiven, setConsentGiven] = useState(false);
   const [role, setRole] = useState<"teacher" | "student">(
     preselectedRole === "teacher" ? "teacher" : "student"
   );
@@ -61,16 +62,32 @@ function RegisterContent() {
       lang === "en"
         ? "Account created. Redirecting..."
         : "Аккаунт создан. Выполняем вход...",
+    consent: lang === "en"
+      ? "I agree to the processing of my data for my SelfReg AI account and session history."
+      : "Я соглашаюсь на обработку моих данных для аккаунта и истории сессий SelfReg AI.",
+    consentRequired: lang === "en"
+      ? "Confirm consent to create a student account."
+      : "Подтвердите согласие, чтобы создать аккаунт ученика.",
   };
 
   const handleEmailRegister = useCallback(async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
     setSuccess(null);
+    if (role === "student" && !consentGiven) {
+      setError(ui.consentRequired);
+      return;
+    }
     setIsLoading(true);
 
     try {
-      const result = await signUpWithEmail(email, password, fullName || undefined, { role });
+      const consentTimestamp = new Date().toISOString();
+      const result = await signUpWithEmail(email, password, fullName || undefined, {
+        role,
+        metadata: role === "student"
+          ? { consent_given: true, consent_timestamp: consentTimestamp }
+          : undefined,
+      });
       if (result.error) {
         throw result.error;
       }
@@ -92,10 +109,14 @@ function RegisterContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [email, fullName, lang, password, role, router, ui.errorGeneric, ui.successMessage, ui.successSignedIn]);
+  }, [consentGiven, email, fullName, lang, password, role, router, ui.consentRequired, ui.errorGeneric, ui.successMessage, ui.successSignedIn]);
 
   const handleGoogleRegister = useCallback(async () => {
     setError(null);
+    if (role === "student") {
+      setError(ui.consentRequired);
+      return;
+    }
     setIsLoading(true);
 
     try {
@@ -109,7 +130,7 @@ function RegisterContent() {
       setError(err.message || ui.errorGeneric);
       setIsLoading(false);
     }
-  }, [lang, role, ui.errorGeneric]);
+  }, [lang, role, ui.consentRequired, ui.errorGeneric]);
 
   return (
     <main className="shell">
@@ -128,7 +149,7 @@ function RegisterContent() {
           {error && <div className="error-box-sm">{error}</div>}
           {success && <div className="success-box-sm">{success}</div>}
 
-          {googleAuthEnabled && (
+          {googleAuthEnabled && role === "teacher" && (
             <>
               <button
                 onClick={handleGoogleRegister}
@@ -228,10 +249,23 @@ function RegisterContent() {
               </div>
             </div>
 
+            {role === "student" && (
+              <label className="checkbox-field mb-20">
+                <input
+                  type="checkbox"
+                  checked={consentGiven}
+                  onChange={(event) => setConsentGiven(event.target.checked)}
+                  disabled={isLoading || !!success}
+                  required
+                />
+                <span>{ui.consent}</span>
+              </label>
+            )}
+
             <button
               type="submit"
               className="button w-full"
-              disabled={isLoading || !!success}
+              disabled={isLoading || !!success || (role === "student" && !consentGiven)}
               style={{ padding: "10px", fontSize: 14 }}
             >
               {isLoading ? ui.loading : ui.submit}

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { clientError, serverError } from "@/lib/api-errors";
 import {
+  acceptStudentConsentInSupabase,
   ensureStudentChildForAuthUserInSupabase,
   fetchChildByUserIdFromSupabase,
   fetchChildFromSupabase,
@@ -86,6 +87,28 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+
+    if (body.action === "accept-consent") {
+      const access = await requireServerRole("student");
+      if (access.response) {
+        return access.response;
+      }
+
+      const child = await ensureStudentChildForAuthUserInSupabase({
+        userId: access.context.userId,
+        email: access.context.email,
+        fullName: access.context.fullName,
+        consentGiven: true,
+        consentTimestamp: new Date().toISOString(),
+      });
+      const consentTimestamp = new Date().toISOString();
+      const updatedChild = await acceptStudentConsentInSupabase({
+        childId: child.id,
+        userId: access.context.userId,
+        consentTimestamp,
+      });
+      return NextResponse.json({ ok: true, child: updatedChild });
+    }
 
     if (body.action === "upsert" && body.child) {
       const access = await requireTeacherAccess(body.child.teacherId);

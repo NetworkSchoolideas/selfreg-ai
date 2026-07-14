@@ -332,6 +332,8 @@ export async function ensureStudentChildForAuthUserInSupabase(input: {
   userId: string;
   email: string;
   fullName?: string | null;
+  consentGiven?: boolean;
+  consentTimestamp?: string | null;
 }): Promise<ChildProfile> {
   const existingChild = await fetchChildByUserIdFromSupabase(input.userId);
   if (existingChild) {
@@ -344,13 +346,41 @@ export async function ensureStudentChildForAuthUserInSupabase(input: {
     name: fio,
     userId: input.userId,
     teacherId: undefined,
-    consentGiven: false,
-    consentTimestamp: undefined,
+    consentGiven: input.consentGiven ?? false,
+    consentTimestamp: input.consentTimestamp ?? undefined,
     realData: {
       fio,
       klass: "",
     },
   });
+}
+
+export async function acceptStudentConsentInSupabase(input: {
+  childId: string;
+  userId: string;
+  consentTimestamp: string;
+}): Promise<ChildProfile> {
+  if (!isSupabaseAdminAvailable()) {
+    throw new Error("Supabase admin client is not configured");
+  }
+
+  const supabaseAdmin: any = getSupabaseAdmin();
+  const { error } = await supabaseAdmin
+    .from("children")
+    .update({ consent_given: true, consent_timestamp: input.consentTimestamp })
+    .eq("id", input.childId)
+    .eq("user_id", input.userId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const child = await fetchChildFromSupabase(input.childId);
+  if (!child) {
+    throw new Error("Failed to reload student profile after accepting consent");
+  }
+
+  return child;
 }
 
 export async function upsertChildInSupabase(input: ChildUpsertInput): Promise<ChildProfile> {

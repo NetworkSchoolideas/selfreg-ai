@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AuthButton } from "@/app/components/AuthButton";
 import { LanguageToggle } from "@/app/components/LanguageToggle";
@@ -11,15 +11,24 @@ const projectLandingUrl =
   process.env.NEXT_PUBLIC_PROJECT_LANDING_URL || "https://selfreg-ai-networkschool.vercel.app";
 
 const contact = {
-  name: "Смирнов Александр Дмитриевич",
-  institution: "Московский городской педагогический университет, Москва, Россия",
+  ru: {
+    name: "Смирнов Александр Дмитриевич",
+    institution: "Московский городской педагогический университет, Москва, Россия",
+  },
+  en: {
+    name: "Alexander Dmitrievich Smirnov",
+    institution: "Moscow City University, Moscow, Russia",
+  },
   email: "adsmirnov_1@edu.hse.ru",
 };
+
+type GuideId = "student" | "teacher" | "api";
 
 export function HomeClient() {
   const searchParams = useSearchParams();
   const lang = normalizeAppLang(searchParams.get("lang"));
   const isEnglish = lang === "en";
+  const [activeGuide, setActiveGuide] = useState<GuideId>("student");
 
   useEffect(() => {
     const hasAuthCode = searchParams.has("code");
@@ -70,6 +79,51 @@ export function HomeClient() {
         emailAction: "Write to the project team",
         landing: "Project landing",
         privacy: "Do not enter passwords, access codes, or other secrets into the session.",
+        visualGoal: "Name it",
+        visualReflect: "Reflect",
+        visualAdjust: "Act",
+        guideTabsLabel: "Choose a guide",
+        guideStep: "Step",
+        openGuide: "Open guide",
+        githubDocs: "GitHub instructions",
+        guides: {
+          student: {
+            tab: "Student",
+            title: "Student: complete a session without getting lost",
+            lead: "You can try the practice before connecting it to a teacher. Your answers stay in your own dashboard.",
+            action: "Open student session",
+            href: "/adolescent",
+            steps: [
+              ["01", "Choose one learning situation", "Start with a concrete moment: an assignment, a difficult answer, a conflict, or a lack of motivation."],
+              ["02", "Answer at your pace", "Write in your own words. If a prompt is confusing, select “I don’t understand the question” to see a clearer version."],
+              ["03", "Use the controls with confidence", "Back preserves your previous answer; Start over creates a clean new attempt. At the end, open your dashboard to review the session."],
+            ],
+          },
+          teacher: {
+            tab: "Teacher",
+            title: "Teacher: connect, notice patterns, discuss",
+            lead: "The connection begins with the student. The dashboard is a read-only view of the sessions a student chooses to share.",
+            action: "Open teacher dashboard",
+            href: "/teacher",
+            steps: [
+              ["01", "Open your teacher dashboard", "Sign in or register as a teacher. Your personal teacher code is shown in the dashboard."],
+              ["02", "Share the code with the student", "The student enters the code in their dashboard and decides whether to create the connection."],
+              ["03", "Review, then discuss a next step", "Use the linked-session overview as a conversation prompt. Removing a student only hides the link in your dashboard; it never deletes the student’s sessions."],
+            ],
+          },
+          api: {
+            tab: "GitHub API key",
+            title: "GitHub Models: add live AI in three careful steps",
+            lead: "The practice is available in mock mode. A GitHub fine-grained token with the Models permission enables live responses for this browser session.",
+            action: "Open API settings",
+            href: "/settings",
+            steps: [
+              ["01", "Create a GitHub token", "In GitHub, open Settings → Developer settings → Personal access tokens → Fine-grained tokens, then choose Generate new token."],
+              ["02", "Give it the minimum permission", "Under Account permissions, set Models to Read-only. Set an expiry date, generate the token, and copy it once."],
+              ["03", "Paste and test it in SelfReg AI", "Open API settings, select GitHub Models, paste the token, and run the check. Never paste the token into a session answer or share it with another person."],
+            ],
+          },
+        },
       }
     : {
         eyebrow: "Практика саморегуляции с понятным маршрутом",
@@ -98,7 +152,55 @@ export function HomeClient() {
         emailAction: "Написать команде проекта",
         landing: "Лендинг проекта",
         privacy: "Не вводите в сессию пароли, коды доступа и другие секреты.",
+        visualGoal: "Назвать",
+        visualReflect: "Осмыслить",
+        visualAdjust: "Действовать",
+        guideTabsLabel: "Выберите инструкцию",
+        guideStep: "Шаг",
+        openGuide: "Открыть инструкцию",
+        githubDocs: "Инструкция GitHub",
+        guides: {
+          student: {
+            tab: "Ученику",
+            title: "Ученику: пройти сессию и не потеряться",
+            lead: "Практику можно попробовать до подключения к педагогу. Ваши ответы остаются в вашем личном кабинете.",
+            action: "Открыть сессию ученика",
+            href: "/adolescent",
+            steps: [
+              ["01", "Выберите одну учебную ситуацию", "Начните с конкретного момента: задания, трудного ответа, конфликта или потери мотивации."],
+              ["02", "Отвечайте в своём темпе", "Пишите своими словами. Если вопрос непонятен, нажмите «Не понял вопрос» — приложение покажет более ясную формулировку."],
+              ["03", "Уверенно используйте кнопки", "«Назад» сохраняет предыдущий ответ, а «Начать заново» создаёт чистую попытку. В конце откройте кабинет и посмотрите сессию."],
+            ],
+          },
+          teacher: {
+            tab: "Педагогу",
+            title: "Педагогу: подключить, заметить, обсудить",
+            lead: "Подключение начинает ученик. Кабинет педагога — режим просмотра сессий, которыми ученик решил поделиться.",
+            action: "Открыть кабинет педагога",
+            href: "/teacher",
+            steps: [
+              ["01", "Откройте кабинет педагога", "Войдите или зарегистрируйтесь как педагог. В кабинете будет показан ваш личный код педагога."],
+              ["02", "Передайте код ученику", "Ученик вводит код в своём кабинете и сам решает, создавать ли подключение."],
+              ["03", "Посмотрите сессии и обсудите следующий шаг", "Используйте обзор как повод для разговора. «Убрать из моего кабинета» скрывает только связь у педагога и никогда не удаляет сессии ученика."],
+            ],
+          },
+          api: {
+            tab: "Ключ GitHub API",
+            title: "GitHub Models: подключить живой ИИ за три понятных шага",
+            lead: "Практика доступна и в mock-режиме. Для живых ответов в этой сессии браузера нужен fine-grained токен GitHub с разрешением Models.",
+            action: "Открыть настройки API",
+            href: "/settings",
+            steps: [
+              ["01", "Создайте токен на GitHub", "На GitHub откройте Settings → Developer settings → Personal access tokens → Fine-grained tokens и нажмите Generate new token."],
+              ["02", "Выдайте только нужное разрешение", "В разделе Account permissions установите для Models значение Read-only. Задайте срок действия, создайте токен и скопируйте его один раз."],
+              ["03", "Вставьте ключ и проверьте его в SelfReg AI", "Откройте настройки API, выберите GitHub Models, вставьте токен и запустите проверку. Не вставляйте токен в ответ сессии и не передавайте его другим людям."],
+            ],
+          },
+        },
       };
+
+  const activeGuideCopy = copy.guides[activeGuide];
+  const activeContact = isEnglish ? contact.en : contact.ru;
 
   return (
     <main className="shell app-home">
@@ -128,9 +230,9 @@ export function HomeClient() {
           <div className="home-orbit home-orbit-one" />
           <div className="home-orbit home-orbit-two" />
           <div className="home-orbit home-orbit-three" />
-          <div className="home-step home-step-one"><span>01</span><b>Goal</b></div>
-          <div className="home-step home-step-two"><span>03</span><b>Reflect</b></div>
-          <div className="home-step home-step-three"><span>05</span><b>Adjust</b></div>
+          <div className="home-step home-step-one"><span>01</span><b>{copy.visualGoal}</b></div>
+          <div className="home-step home-step-two"><span>03</span><b>{copy.visualReflect}</b></div>
+          <div className="home-step home-step-three"><span>05</span><b>{copy.visualAdjust}</b></div>
           <div className="home-visual-core">↗</div>
         </div>
       </section>
@@ -155,19 +257,47 @@ export function HomeClient() {
           <p className="eyebrow">{copy.howItWorks}</p>
           <h2 id="home-guides-title">{copy.guideTitle}</h2>
         </div>
-        <div className="home-guide-list">
-          <details className="home-guide" open>
-            <summary><span>01</span><strong>{copy.apiTitle}</strong><b aria-hidden="true">+</b></summary>
-            <div><p>{copy.apiSummary}</p><p className="muted">{copy.apiDetail}</p><Link className="text-link" href={withLang("/settings", lang)}>{copy.apiAction} →</Link></div>
-          </details>
-          <details className="home-guide">
-            <summary><span>02</span><strong>{copy.sessionTitle}</strong><b aria-hidden="true">+</b></summary>
-            <div><p>{copy.sessionSummary}</p><p className="muted">{copy.sessionDetail}</p><Link className="text-link" href={withLang("/adolescent", lang)}>{copy.start} →</Link></div>
-          </details>
-          <details className="home-guide">
-            <summary><span>03</span><strong>{copy.teacherGuideTitle}</strong><b aria-hidden="true">+</b></summary>
-            <div><p>{copy.teacherGuideSummary}</p><p className="muted">{copy.teacherGuideDetail}</p><Link className="text-link" href={withLang("/teacher", lang)}>{copy.teacher} →</Link></div>
-          </details>
+        <div className="home-guide-tabs" role="tablist" aria-label={copy.guideTabsLabel}>
+          {(Object.keys(copy.guides) as GuideId[]).map((guideId) => (
+            <button
+              key={guideId}
+              id={`guide-tab-${guideId}`}
+              className={activeGuide === guideId ? "is-active" : ""}
+              role="tab"
+              aria-selected={activeGuide === guideId}
+              aria-controls={`guide-panel-${guideId}`}
+              type="button"
+              onClick={() => setActiveGuide(guideId)}
+            >
+              {copy.guides[guideId].tab}
+            </button>
+          ))}
+        </div>
+        <div
+          id={`guide-panel-${activeGuide}`}
+          className="home-guide-panel"
+          role="tabpanel"
+          aria-labelledby={`guide-tab-${activeGuide}`}
+        >
+          <div className="home-guide-intro">
+            <p className="home-guide-tab-kicker">{copy.openGuide}</p>
+            <h3>{activeGuideCopy.title}</h3>
+            <p>{activeGuideCopy.lead}</p>
+          </div>
+          <ol className="home-guide-steps">
+            {activeGuideCopy.steps.map(([number, title, detail]) => (
+              <li key={number}>
+                <span aria-hidden="true">{number}</span>
+                <div><p>{copy.guideStep} {number}</p><h4>{title}</h4><p>{detail}</p></div>
+              </li>
+            ))}
+          </ol>
+          <div className="home-guide-actions">
+            <Link className="button" href={withLang(activeGuideCopy.href, lang)}>{activeGuideCopy.action}</Link>
+            {activeGuide === "api" && (
+              <a className="text-link" href="https://docs.github.com/en/rest/models/inference" target="_blank" rel="noopener noreferrer">{copy.githubDocs} ↗</a>
+            )}
+          </div>
         </div>
       </section>
 
@@ -179,8 +309,8 @@ export function HomeClient() {
           <a className="button" href={`mailto:${contact.email}?subject=${encodeURIComponent("SelfReg AI")}`}>{copy.emailAction}</a>
         </div>
         <address className="home-contact-person">
-          <strong>{contact.name}</strong>
-          <span>{contact.institution}</span>
+          <strong>{activeContact.name}</strong>
+          <span>{activeContact.institution}</span>
           <a href={`mailto:${contact.email}`}>{contact.email}</a>
         </address>
       </section>

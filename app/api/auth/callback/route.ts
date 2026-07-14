@@ -165,6 +165,13 @@ export async function GET(request: NextRequest) {
       mergedMetadata.teacher_code = userMetadata.teacher_code;
     }
 
+    if (role === "student" && userMetadata.consent_given === true) {
+      mergedMetadata.consent_given = true;
+      if (typeof userMetadata.consent_timestamp === "string") {
+        mergedMetadata.consent_timestamp = userMetadata.consent_timestamp;
+      }
+    }
+
     const hadTeacherCode = typeof mergedMetadata.teacher_code === "string" && mergedMetadata.teacher_code.trim();
 
     if (role === "teacher" && !hadTeacherCode) {
@@ -196,6 +203,14 @@ export async function GET(request: NextRequest) {
         userId,
         email: userEmail,
         fullName: userName,
+        ...(mergedMetadata.consent_given === true
+          ? {
+              consentGiven: true,
+              consentTimestamp: typeof mergedMetadata.consent_timestamp === "string"
+                ? mergedMetadata.consent_timestamp
+                : undefined,
+            }
+          : {}),
       });
     }
 
