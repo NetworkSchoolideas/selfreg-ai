@@ -32,6 +32,7 @@ function StudentDashboardContent() {
   const [teacherLinkMessage, setTeacherLinkMessage] = useState<string | null>(null);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [archiveCandidateId, setArchiveCandidateId] = useState<string | null>(null);
+  const [sessionSaveError, setSessionSaveError] = useState<string | null>(null);
 
   const ui = {
     ru: {
@@ -91,6 +92,7 @@ function StudentDashboardContent() {
       teacherCodeRequired: "\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043a\u043e\u0434 \u043f\u0435\u0434\u0430\u0433\u043e\u0433\u0430",
       teacherLinkSuccess: "\u0421\u0432\u044f\u0437\u044c \u0441 \u043f\u0435\u0434\u0430\u0433\u043e\u0433\u043e\u043c \u043d\u0430\u0441\u0442\u0440\u043e\u0435\u043d\u0430.",
       teacherLinkError: "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0438\u0442\u044c \u043f\u0435\u0434\u0430\u0433\u043e\u0433\u0430",
+      sessionSaveError: "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u0438\u0437\u043c\u0435\u043d\u0435\u043d\u0438\u0435. \u0421\u0435\u0441\u0441\u0438\u044f \u043e\u0441\u0442\u0430\u043b\u0430\u0441\u044c \u0432 \u0441\u043f\u0438\u0441\u043a\u0435 \u2014 \u043f\u043e\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u0435\u0449\u0451 \u0440\u0430\u0437.",
     },
     en: {
       title: "Dashboard",
@@ -149,6 +151,7 @@ function StudentDashboardContent() {
       teacherCodeRequired: "Enter a teacher code",
       teacherLinkSuccess: "Teacher connection is active.",
       teacherLinkError: "Failed to connect teacher",
+      sessionSaveError: "Could not save this change. The session remains in your list — please try again.",
     },
   };
 
@@ -163,8 +166,9 @@ function StudentDashboardContent() {
 
         if (!childId) {
           const {
-            data: { user },
-          } = await supabase?.auth.getUser() ?? { data: { user: null } };
+            data: { session },
+          } = await supabase?.auth.getSession() ?? { data: { session: null } };
+          const user = session?.user ?? null;
 
           if (!user) {
             if (active) {
@@ -199,11 +203,10 @@ function StudentDashboardContent() {
         if (active) {
           setError(t.errorNotFound);
         }
-      } catch (loadError) {
+      } catch {
         if (active) {
           setError(t.errorConnection);
         }
-        console.error(loadError);
       } finally {
         if (active) {
           setLoading(false);
@@ -345,6 +348,8 @@ function StudentDashboardContent() {
       studentArchivedAt: archiveCandidate.studentArchivedAt || new Date().toISOString(),
     };
 
+    setSessionSaveError(null);
+
     setProfile((currentProfile) => {
       if (!currentProfile) return currentProfile;
 
@@ -360,8 +365,18 @@ function StudentDashboardContent() {
 
     try {
       await DataService.saveSession(profile.id, archivedSession);
-    } catch (archiveError) {
-      console.error(archiveError);
+    } catch {
+      setProfile((currentProfile) =>
+        currentProfile
+          ? {
+              ...currentProfile,
+              sessions: currentProfile.sessions.map((session) =>
+                getSessionKey(session) === getSessionKey(archiveCandidate) ? archiveCandidate : session
+              ),
+            }
+          : currentProfile
+      );
+      setSessionSaveError(t.sessionSaveError);
     }
   };
 
@@ -389,6 +404,12 @@ function StudentDashboardContent() {
             <LanguageToggle />
           </div>
         </header>
+
+        {sessionSaveError && (
+          <p role="alert" className="mb-16" style={{ color: "#b91c1c" }}>
+            {sessionSaveError}
+          </p>
+        )}
 
         <div className="action-bar">
           <Link

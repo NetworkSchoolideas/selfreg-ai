@@ -174,11 +174,8 @@ export function TeacherDashboard() {
     selectedChild,
     revealIdentity,
     childSearch,
-    newSessionContextInput,
     copiedChildId,
     highlightedSessionUpdatedAt,
-    newSessionHint,
-    lastDeleted,
     analytics,
     isInitialLoadComplete,
     notice,
@@ -191,19 +188,13 @@ export function TeacherDashboard() {
     currentSession,
     setChildSearch,
     setRevealIdentity,
-    setNewSessionContextInput,
-    setNewSessionHint,
     selectChild,
     selectSession,
-    createNewSessionForChild,
-    createNewSessionFromInput,
     deleteCurrentChild,
     copyAllLinks,
     copyChildLink,
     addChild,
     buildPrototypeHref,
-    deleteSelectedSession,
-    undoLastDelete,
     exportToCsv,
     dismissNotice,
     closeConfirmDialog,
@@ -349,12 +340,9 @@ export function TeacherDashboard() {
                 selectedChild={selectedChild}
                 locale={locale}
                 revealIdentity={revealIdentity}
-                newSessionContextInput={newSessionContextInput}
                 ui={ui}
                 prototypeHref={buildPrototypeHref(selectedChild)}
                 onToggleIdentity={setRevealIdentity}
-                onSessionContextChange={setNewSessionContextInput}
-                onCreateNewSession={createNewSessionFromInput}
                 onCopyLink={() => copyChildLink(selectedChild)}
                 onDeleteChild={deleteCurrentChild}
               />
@@ -467,15 +455,6 @@ export function TeacherDashboard() {
                 sortedSessions={sortedSessions}
                 selectedSessionIdx={selectedSessionIdx}
                 highlightedSessionUpdatedAt={highlightedSessionUpdatedAt}
-                currentSession={currentSession}
-                newSessionHint={newSessionHint}
-                hasDeletedSession={Boolean(lastDeleted)}
-                prototypeHref={buildPrototypeHref(selectedChild)}
-                onCreateNewSession={createNewSessionFromInput}
-                onCreateFirstSession={() => createNewSessionForChild()}
-                onDeleteSelected={deleteSelectedSession}
-                onUndoDelete={undoLastDelete}
-                onDismissHint={() => setNewSessionHint(null)}
                 onSelectSession={selectSession}
               />
 

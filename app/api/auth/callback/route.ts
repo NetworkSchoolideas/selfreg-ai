@@ -131,13 +131,13 @@ export async function GET(request: NextRequest) {
     const metadataPreferredRole =
       typeof userMetadata.preferred_role === "string" ? userMetadata.preferred_role : null;
 
-    const role = isValidRole(roleParam)
-      ? roleParam
-      : isValidRole(metadataPreferredRole)
-        ? metadataPreferredRole
-        : isValidRole(existingProfile?.role)
-          ? existingProfile.role
-          : null;
+    const existingRole = isValidRole(existingProfile?.role) ? existingProfile.role : null;
+    const role = existingRole
+      ?? (isValidRole(roleParam)
+        ? roleParam
+        : isValidRole(metadataPreferredRole)
+          ? metadataPreferredRole
+          : null);
 
     if (!role) {
       return copyCookies(
@@ -157,11 +157,11 @@ export async function GET(request: NextRequest) {
       ...existingMetadata,
     };
 
-    if (typeof userMetadata.school === "string") {
+    if (!existingRole && typeof userMetadata.school === "string") {
       mergedMetadata.school = userMetadata.school;
     }
 
-    if (typeof userMetadata.teacher_code === "string") {
+    if (!existingRole && typeof userMetadata.teacher_code === "string") {
       mergedMetadata.teacher_code = userMetadata.teacher_code;
     }
 

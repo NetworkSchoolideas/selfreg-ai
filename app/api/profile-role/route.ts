@@ -62,11 +62,39 @@ export async function POST(request: Request) {
       return createErrorResponse("Authentication required", 401, "AUTH_REQUIRED");
     }
 
-    const { data: existingProfile } = await supabase
+    const { data: existingProfile, error: existingProfileError } = await supabase
       .from("profiles")
-      .select("metadata")
+      .select("role, metadata")
       .eq("id", user.id)
       .maybeSingle();
+
+    if (existingProfileError) {
+      return serverError(existingProfileError.message, "PROFILE_ROLE_LOOKUP_ERROR");
+    }
+
+    const existingRole = existingProfile?.role;
+    if (existingRole === "teacher" || existingRole === "student") {
+      if (payload.role !== existingRole) {
+        return createErrorResponse("Profile role cannot be changed", 409, "PROFILE_ROLE_IMMUTABLE");
+      }
+
+      const metadata = asMetadata(existingProfile?.metadata);
+      const teacherCode = existingRole === "teacher" && typeof metadata.teacher_code === "string"
+        ? metadata.teacher_code
+        : null;
+
+      return NextResponse.json({
+        ok: true,
+        role: existingRole,
+        nextPath:
+          existingRole === "teacher" && teacherCode
+            ? `/teacher/register-success?auth=success&teacherCode=${encodeURIComponent(teacherCode)}&next=dashboard`
+            : existingRole === "teacher"
+              ? "/teacher?auth=success"
+              : "/student/dashboard?auth=success",
+        teacherCode,
+      });
+    }
 
     const metadata = asMetadata(existingProfile?.metadata);
     const fullName =

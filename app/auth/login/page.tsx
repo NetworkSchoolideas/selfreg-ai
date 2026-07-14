@@ -46,19 +46,25 @@ function LoginContent() {
 
     try {
       const resolvedRole = roleParam === "teacher" || roleParam === "student" ? roleParam : undefined;
-      const { error: authError } = await signInWithEmail(email, password, { role: resolvedRole });
+      const { error: authError, profile } = await signInWithEmail(email, password, { role: resolvedRole });
       if (authError) {
         throw authError;
       }
 
-      router.push(roleParam === "teacher" ? "/teacher" : roleParam === "student" ? "/student/dashboard" : "/");
+      const nextPath =
+        profile?.role === "teacher"
+          ? "/teacher"
+          : profile?.role === "student"
+            ? "/student/dashboard"
+            : "/role-selection";
+      router.push(withLang(nextPath, lang));
       router.refresh();
     } catch (err: any) {
       setError(err.message || ui.errorGeneric);
     } finally {
       setIsLoading(false);
     }
-  }, [email, password, roleParam, router, ui.errorGeneric]);
+  }, [email, lang, password, roleParam, router, ui.errorGeneric]);
 
   const handleGoogleLogin = useCallback(async () => {
     setError(null);

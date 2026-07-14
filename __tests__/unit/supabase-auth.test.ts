@@ -1,4 +1,5 @@
 const mockSignUp = jest.fn();
+const mockSignInWithPassword = jest.fn();
 const mockSignInWithOAuth = jest.fn();
 const mockSignOut = jest.fn();
 const mockMaybeSingle = jest.fn();
@@ -16,6 +17,7 @@ jest.mock("@/lib/supabase", () => ({
   supabase: {
     auth: {
       signUp: mockSignUp,
+      signInWithPassword: mockSignInWithPassword,
       signInWithOAuth: mockSignInWithOAuth,
       signOut: mockSignOut,
     },
@@ -23,7 +25,7 @@ jest.mock("@/lib/supabase", () => ({
   },
 }));
 
-import { buildAuthCallbackUrl, signInWithGoogle, signUpWithEmail } from "@/lib/supabase-auth";
+import { buildAuthCallbackUrl, signInWithEmail, signInWithGoogle, signUpWithEmail } from "@/lib/supabase-auth";
 
 function installWindowMock(origin = "https://selfreg.test") {
   const store = new Map<string, string>();
@@ -155,5 +157,52 @@ describe("signInWithGoogle", () => {
     expect(buildAuthCallbackUrl({ role: "teacher", lang: "ru" })).toBe(
       "https://selfreg-ai.vercel.app/auth/callback?role=teacher&lang=ru"
     );
+  });
+});
+
+describe("signInWithEmail", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    installWindowMock();
+    mockMaybeSingle.mockResolvedValue({
+      data: {
+        id: "student-1",
+        email: "student@example.com",
+        full_name: "Student User",
+        avatar_url: null,
+        role: "student",
+        metadata: null,
+      },
+      error: null,
+    });
+    mockSingle.mockResolvedValue({
+      data: {
+        id: "student-1",
+        email: "student@example.com",
+        full_name: "Student User",
+        avatar_url: null,
+        role: "student",
+        metadata: null,
+      },
+      error: null,
+    });
+  });
+
+  it("returns the persisted profile role for post-login routing", async () => {
+    mockSignInWithPassword.mockResolvedValue({
+      data: {
+        user: {
+          id: "student-1",
+          email: "student@example.com",
+          user_metadata: {},
+        },
+      },
+      error: null,
+    });
+
+    const result = await signInWithEmail("student@example.com", "Test123!", { role: "teacher" });
+
+    expect(result.error).toBeNull();
+    expect(result.profile?.role).toBe("student");
   });
 });

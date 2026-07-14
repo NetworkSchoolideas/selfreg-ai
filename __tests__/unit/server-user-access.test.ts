@@ -1,5 +1,6 @@
 import {
   requireChildAccess,
+  requireChildOwner,
   requireServerRole,
   requireServerUserAccess,
   requireSessionAccess,
@@ -128,6 +129,19 @@ describe("server user access", () => {
     const result = await requireChildAccess("child-1");
 
     expect(result.context?.accessKind).toBe("linked-teacher");
+  });
+
+  it("denies child writes to a linked teacher", async () => {
+    mockProfileClient({ id: "teacher-1" }, "teacher");
+    mockAdminLookup("children", { id: "child-1", user_id: "student-1", teacher_id: "teacher-1" });
+
+    const result = await requireChildOwner("child-1");
+
+    expect(result.response?.status).toBe(403);
+    await expect(result.response?.json()).resolves.toEqual({
+      error: "Child write access denied",
+      code: "CHILD_WRITE_DENIED",
+    });
   });
 
   it("returns 403 for an unrelated account and 404 for a missing child", async () => {

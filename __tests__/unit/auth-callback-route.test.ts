@@ -190,7 +190,7 @@ describe("auth callback route", () => {
     expect(response.headers.get("location")).toBe("https://selfreg.ai/teacher?lang=ru&auth=success");
   });
 
-  it("uses explicit teacher role even when the existing profile is a student", async () => {
+  it("keeps the server-owned student role when callback query requests teacher", async () => {
     const mocks = mockServerClient({
       roleFromProfile: "student",
       cookiesToSet: [{ name: "sb-session", value: "token", options: { path: "/" } }],
@@ -200,15 +200,10 @@ describe("auth callback route", () => {
       buildRequest("https://selfreg.ai/api/auth/callback?code=oauth-code&role=teacher&lang=ru")
     );
 
-    expect(response.headers.get("location")).toMatch(
-      /^https:\/\/selfreg\.ai\/teacher\/register-success\?lang=ru&auth=success&teacherCode=T\d{6}&next=dashboard$/,
-    );
+    expect(response.headers.get("location")).toBe("https://selfreg.ai/student/dashboard?lang=ru&auth=success");
     expect(mocks.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        role: "teacher",
-        metadata: expect.objectContaining({
-          teacher_code: expect.stringMatching(/^T\d{6}$/),
-        }),
+        role: "student",
       }),
       { onConflict: "id" },
     );

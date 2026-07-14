@@ -13,8 +13,6 @@ interface TeacherChildHeaderUi {
   lastUpdate: string;
   deleteStudent: string;
   openPrototype: string;
-  quickCreatePlaceholder: string;
-  quickCreateButton: string;
   copyLinkBtn: string;
 }
 
@@ -22,12 +20,9 @@ interface TeacherChildHeaderProps {
   selectedChild: Child;
   locale: string;
   revealIdentity: boolean;
-  newSessionContextInput: string;
   ui: TeacherChildHeaderUi;
   prototypeHref: string;
   onToggleIdentity: (nextValue: boolean) => void;
-  onSessionContextChange: (value: string) => void;
-  onCreateNewSession: () => void;
   onCopyLink: () => void;
   onDeleteChild: () => void;
 }
@@ -36,12 +31,9 @@ export function TeacherChildHeader({
   selectedChild,
   locale,
   revealIdentity,
-  newSessionContextInput,
   ui,
   prototypeHref,
   onToggleIdentity,
-  onSessionContextChange,
-  onCreateNewSession,
   onCopyLink,
   onDeleteChild,
 }: TeacherChildHeaderProps) {
@@ -89,21 +81,6 @@ export function TeacherChildHeader({
 
         <div className="flex-col gap-6 items-end">
           <div className="flex-row gap-6 items-center flex-wrap">
-            <input
-              type="text"
-              value={newSessionContextInput}
-              onChange={(event) => onSessionContextChange(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  onCreateNewSession();
-                }
-              }}
-              placeholder={ui.quickCreatePlaceholder}
-              className="fs-13 session-context-input"
-            />
-            <button className="button" onClick={onCreateNewSession} style={{ padding: "7px 14px" }}>
-              {ui.quickCreateButton}
-            </button>
             <Link
               href={prototypeHref}
               className="button secondary"

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import type { Session } from "@/lib/children-storage";
 import { inferRecordEventType } from "@/lib/session-helpers";
 import { getSessionSignals } from "@/lib/teacher-dashboard-analytics";
@@ -8,14 +7,7 @@ import { getSessionSignals } from "@/lib/teacher-dashboard-analytics";
 interface TeacherSessionsPanelUi {
   sessionsLabel: string;
   archivedByStudent: string;
-  createNewSession: string;
-  deleteSelected: string;
-  newSessionHint: string;
-  openPrototype: string;
-  sessionDeleted: string;
-  undoDelete: string;
   noSessions: string;
-  createFirstSession: string;
   stepsShort: string;
   clarification: string;
   returnToQuestion: string;
@@ -29,15 +21,6 @@ interface TeacherSessionsPanelProps {
   sortedSessions: Session[];
   selectedSessionIdx: number;
   highlightedSessionUpdatedAt: string | null;
-  currentSession: Session | null;
-  newSessionHint: { context: string } | null;
-  hasDeletedSession: boolean;
-  prototypeHref: string;
-  onCreateNewSession: () => void;
-  onCreateFirstSession: () => void;
-  onDeleteSelected: () => void;
-  onUndoDelete: () => void;
-  onDismissHint: () => void;
   onSelectSession: (index: number) => void;
 }
 
@@ -47,15 +30,6 @@ export function TeacherSessionsPanel({
   sortedSessions,
   selectedSessionIdx,
   highlightedSessionUpdatedAt,
-  currentSession,
-  newSessionHint,
-  hasDeletedSession,
-  prototypeHref,
-  onCreateNewSession,
-  onCreateFirstSession,
-  onDeleteSelected,
-  onUndoDelete,
-  onDismissHint,
   onSelectSession,
 }: TeacherSessionsPanelProps) {
   return (
@@ -65,43 +39,13 @@ export function TeacherSessionsPanel({
           <strong className="fs-15">{ui.sessionsLabel}</strong>
           <span className="muted sessions-count">({sortedSessions.length})</span>
         </div>
-        <div className="session-actions">
-          <button className="button" onClick={onCreateNewSession} style={{ fontSize: 13, padding: "6px 12px" }}>
-            {ui.createNewSession}
-          </button>
-          {currentSession && (
-            <button className="button secondary" onClick={onDeleteSelected} style={{ fontSize: 13, padding: "6px 12px" }}>
-              {ui.deleteSelected}
-            </button>
-          )}
-        </div>
+        <span className="fs-12 c-muted">{locale.startsWith("en") ? "Read-only" : "Только просмотр"}</span>
       </div>
 
-      {newSessionHint && (
-        <div className="hint-bar">
-          <span>{ui.newSessionHint.replace("{context}", newSessionHint.context)}</span>
-          <Link href={prototypeHref} className="button" target="_blank" style={{ fontSize: 12, padding: "3px 9px" }} onClick={onDismissHint}>
-            {ui.openPrototype}
-          </Link>
-        </div>
-      )}
-
-      {hasDeletedSession && (
-        <div className="undo-bar">
-          <span>{ui.sessionDeleted}</span>
-          <button className="button secondary" onClick={onUndoDelete} style={{ fontSize: 12, padding: "3px 10px" }}>
-            {ui.undoDelete}
-          </button>
-        </div>
-      )}
-
       {sortedSessions.length === 0 ? (
-        <div className="empty-state-dashed">
-          <p className="muted mb-10">{ui.noSessions}</p>
-          <button className="button" onClick={onCreateFirstSession} style={{ padding: "8px 18px" }}>
-            {ui.createFirstSession}
-          </button>
-        </div>
+          <div className="empty-state-dashed">
+            <p className="muted mb-10">{ui.noSessions}</p>
+          </div>
       ) : (
         <div className="sessions-grid">
           {sortedSessions.map((session, idx) => {

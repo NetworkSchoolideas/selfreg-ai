@@ -55,12 +55,27 @@ function buildUserMetadata(user: E2ESetupUser) {
 }
 
 async function findUserByEmail(supabaseAdmin: any, email: string) {
-  const { data, error } = await supabaseAdmin.auth.admin.listUsers();
-  if (error) {
-    throw new Error(error.message);
+  const perPage = 1_000;
+
+  for (let page = 1; page <= 10; page += 1) {
+    const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const existingUser = data.users.find(
+      (user: { email?: string | null }) => (user.email || "").toLowerCase() === email.toLowerCase()
+    );
+    if (existingUser) {
+      return existingUser;
+    }
+
+    if (data.users.length < perPage) {
+      return null;
+    }
   }
 
-  return data.users.find((user: { email?: string | null }) => (user.email || "").toLowerCase() === email.toLowerCase()) || null;
+  throw new Error("E2E user lookup exceeded the supported pagination range");
 }
 
 async function ensureUser(supabaseAdmin: any, user: E2ESetupUser) {

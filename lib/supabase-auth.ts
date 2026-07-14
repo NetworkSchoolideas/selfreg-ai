@@ -34,6 +34,12 @@ export interface EmailSignUpResult {
   needsEmailConfirmation: boolean;
 }
 
+export interface EmailSignInResult {
+  data: any;
+  error: any;
+  profile: UserProfile | null;
+}
+
 interface ProfileRecord {
   id: string;
   email: string;
@@ -276,10 +282,14 @@ export async function signInWithGoogle(options?: {
 }
 
 // Sign in with Email/Password
-export async function signInWithEmail(email: string, password: string, options?: AuthProfileOptions) {
+export async function signInWithEmail(
+  email: string,
+  password: string,
+  options?: AuthProfileOptions
+): Promise<EmailSignInResult> {
   if (!supabase) {
     console.warn("[Supabase] Auth not available - missing credentials");
-    return { error: { message: "Supabase not configured" } };
+    return { data: null, error: { message: "Supabase not configured" }, profile: null };
   }
 
   const result = await supabase.auth.signInWithPassword({
@@ -288,11 +298,11 @@ export async function signInWithEmail(email: string, password: string, options?:
   });
 
   if (result.error || !result.data.user) {
-    return result;
+    return { ...result, profile: null };
   }
 
-  await ensureUserProfile(result.data.user, options);
-  return result;
+  const profile = await ensureUserProfile(result.data.user, options);
+  return { ...result, profile };
 }
 
 // Sign up with Email/Password

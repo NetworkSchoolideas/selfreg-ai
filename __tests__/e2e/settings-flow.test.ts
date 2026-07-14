@@ -45,7 +45,7 @@ async function loginAsSettingsUser(page: Page) {
   await page.getByPlaceholder("you@example.com").fill(settingsUser.email);
   await page.getByPlaceholder("Enter your password").fill(settingsUser.password);
   await page.locator('button[type="submit"]').click({ noWaitAfter: true });
-  await expect(page).toHaveURL(/\/teacher$/, { timeout: 15000 });
+  await expect(page).toHaveURL(/\/teacher\?lang=en$/, { timeout: 15000 });
 }
 
 test.describe("Settings flow", () => {

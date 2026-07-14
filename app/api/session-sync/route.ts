@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSupabaseAdmin, isSupabaseAdminAvailable } from "@/lib/supabase";
 import { clientError, serverError } from "@/lib/api-errors";
+import { requireChildOwner } from "@/lib/server-user-access";
 import type { Database } from "@/types/supabase";
 
 const SessionSyncUpsertPayload = z.object({
@@ -52,15 +53,23 @@ const SessionSyncDeletePayload = z
 
 export async function POST(request: Request) {
   try {
+    const rawPayload = await request.json();
+    const payload = rawPayload?.action === "delete"
+      ? SessionSyncDeletePayload.parse(rawPayload)
+      : SessionSyncUpsertPayload.parse(rawPayload);
+
+    const access = await requireChildOwner(payload.childId);
+    if (access.response) {
+      return access.response;
+    }
+
     if (!isSupabaseAdminAvailable()) {
       return serverError("Supabase admin client is not configured", "SUPABASE_ADMIN_UNAVAILABLE");
     }
 
-    const rawPayload = await request.json();
     const supabaseAdmin: any = getSupabaseAdmin();
 
-    if (rawPayload?.action === "delete") {
-      const payload = SessionSyncDeletePayload.parse(rawPayload);
+    if (payload.action === "delete") {
 
       const sessionLookup = supabaseAdmin
         .from("sessions")
@@ -113,22 +122,6 @@ export async function POST(request: Request) {
         deleted: true,
         sessionId: existingSession.id,
       });
-    }
-
-    const payload = SessionSyncUpsertPayload.parse(rawPayload);
-
-    const { data: existingChild, error: childError } = await supabaseAdmin
-      .from("children")
-      .select("*")
-      .eq("id", payload.childId)
-      .maybeSingle();
-
-    if (childError) {
-      return serverError(childError.message, "SUPABASE_CHILD_LOOKUP_ERROR");
-    }
-
-    if (!existingChild) {
-      return clientError("Child not found", "CHILD_NOT_FOUND");
     }
 
     const existingSessionQuery = supabaseAdmin

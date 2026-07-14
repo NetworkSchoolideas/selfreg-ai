@@ -27,6 +27,15 @@ const ChildPayload = z.object({
     .optional(),
 });
 
+async function requireTeacherChildOwnership(childId: string, teacherId: string) {
+  const child = await fetchChildFromSupabase(childId);
+  if (!child || child.teacherId !== teacherId) {
+    return null;
+  }
+
+  return child;
+}
+
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
@@ -84,6 +93,10 @@ export async function POST(request: Request) {
         return access.response;
       }
 
+      if (body.child.id && !await requireTeacherChildOwnership(body.child.id, access.teacherId!)) {
+        return clientError("Child not found for this teacher", "CHILD_NOT_FOUND");
+      }
+
       const child = await upsertChildInSupabase({
         ...body.child,
         teacherId: body.child.teacherId || access.teacherId,
@@ -97,6 +110,10 @@ export async function POST(request: Request) {
         return access.response;
       }
 
+      if (!await requireTeacherChildOwnership(body.childId, access.teacherId!)) {
+        return clientError("Child not found for this teacher", "CHILD_NOT_FOUND");
+      }
+
       await deleteChildFromSupabase(body.childId);
       return NextResponse.json({ ok: true, childId: body.childId });
     }
@@ -105,6 +122,10 @@ export async function POST(request: Request) {
     const access = await requireTeacherAccess(payload.teacherId);
     if (access.response) {
       return access.response;
+    }
+
+    if (payload.id && !await requireTeacherChildOwnership(payload.id, access.teacherId!)) {
+      return clientError("Child not found for this teacher", "CHILD_NOT_FOUND");
     }
 
     const child = await upsertChildInSupabase({
@@ -141,8 +162,7 @@ export async function DELETE(request: Request) {
       return access.response;
     }
 
-    const child = await fetchChildFromSupabase(childId);
-    if (!child || child.teacherId !== teacherId) {
+    if (!await requireTeacherChildOwnership(childId, access.teacherId!)) {
       return clientError("Child not found for this teacher", "CHILD_NOT_FOUND");
     }
 

@@ -38,12 +38,19 @@ function makeSession(updatedAt: string, finalNote = ""): Session {
 }
 
 describe("ChildrenStorage", () => {
+  const originalSupabaseEnabled = process.env.NEXT_PUBLIC_SUPABASE_ENABLED;
+
   beforeEach(() => {
     installBrowserStorageMock();
     jest.spyOn(global, "fetch").mockResolvedValue(new Response(JSON.stringify({ ok: true })));
   });
 
   afterEach(() => {
+    if (originalSupabaseEnabled === undefined) {
+      delete process.env.NEXT_PUBLIC_SUPABASE_ENABLED;
+    } else {
+      process.env.NEXT_PUBLIC_SUPABASE_ENABLED = originalSupabaseEnabled;
+    }
     jest.restoreAllMocks();
   });
 
@@ -124,5 +131,25 @@ describe("ChildrenStorage", () => {
 
     expect(ChildrenStorage.getAll()).toHaveLength(1);
     expect(ChildrenStorage.getChild(child.id)?.name).toBe("Updated Student");
+  });
+
+  it("does not report a server-backed session as saved when sync fails", async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_ENABLED = "true";
+    const child: ChildProfile = {
+      id: "server-child",
+      name: "Student",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      sessions: [],
+      realData: { fio: "Student", klass: "10A" },
+    };
+    ChildrenStorage.upsertLocalChild(child);
+    jest.spyOn(global, "fetch").mockResolvedValue(new Response("save failed", { status: 500 }));
+
+    await expect(
+      ChildrenStorage.saveSessionForChildAsync(child.id, makeSession("2026-01-02T00:00:00.000Z", "done"))
+    ).rejects.toThrow("The server could not save changes");
+
+    expect(ChildrenStorage.getSessionsForChild(child.id)).toEqual([]);
   });
 });

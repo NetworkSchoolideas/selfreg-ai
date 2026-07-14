@@ -170,6 +170,23 @@ export async function requireChildAccess(childId: string): Promise<ChildAccessRe
   return getChildAccessForContext(access.context, childId);
 }
 
+/**
+ * Grants write access only to the student who owns the child profile.
+ * Teachers can read linked data, but must not change a student's sessions.
+ */
+export async function requireChildOwner(childId: string): Promise<ChildAccessResult> {
+  const access = await requireChildAccess(childId);
+  if (access.response) {
+    return access;
+  }
+
+  if (access.context.accessKind !== "owner") {
+    return { response: createErrorResponse("Child write access denied", 403, "CHILD_WRITE_DENIED") };
+  }
+
+  return access;
+}
+
 export async function requireSessionAccess(sessionId: string): Promise<ChildAccessResult | AccessFailure> {
   const access = await requireServerUserAccess();
   if (access.response) {

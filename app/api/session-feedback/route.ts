@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSupabaseAdmin, isSupabaseAdminAvailable } from "@/lib/supabase";
 import { clientError, serverError } from "@/lib/api-errors";
+import { requireChildOwner } from "@/lib/server-user-access";
 import type { Database } from "@/types/supabase";
 
 const SessionFeedbackPayload = z.object({
@@ -18,11 +19,16 @@ const SessionFeedbackPayload = z.object({
 
 export async function POST(request: Request) {
   try {
+    const payload = SessionFeedbackPayload.parse(await request.json());
+    const access = await requireChildOwner(payload.childId);
+    if (access.response) {
+      return access.response;
+    }
+
     if (!isSupabaseAdminAvailable()) {
       return serverError("Supabase admin client is not configured", "SUPABASE_ADMIN_UNAVAILABLE");
     }
 
-    const payload = SessionFeedbackPayload.parse(await request.json());
     const supabaseAdmin: any = getSupabaseAdmin();
 
     const { data: latestSession, error: sessionError } = await supabaseAdmin

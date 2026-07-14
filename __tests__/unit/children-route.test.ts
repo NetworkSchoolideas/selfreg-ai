@@ -1,6 +1,8 @@
-import { GET, POST } from "@/app/api/children/route";
+import { DELETE, GET, POST } from "@/app/api/children/route";
 import {
+  deleteChildFromSupabase,
   ensureStudentChildForAuthUserInSupabase,
+  fetchChildFromSupabase,
   fetchChildByUserIdFromSupabase,
   fetchChildrenFromSupabase,
   upsertChildInSupabase,
@@ -193,5 +195,51 @@ describe("children route teacher access", () => {
       name: "Student",
       teacherId: "teacher-auth-1",
     });
+  });
+
+  it("rejects an update to a child owned by another teacher", async () => {
+    (requireTeacherAccess as jest.Mock).mockResolvedValue({ teacherId: "teacher-auth-1" });
+    (fetchChildFromSupabase as jest.Mock).mockResolvedValue({ id: "child-2", teacherId: "teacher-auth-2" });
+
+    const response = await POST(
+      new Request("https://selfreg.ai/api/children", {
+        method: "POST",
+        body: JSON.stringify({ id: "child-2", name: "Other student" }),
+      })
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "Child not found for this teacher",
+      code: "CHILD_NOT_FOUND",
+    });
+    expect(upsertChildInSupabase).not.toHaveBeenCalled();
+  });
+
+  it("checks ownership before action-based child deletion", async () => {
+    (requireTeacherAccess as jest.Mock).mockResolvedValue({ teacherId: "teacher-auth-1" });
+    (fetchChildFromSupabase as jest.Mock).mockResolvedValue({ id: "child-2", teacherId: "teacher-auth-2" });
+
+    const response = await POST(
+      new Request("https://selfreg.ai/api/children", {
+        method: "POST",
+        body: JSON.stringify({ action: "delete", childId: "child-2" }),
+      })
+    );
+
+    expect(response.status).toBe(400);
+    expect(deleteChildFromSupabase).not.toHaveBeenCalled();
+  });
+
+  it("checks ownership before DELETE removes a child", async () => {
+    (requireTeacherAccess as jest.Mock).mockResolvedValue({ teacherId: "teacher-auth-1" });
+    (fetchChildFromSupabase as jest.Mock).mockResolvedValue({ id: "child-2", teacherId: "teacher-auth-2" });
+
+    const response = await DELETE(new Request("https://selfreg.ai/api/children?childId=child-2&teacherId=teacher-auth-1", {
+      method: "DELETE",
+    }));
+
+    expect(response.status).toBe(400);
+    expect(deleteChildFromSupabase).not.toHaveBeenCalled();
   });
 });

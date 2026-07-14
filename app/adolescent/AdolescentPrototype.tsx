@@ -20,7 +20,7 @@ import {
   type ProviderId,
 } from "@/lib/provider-registry";
 import { ConsentModal } from "@/app/components/ConsentModal";
-import { createChildId } from "@/lib/children-storage";
+import { ChildrenStorage, createChildId } from "@/lib/children-storage";
 import { DataService } from "@/lib/data-service";
 import type { RecordItem, CompletedSession } from "@/types/session";
 import { useSessionSubmit } from "@/hooks/useSessionSubmit";
@@ -180,7 +180,7 @@ export function AdolescentPrototype() {
         const payload = await response.json();
         if (!active || !payload?.child) throw new Error("No child in response");
 
-        await DataService.saveChild(payload.child);
+        ChildrenStorage.upsertLocalChild(payload.child);
         const resumeSession = resumeSessionId
           ? payload.child.sessions?.find((item: import("@/types/session").Session) => item.sessionId === resumeSessionId)
           : null;

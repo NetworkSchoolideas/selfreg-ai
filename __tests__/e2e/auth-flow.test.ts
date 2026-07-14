@@ -80,7 +80,7 @@ test.describe("Authentication and RBAC", () => {
 
     await loginViaForm(page, "teacher", teacherUser.email, teacherUser.password);
 
-    await expect(page).toHaveURL(/\/teacher$/, { timeout: 15000 });
+    await expect(page).toHaveURL(/\/teacher\?lang=ru$/, { timeout: 15000 });
     await expect(page.locator("h1")).toContainText("инфографика");
 
     await page.goto("/student/dashboard?lang=ru");
@@ -96,7 +96,7 @@ test.describe("Authentication and RBAC", () => {
 
     await loginViaForm(page, "student", studentUser.email, studentUser.password);
 
-    await expect(page).toHaveURL(/\/student\/dashboard$/, { timeout: 15000 });
+    await expect(page).toHaveURL(/\/student\/dashboard\?lang=ru$/, { timeout: 15000 });
     await expect(page.locator("h1")).toContainText("кабинет");
     await expect(page.locator(".profile-field").filter({ hasText: "Playwright Student" }).first()).toBeVisible();
     await expect(page.getByText("не указан")).toHaveCount(0);

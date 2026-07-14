@@ -6,8 +6,8 @@
  *   2. localStorage — fallback (всегда доступен)
  *
  * Чтение:
- *   - Сначала пробуем Supabase (через fetchChildrenFromSupabase / fetchChildFromSupabase)
- *   - При ошибке или недоступности → читаем из localStorage (ChildrenStorage)
+ *   - Authenticated child/session reads go through protected API routes
+ *   - localStorage is only used for an unauthenticated mock sandbox
  *
  * Запись:
  *   - Всегда пишем в localStorage (синхронно, гарантированно)
@@ -22,10 +22,6 @@
 
 import type { AdolescentFeedback, ChildProfile, Session } from "@/types/session";
 import { ChildrenStorage } from "@/lib/children-storage";
-import {
-  fetchChildrenFromSupabase,
-  fetchChildFromSupabase,
-} from "@/lib/server-storage";
 import { isSupabaseAvailable } from "@/lib/supabase";
 import { supabase } from "@/lib/supabase-auth";
 
@@ -88,6 +84,41 @@ async function isSupabaseReady(): Promise<boolean> {
   }
 }
 
+async function fetchAuthorizedChild(childId: string): Promise<ChildProfile | null> {
+  const response = await fetch(`/api/children?childId=${encodeURIComponent(childId)}`, {
+    cache: "no-store",
+  });
+
+  if (response.status === 404) {
+    return null;
+  }
+
+  if (!response.ok) {
+    throw new Error("Could not load the saved profile from the server");
+  }
+
+  const payload = await response.json();
+  return payload?.child ?? null;
+}
+
+async function fetchAuthorizedChildren(teacherId?: string): Promise<ChildProfile[]> {
+  const searchParams = new URLSearchParams();
+  if (teacherId) {
+    searchParams.set("teacherId", teacherId);
+  }
+
+  const response = await fetch(`/api/children${searchParams.size ? `?${searchParams.toString()}` : ""}`, {
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error("Could not load students from the server");
+  }
+
+  const payload = await response.json();
+  return Array.isArray(payload?.children) ? payload.children : [];
+}
+
 // ============================================================================
 // DataService
 // ============================================================================
@@ -103,18 +134,13 @@ export const DataService = {
    * - localStorage: все дети
    */
   async getChildren(teacherId?: string): Promise<ChildProfile[]> {
-    // Пробуем Supabase
+    // Teacher data must be loaded through the role-protected route, never
+    // through a browser import of server storage or a stale local cache.
     if (await isSupabaseReady()) {
-      try {
-        const children = await fetchChildrenFromSupabase(teacherId);
-        if (children.length > 0) {
-          children.forEach((child) => ChildrenStorage.upsertLocalChild(child));
-          log(`Loaded ${children.length} children from Supabase`);
-          return children;
-        }
-      } catch (err) {
-        log("Supabase fetch failed, falling back to localStorage", err);
-      }
+      const children = await fetchAuthorizedChildren(teacherId);
+      children.forEach((child) => ChildrenStorage.upsertLocalChild(child));
+      log(`Loaded ${children.length} children from authorized API`);
+      return children;
     }
 
     // Fallback: localStorage
@@ -130,18 +156,15 @@ export const DataService = {
    * Получить одного ребёнка по ID.
    */
   async getChild(childId: string): Promise<ChildProfile | null> {
-    // Пробуем Supabase
+    // An authenticated account must use the server result. Falling back to a
+    // stale browser cache can display another state after an API failure.
     if (await isSupabaseReady()) {
-      try {
-        const child = await fetchChildFromSupabase(childId);
-        if (child) {
-          ChildrenStorage.upsertLocalChild(child);
-          log(`Loaded child ${childId} from Supabase`);
-          return child;
-        }
-      } catch (err) {
-        log("Supabase fetch failed, falling back to localStorage", err);
+      const child = await fetchAuthorizedChild(childId);
+      if (child) {
+        ChildrenStorage.upsertLocalChild(child);
+        log(`Loaded child ${childId} from authorized API`);
       }
+      return child;
     }
 
     // Fallback: localStorage
@@ -176,17 +199,11 @@ export const DataService = {
    * Получить все сессии ребёнка.
    */
   async getSessions(childId: string): Promise<Session[]> {
-    // Пробуем Supabase
+    // See getChild: authenticated session history must not silently fall back
+    // to localStorage after a server failure.
     if (await isSupabaseReady()) {
-      try {
-        const child = await fetchChildFromSupabase(childId);
-        if (child && child.sessions.length > 0) {
-          log(`Loaded ${child.sessions.length} sessions for child ${childId} from Supabase`);
-          return child.sessions;
-        }
-      } catch (err) {
-        log("Supabase fetch failed, falling back to localStorage", err);
-      }
+      const child = await fetchAuthorizedChild(childId);
+      return child?.sessions ?? [];
     }
 
     // Fallback: localStorage

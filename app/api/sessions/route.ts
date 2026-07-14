@@ -2,13 +2,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSupabaseAdmin, isSupabaseAdminAvailable } from "@/lib/supabase";
 import { clientError, serverError } from "@/lib/api-errors";
-import { requireChildAccess } from "@/lib/server-user-access";
+import { requireChildAccess, requireChildOwner } from "@/lib/server-user-access";
 
 /**
  * API route для CRUD операций с сессиями.
  *
  * GET  /api/sessions?childId=xxx — получить все сессии ребёнка
- * DELETE /api/sessions?sessionId=xxx — удалить сессию
+ * DELETE /api/sessions?childId=xxx&sessionId=xxx — удалить сессию
  *
  * Для создания/обновления сессий используется /api/session-sync (POST).
  */
@@ -93,19 +93,39 @@ export async function GET(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    if (!isSupabaseAdminAvailable()) {
-      return serverError("Supabase admin client is not configured", "SUPABASE_ADMIN_UNAVAILABLE");
-    }
-
     const url = new URL(request.url);
     const sessionId = url.searchParams.get("sessionId");
     const childId = url.searchParams.get("childId");
 
-    if (!sessionId) {
-      return clientError("sessionId is required", "VALIDATION_ERROR");
+    if (!sessionId || !childId) {
+      return clientError("childId and sessionId are required", "VALIDATION_ERROR");
+    }
+
+    const access = await requireChildOwner(childId);
+    if (access.response) {
+      return access.response;
+    }
+
+    if (!isSupabaseAdminAvailable()) {
+      return serverError("Supabase admin client is not configured", "SUPABASE_ADMIN_UNAVAILABLE");
     }
 
     const supabaseAdmin: any = getSupabaseAdmin();
+
+    const { data: session, error: lookupError } = await supabaseAdmin
+      .from("sessions")
+      .select("id")
+      .eq("id", sessionId)
+      .eq("child_id", childId)
+      .maybeSingle();
+
+    if (lookupError) {
+      return serverError(lookupError.message, "SUPABASE_SESSION_LOOKUP_ERROR");
+    }
+
+    if (!session) {
+      return clientError("Session not found", "SESSION_NOT_FOUND");
+    }
 
     // Удаляем записи сессии
     const { error: recordsError } = await supabaseAdmin
@@ -127,13 +147,11 @@ export async function DELETE(request: Request) {
       return serverError(sessionError.message, "SUPABASE_SESSION_DELETE_ERROR");
     }
 
-    // Обновляем updated_at у ребёнка
-    if (childId) {
-      await supabaseAdmin
-        .from("children")
-        .update({ updated_at: new Date().toISOString() })
-        .eq("id", childId);
-    }
+    // Обновляем updated_at у ребёнка после подтверждённого удаления его сессии.
+    await supabaseAdmin
+      .from("children")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("id", childId);
 
     return NextResponse.json({ ok: true, sessionId });
   } catch (error) {

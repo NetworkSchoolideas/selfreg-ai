@@ -69,23 +69,28 @@ function isSupabaseAvailable(): boolean {
 
 /**
  * Отправляет запрос к API для синхронизации с Supabase.
+ *
+ * Local cache is updated only after a server-backed write succeeds. Swallowing
+ * these failures made an authenticated user see a saved session that vanished
+ * after reload.
  */
 async function syncToApi(endpoint: string, body: unknown): Promise<void> {
   if (typeof window === "undefined") return;
   if (!isSupabaseAvailable()) return;
 
+  let response: Response;
   try {
-    const response = await fetch(endpoint, {
+    response = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
+  } catch {
+    throw new Error("Could not reach the server to save changes");
+  }
 
-    if (!response.ok) {
-      log(`Sync to ${endpoint} failed with status ${response.status}`);
-    }
-  } catch (err) {
-    log(`Sync to ${endpoint} failed`, err);
+  if (!response.ok) {
+    throw new Error("The server could not save changes");
   }
 }
 
@@ -116,8 +121,6 @@ export const ChildrenStorage = {
    * и дублирует в Supabase через API.
    */
   async upsertLocalChildAsync(child: Child): Promise<Child> {
-    this.upsertLocalChild(child);
-
     if (shouldSyncChild(child)) {
       await syncToApi("/api/children", {
         action: "upsert",
@@ -133,6 +136,7 @@ export const ChildrenStorage = {
       });
     }
 
+    this.upsertLocalChild(child);
     return child;
   },
 
@@ -214,12 +218,12 @@ export const ChildrenStorage = {
    * и дублирует в Supabase через API.
    */
   async saveSessionForChildAsync(childId: string, session: Session): Promise<void> {
-    this.saveSessionForChild(childId, session);
-
     const child = this.getChild(childId);
     if (shouldSyncChild(child)) {
       await syncToApi("/api/session-sync", toSessionSyncUpsertPayload(childId, session));
     }
+
+    this.saveSessionForChild(childId, session);
   },
 
   getSessionsForChild(childId: string): Session[] {
@@ -253,10 +257,9 @@ export const ChildrenStorage = {
     const session = this.getChild(childId)?.sessions.find(
       (storedSession) => storedSession.updatedAt === sessionUpdatedAt
     );
-    const removed = this.deleteSession(childId, sessionUpdatedAt);
     const child = this.getChild(childId);
 
-    if (removed && shouldSyncChild(child)) {
+    if (session && shouldSyncChild(child)) {
       await syncToApi("/api/session-sync", {
         action: "delete",
         childId,
@@ -265,7 +268,7 @@ export const ChildrenStorage = {
       });
     }
 
-    return removed;
+    return this.deleteSession(childId, sessionUpdatedAt);
   },
 
   deleteChild(childId: string): boolean {
@@ -283,13 +286,12 @@ export const ChildrenStorage = {
    */
   async deleteChildAsync(childId: string): Promise<boolean> {
     const child = this.getChild(childId);
-    const removed = this.deleteChild(childId);
 
-    if (removed && shouldSyncChild(child)) {
+    if (child && shouldSyncChild(child)) {
       await syncToApi("/api/children", { action: "delete", childId });
     }
 
-    return removed;
+    return this.deleteChild(childId);
   },
 
   attachHistoryInsight(childId: string, insight: string): boolean {
@@ -308,10 +310,6 @@ export const ChildrenStorage = {
     children[index].updatedAt = new Date().toISOString();
     writeChildren(children);
 
-    if (shouldSyncChild(children[index])) {
-      void syncToApi("/api/session-feedback", { childId, historyInsight: insight });
-    }
-
     return true;
   },
 
@@ -319,6 +317,15 @@ export const ChildrenStorage = {
    * Асинхронная версия attachHistoryInsight.
    */
   async attachHistoryInsightAsync(childId: string, insight: string): Promise<boolean> {
+    const child = this.getChild(childId);
+    if (!child || child.sessions.length === 0) {
+      return false;
+    }
+
+    if (shouldSyncChild(child)) {
+      await syncToApi("/api/session-feedback", { childId, historyInsight: insight });
+    }
+
     return this.attachHistoryInsight(childId, insight);
   },
 
@@ -338,10 +345,6 @@ export const ChildrenStorage = {
     children[index].updatedAt = new Date().toISOString();
     writeChildren(children);
 
-    if (shouldSyncChild(children[index])) {
-      void syncToApi("/api/session-feedback", { childId, adolescentFeedback: feedback });
-    }
-
     return true;
   },
 
@@ -349,6 +352,15 @@ export const ChildrenStorage = {
    * Асинхронная версия saveAdolescentFeedback.
    */
   async saveAdolescentFeedbackAsync(childId: string, feedback: AdolescentFeedback): Promise<boolean> {
+    const child = this.getChild(childId);
+    if (!child || child.sessions.length === 0) {
+      return false;
+    }
+
+    if (shouldSyncChild(child)) {
+      await syncToApi("/api/session-feedback", { childId, adolescentFeedback: feedback });
+    }
+
     return this.saveAdolescentFeedback(childId, feedback);
   },
 
