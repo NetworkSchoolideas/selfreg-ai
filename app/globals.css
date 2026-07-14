@@ -2713,6 +2713,8 @@ td {
 .home-contact h2 { max-width: 610px; margin: 0 0 10px; font-size: clamp(27px, 3.5vw, 42px); line-height: 1.02; letter-spacing: -0.045em; }
 .home-contact p { max-width: 610px; margin: 0 0 21px; color: #d9e5ef; line-height: 1.55; }
 .home-contact .button { border-color: white; background: white; color: var(--text); }
+.home-contact .button:hover,
+.home-contact .button:focus-visible { color: white; }
 
 .home-contact-person {
   display: grid;

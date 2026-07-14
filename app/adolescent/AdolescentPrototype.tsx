@@ -27,8 +27,6 @@ import { buildSessionSummary } from "@/lib/session-summary";
 import { resolveTeacherLinkContext } from "@/lib/teacher-link";
 import { supabase } from "@/lib/supabase-auth";
 
-const STORAGE_KEY = "selfreg_demo_session";
-
 /**
  * Главный компонент прототипа для подростка.
  *
@@ -239,14 +237,11 @@ export function AdolescentPrototype() {
   // Restart handler
   const handleRestart = useCallback(() => {
     resetSession();
-    setShowHistory(true);
+    setShowHistory(false);
     setFeedbackSubmitted(false);
     setSuppressClarifyForNextStage(false);
     setAnswerQualityWarning(null);
-    setKeyStatus({ isValid: null, isTesting: false, hasSavedKey: false });
-    setProviderStatus(ui.mockStatus);
-    window.localStorage.removeItem(STORAGE_KEY);
-  }, [resetSession, setAnswerQualityWarning, setProviderStatus, setSuppressClarifyForNextStage, ui.mockStatus]);
+  }, [resetSession, setAnswerQualityWarning, setSuppressClarifyForNextStage]);
 
   // Provider change handler
   const handleProviderChange = useCallback((nextProvider: ProviderId) => {
