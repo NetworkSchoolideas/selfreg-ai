@@ -143,6 +143,29 @@ test.describe("Adolescent prototype flows", () => {
     expectHealthyClient(tracker);
   });
 
+  test("preserves the active attempt when switching languages", async ({ page, request }) => {
+    const tracker = collectClientErrors(page);
+    await openRegisteredAdolescentSession(page, request);
+
+    await page.getByPlaceholder("Write 1-3 sentences").fill(
+      "I will define one clear goal and check the result calmly.",
+    );
+    await page.getByRole("button", { name: "Continue" }).click();
+    await expect(page.locator(".stage-pill")).toContainText("Step 2 of 5", { timeout: 15_000 });
+
+    const draft = "I will keep this unfinished answer while changing the interface language.";
+    await page.getByPlaceholder("Write 1-3 sentences").fill(draft);
+    await page.getByRole("link", { name: "RU" }).click();
+
+    await expect(page).toHaveURL(/lang=ru/);
+    await expect(page.locator(".stage-pill")).toContainText("Шаг 2 из 5");
+    await expect(page.getByPlaceholder("Напиши 1-3 предложения")).toHaveValue(draft);
+    await expect(page.getByPlaceholder("например: экзамен, проект")).toHaveValue("math exam preparation");
+    await expect(page.locator(".provider-box select")).toHaveValue("mock");
+
+    expectHealthyClient(tracker);
+  });
+
   test("lets a teacher run a private self-regulation session without accessing student data", async ({ page, request }) => {
     const tracker = collectClientErrors(page);
     await createAndLoginTeacher(page, request);

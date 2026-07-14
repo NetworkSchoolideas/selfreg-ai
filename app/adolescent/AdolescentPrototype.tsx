@@ -95,6 +95,7 @@ export function AdolescentPrototype() {
   const [isAcceptingConsent, setIsAcceptingConsent] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const clarifyResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const initializedSessionRouteRef = useRef<string | null>(null);
   // Never keep an in-memory draft visible after the authenticated account has
   // changed. This protects the boundary between a teacher's personal session
   // and a student's profile without coupling either workflow to the other.
@@ -154,6 +155,17 @@ export function AdolescentPrototype() {
           return;
         }
 
+        const sessionRouteKey = [
+          authSession.user.id,
+          childIdFromUrl || "current",
+          sessionMode || "default",
+          resumeSessionId || "none",
+        ].join(":");
+        const shouldInitializeSessionRoute = initializedSessionRouteRef.current !== sessionRouteKey;
+        if (shouldInitializeSessionRoute) {
+          initializedSessionRouteRef.current = sessionRouteKey;
+        }
+
         const startIndependentSession = () => {
           if (!active) return;
 
@@ -161,12 +173,14 @@ export function AdolescentPrototype() {
           // student profile. Keep the draft browser-only and namespaced to the
           // authenticated account so it cannot mix with another user's data.
           const localSessionKey = `selfreg_personal_session:${authSession.user.id}`;
-          if (sessionMode === "new" || resumeSessionId) {
-            sessionManager.clearLocalSession(localSessionKey);
-            resetSession();
-          } else {
-            const savedSession = sessionManager.loadLocalSession(localSessionKey);
-            if (savedSession) restoreSession(savedSession);
+          if (shouldInitializeSessionRoute) {
+            if (sessionMode === "new" || resumeSessionId) {
+              sessionManager.clearLocalSession(localSessionKey);
+              resetSession();
+            } else {
+              const savedSession = sessionManager.loadLocalSession(localSessionKey);
+              if (savedSession) restoreSession(savedSession);
+            }
           }
           setCurrentChildName(null);
           setCurrentChildId(null);
@@ -206,15 +220,17 @@ export function AdolescentPrototype() {
         // that has nowhere to persist locally or remotely.
         ChildrenStorage.upsertLocalChild(payload.child);
 
-        const resumeSession = resumeSessionId
-          ? payload.child.sessions?.find((item: import("@/types/session").Session) => item.sessionId === resumeSessionId)
-          : null;
-        if (resumeSession) {
-          restoreSession(resumeSession);
-          setShowHistory(false);
-        } else if (sessionMode === "new") {
-          resetSession();
-          setShowHistory(false);
+        if (shouldInitializeSessionRoute) {
+          const resumeSession = resumeSessionId
+            ? payload.child.sessions?.find((item: import("@/types/session").Session) => item.sessionId === resumeSessionId)
+            : null;
+          if (resumeSession) {
+            restoreSession(resumeSession);
+            setShowHistory(false);
+          } else if (sessionMode === "new") {
+            resetSession();
+            setShowHistory(false);
+          }
         }
 
         setCurrentChildName(payload.child.name);
