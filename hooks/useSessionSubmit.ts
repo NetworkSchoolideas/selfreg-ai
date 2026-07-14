@@ -44,6 +44,7 @@ interface UseSessionSubmitOptions {
   model?: string;
   userApiKey?: string;
   currentChildId: string | null;
+  localSessionStorageKey?: string;
   pendingHistoryInsight: string | null;
   addProcessRecord: (record: RecordItem) => RecordItem[];
   addRecordAndAdvance: (record: RecordItem) => { completed: boolean; nextRecords: RecordItem[]; nextStageId?: StageId };
@@ -67,6 +68,7 @@ export function useSessionSubmit(options: UseSessionSubmitOptions) {
     model,
     userApiKey,
     currentChildId,
+    localSessionStorageKey,
     pendingHistoryInsight,
     addProcessRecord,
     addRecordAndAdvance,
@@ -109,9 +111,9 @@ export function useSessionSubmit(options: UseSessionSubmitOptions) {
       await DataService.saveSession(currentChildId, payload);
       log("Session saved to storage");
     } else {
-      sessionManager.saveSession(payload);
+      sessionManager.saveLocalSession(payload, localSessionStorageKey);
     }
-  }, [sessionId, context, lang, currentChildId, pendingHistoryInsight]);
+  }, [sessionId, context, lang, currentChildId, localSessionStorageKey, pendingHistoryInsight]);
 
   const submitAnswer = useCallback(async (
     answer: string,

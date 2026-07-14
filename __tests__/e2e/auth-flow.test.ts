@@ -83,6 +83,12 @@ test.describe("Authentication and RBAC", () => {
     await expect(page).toHaveURL(/\/teacher\?lang=ru$/, { timeout: 15000 });
     await expect(page.locator("h1")).toContainText("инфографика");
 
+    await page.goto("/?lang=ru");
+    await expect(page.getByRole("link", { name: "Кабинет педагога" })).toHaveAttribute("href", "/teacher?lang=ru");
+    const personalSessionLinks = page.getByRole("link", { name: "Личная сессия" });
+    await expect(personalSessionLinks).toHaveCount(2);
+    await expect(personalSessionLinks.first()).toHaveAttribute("href", "/adolescent?lang=ru");
+
     await page.goto("/student/dashboard?lang=ru");
 
     await expect(page).toHaveURL(/\/teacher\?lang=ru$/, { timeout: 15000 });
@@ -105,6 +111,13 @@ test.describe("Authentication and RBAC", () => {
 
     await expect(page).toHaveURL(/\/student\/dashboard\?lang=ru$/, { timeout: 15000 });
     await expect(page.locator("h1")).toContainText("кабинет");
+
+    await page.goto("/?lang=ru");
+    await expect(page.getByRole("link", { name: "Мой кабинет" })).toHaveAttribute("href", "/student/dashboard?lang=ru");
+    await expect(page.getByRole("link", { name: "Кабинет педагога" })).toHaveCount(0);
+    await page.getByRole("tab", { name: "Педагогу" }).click();
+    await expect(page.getByText("Кабинет педагога доступен только в аккаунте педагога.")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Открыть кабинет педагога" })).toHaveCount(0);
 
     expectHealthyClient(tracker);
   });

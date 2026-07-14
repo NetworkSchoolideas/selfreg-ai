@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ConfirmDialog } from "@/app/components/ConfirmDialog";
+import { AuthButton } from "@/app/components/AuthButton";
 import { LanguageToggle } from "@/app/components/LanguageToggle";
 import { OnboardingModal } from "@/app/components/OnboardingModal";
 import { ToastNotice } from "@/app/components/ToastNotice";
@@ -312,6 +313,7 @@ export function TeacherDashboard() {
               </button>
             </div>
           )}
+          <AuthButton lang={lang} />
           <LanguageToggle />
           <button className="button secondary" onClick={exportToCsv} style={{ fontSize: 13, padding: "6px 12px" }}>
             {lang === "en" ? "📥 CSV Export" : "📥 CSV экспорт"}

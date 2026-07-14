@@ -20,15 +20,23 @@ export class SessionManager {
    * - если есть childId → через DataService (localStorage + Supabase)
    * - иначе → в localStorage (демо-режим)
    */
-  saveSession(session: Session): void {
+  saveSession(session: Session, localStorageKey = DEMO_SESSION_KEY): void {
     if (session.childId) {
       // Fire-and-forget: DataService сам синхронизирует с Supabase
       DataService.saveSession(session.childId, session).catch(() => {
         // Ошибка логируется внутри DataService
       });
     } else {
-      localStorage.setItem(DEMO_SESSION_KEY, JSON.stringify(session));
+      this.saveLocalSession(session, localStorageKey);
     }
+  }
+
+  /**
+   * Stores an independent session under an explicit browser-only key.
+   * It never reaches a student profile or server-backed analytics.
+   */
+  saveLocalSession(session: Session, localStorageKey = DEMO_SESSION_KEY): void {
+    localStorage.setItem(localStorageKey, JSON.stringify(session));
   }
 
   /**
@@ -50,8 +58,12 @@ export class SessionManager {
       )[0] ?? null;
     }
 
+    return this.loadLocalSession();
+  }
+
+  loadLocalSession(localStorageKey = DEMO_SESSION_KEY): Session | null {
     try {
-      const raw = localStorage.getItem(DEMO_SESSION_KEY);
+      const raw = localStorage.getItem(localStorageKey);
       return raw ? JSON.parse(raw) : null;
     } catch {
       return null;
@@ -66,8 +78,12 @@ export class SessionManager {
       // Для удаления нужно знать updatedAt сессии
       // Пока просто не делаем ничего — удаление сессий через API педагога
     } else {
-      localStorage.removeItem(DEMO_SESSION_KEY);
+      this.clearLocalSession();
     }
+  }
+
+  clearLocalSession(localStorageKey = DEMO_SESSION_KEY): void {
+    localStorage.removeItem(localStorageKey);
   }
 
   /**

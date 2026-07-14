@@ -23,7 +23,9 @@ import { ChildrenStorage } from "@/lib/children-storage";
 import type { RecordItem, CompletedSession } from "@/types/session";
 import { useSessionSubmit } from "@/hooks/useSessionSubmit";
 import { useSessionHistory } from "@/hooks/useSessionHistory";
+import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { buildSessionSummary } from "@/lib/session-summary";
+import { sessionManager } from "@/lib/session-manager";
 import { resolveTeacherLinkContext } from "@/lib/teacher-link";
 import { supabase } from "@/lib/supabase-auth";
 
@@ -38,6 +40,8 @@ import { supabase } from "@/lib/supabase-auth";
  */
 export function AdolescentPrototype() {
   const searchParams = useSearchParams();
+  const { user: authUser, isLoading: isAuthLoading } = useSupabaseAuth();
+  const authUserId = authUser?.id;
   const lang = (searchParams.get("lang") === "en" ? "en" : "ru") as AppLang;
   const childIdFromUrl = searchParams.get("childId");
   const sessionMode = searchParams.get("mode");
@@ -78,6 +82,9 @@ export function AdolescentPrototype() {
   const [currentChildId, setCurrentChildId] = useState<string | null>(null);
   const [isRegistered, setIsRegistered] = useState(false);
   const [isLinkedToTeacher, setIsLinkedToTeacher] = useState(false);
+  const [isIndependentSession, setIsIndependentSession] = useState(false);
+  const [independentSessionStorageKey, setIndependentSessionStorageKey] = useState<string | null>(null);
+  const [sessionOwnerId, setSessionOwnerId] = useState<string | null>(null);
   const [teacherCode, setTeacherCode] = useState(initialTeacherCode);
 
   // UI-only state
@@ -88,7 +95,18 @@ export function AdolescentPrototype() {
   const [isAcceptingConsent, setIsAcceptingConsent] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const clarifyResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hasActiveChild = isRegistered || Boolean(currentChildId);
+  // Never keep an in-memory draft visible after the authenticated account has
+  // changed. This protects the boundary between a teacher's personal session
+  // and a student's profile without coupling either workflow to the other.
+  const ownsVisibleSession = Boolean(authUserId) && sessionOwnerId === authUserId;
+  const hasSessionAccess = ownsVisibleSession && (
+    isIndependentSession || isRegistered || Boolean(currentChildId)
+  );
+  const effectiveAccessState: typeof accessState = !authUserId
+    ? (isAuthLoading ? "checking" : "signed-out")
+    : !ownsVisibleSession
+      ? "checking"
+      : accessState;
 
   const linkChildToTeacherByCode = useCallback(async (childId: string, rawTeacherCode: string) => {
     const normalizedTeacherCode = rawTeacherCode.trim();
@@ -136,6 +154,36 @@ export function AdolescentPrototype() {
           return;
         }
 
+        const startIndependentSession = () => {
+          if (!active) return;
+
+          // A teacher may use the exercise personally, but never through a
+          // student profile. Keep the draft browser-only and namespaced to the
+          // authenticated account so it cannot mix with another user's data.
+          const localSessionKey = `selfreg_personal_session:${authSession.user.id}`;
+          if (sessionMode === "new" || resumeSessionId) {
+            sessionManager.clearLocalSession(localSessionKey);
+            resetSession();
+          } else {
+            const savedSession = sessionManager.loadLocalSession(localSessionKey);
+            if (savedSession) restoreSession(savedSession);
+          }
+          setCurrentChildName(null);
+          setCurrentChildId(null);
+          setIsRegistered(false);
+          setIsLinkedToTeacher(false);
+          setIndependentSessionStorageKey(localSessionKey);
+          setSessionOwnerId(authSession.user.id);
+          setIsIndependentSession(true);
+          setShowHistory(false);
+          setAccessState("ready");
+        };
+
+        if (authSession.user.user_metadata?.preferred_role === "teacher") {
+          startIndependentSession();
+          return;
+        }
+
         const response = await fetch("/api/children?childId=current", {
           cache: "no-store",
         });
@@ -144,7 +192,7 @@ export function AdolescentPrototype() {
           return;
         }
         if (response.status === 403) {
-          if (active) setAccessState("wrong-role");
+          startIndependentSession();
           return;
         }
         if (!response.ok) throw new Error("Current student profile is unavailable");
@@ -173,6 +221,9 @@ export function AdolescentPrototype() {
         setCurrentChildId(payload.child.id);
         setIsRegistered(true);
         setIsLinkedToTeacher(Boolean(payload.child.teacherId));
+        setIndependentSessionStorageKey(null);
+        setSessionOwnerId(authSession.user.id);
+        setIsIndependentSession(false);
         const linkedByCode = await linkChildToTeacherByCode(payload.child.id, teacherCode);
         if (active && linkedByCode) setIsLinkedToTeacher(true);
         if (active) setAccessState(payload.child.consentGiven ? "ready" : "consent");
@@ -186,7 +237,7 @@ export function AdolescentPrototype() {
     return () => {
       active = false;
     };
-  }, [childIdFromUrl, teacherCode, linkChildToTeacherByCode, resetSession, restoreSession, resumeSessionId, sessionMode]);
+  }, [authUserId, childIdFromUrl, teacherCode, linkChildToTeacherByCode, resetSession, restoreSession, resumeSessionId, sessionMode]);
 
   // History is read-only in the release contour. AI summary over past sessions is deferred.
   const { pastSessions } = useSessionHistory({
@@ -209,7 +260,7 @@ export function AdolescentPrototype() {
     setSafetyNotice,
   } = useSessionSubmit({
     sessionId, context, stageId, stageTitle: stage.title, currentQuestion, records, finalNote, lang,
-    provider, model, userApiKey, currentChildId, pendingHistoryInsight: null,
+    provider, model, userApiKey, currentChildId, localSessionStorageKey: independentSessionStorageKey ?? undefined, pendingHistoryInsight: null,
     addProcessRecord,
     addRecordAndAdvance,
     setFinalNote: session.setFinalNote,
@@ -246,12 +297,15 @@ export function AdolescentPrototype() {
 
   // Restart handler
   const handleRestart = useCallback(() => {
+    if (independentSessionStorageKey) {
+      sessionManager.clearLocalSession(independentSessionStorageKey);
+    }
     resetSession();
     setShowHistory(false);
     setFeedbackSubmitted(false);
     setSuppressClarifyForNextStage(false);
     setAnswerQualityWarning(null);
-  }, [resetSession, setAnswerQualityWarning, setSuppressClarifyForNextStage]);
+  }, [independentSessionStorageKey, resetSession, setAnswerQualityWarning, setSuppressClarifyForNextStage]);
 
   // Provider change handler
   const handleProviderChange = useCallback((nextProvider: ProviderId) => {
@@ -317,9 +371,12 @@ export function AdolescentPrototype() {
 
   // Start new session after history review
   const handleStartNew = useCallback(() => {
+    if (independentSessionStorageKey) {
+      sessionManager.clearLocalSession(independentSessionStorageKey);
+    }
     resetSession();
     setShowHistory(false);
-  }, [resetSession]);
+  }, [independentSessionStorageKey, resetSession]);
 
   // Handle form submit
   const handleSubmit = useCallback(async () => {
@@ -328,6 +385,28 @@ export function AdolescentPrototype() {
       setLastClarificationFeedback(result.clarifyFeedback);
     }
   }, [submitAnswer, answer, suppressClarifyForNextStage, setLastClarificationFeedback]);
+
+  const personalCopy = lang === "en"
+    ? {
+        eyebrow: "Personal session",
+        title: "Practice self-regulation for yourself",
+        intro: "Use the same five steps to explore your own situation without accessing student data.",
+        noticeTitle: "Personal browser-only session",
+        noticeText: "This draft is isolated to your signed-in account in this browser. It is never added to student dashboards or teacher analytics.",
+        doneText: "This personal result is saved only in this browser and is not visible in student dashboards or teacher analytics.",
+      }
+    : {
+        eyebrow: "\u041b\u0438\u0447\u043d\u0430\u044f \u0441\u0435\u0441\u0441\u0438\u044f",
+        title: "\u041f\u0440\u043e\u0439\u0434\u0438\u0442\u0435 \u0441\u0435\u0441\u0441\u0438\u044e \u0441\u0430\u043c\u043e\u0440\u0435\u0433\u0443\u043b\u044f\u0446\u0438\u0438 \u0434\u043b\u044f \u0441\u0435\u0431\u044f",
+        intro: "\u0418\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0439\u0442\u0435 \u0442\u0435 \u0436\u0435 \u043f\u044f\u0442\u044c \u0448\u0430\u0433\u043e\u0432 \u0434\u043b\u044f \u0441\u0432\u043e\u0435\u0439 \u0441\u0438\u0442\u0443\u0430\u0446\u0438\u0438, \u043d\u0435 \u043e\u0442\u043a\u0440\u044b\u0432\u0430\u044f \u0434\u0430\u043d\u043d\u044b\u0435 \u0443\u0447\u0435\u043d\u0438\u043a\u043e\u0432.",
+        noticeTitle: "\u041b\u0438\u0447\u043d\u0430\u044f \u0441\u0435\u0441\u0441\u0438\u044f \u0432 \u044d\u0442\u043e\u043c \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0435",
+        noticeText: "\u0427\u0435\u0440\u043d\u043e\u0432\u0438\u043a \u0438\u0437\u043e\u043b\u0438\u0440\u043e\u0432\u0430\u043d \u0434\u043b\u044f \u0432\u0430\u0448\u0435\u0433\u043e \u0430\u043a\u043a\u0430\u0443\u043d\u0442\u0430 \u0432 \u044d\u0442\u043e\u043c \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0435. \u041e\u043d \u043d\u0435 \u043f\u043e\u043f\u0430\u0434\u0430\u0435\u0442 \u0432 \u043a\u0430\u0431\u0438\u043d\u0435\u0442\u044b \u0443\u0447\u0435\u043d\u0438\u043a\u043e\u0432 \u0438 \u043f\u0435\u0434\u0430\u0433\u043e\u0433\u0438\u0447\u0435\u0441\u043a\u0443\u044e \u0430\u043d\u0430\u043b\u0438\u0442\u0438\u043a\u0443.",
+        doneText: "\u042d\u0442\u043e\u0442 \u043b\u0438\u0447\u043d\u044b\u0439 \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442 \u0441\u043e\u0445\u0440\u0430\u043d\u044f\u0435\u0442\u0441\u044f \u0442\u043e\u043b\u044c\u043a\u043e \u0432 \u044d\u0442\u043e\u043c \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0435 \u0438 \u043d\u0435 \u0432\u0438\u0434\u0435\u043d \u0432 \u043a\u0430\u0431\u0438\u043d\u0435\u0442\u0430\u0445 \u0443\u0447\u0435\u043d\u0438\u043a\u043e\u0432 \u0438 \u043f\u0435\u0434\u0430\u0433\u043e\u0433\u0438\u0447\u0435\u0441\u043a\u043e\u0439 \u0430\u043d\u0430\u043b\u0438\u0442\u0438\u043a\u0435.",
+      };
+  const showPersonalHeader = effectiveAccessState === "ready" && isIndependentSession && hasSessionAccess;
+  const headerEyebrow = showPersonalHeader ? personalCopy.eyebrow : ui.eyebrow;
+  const headerTitle = showPersonalHeader ? personalCopy.title : ui.title;
+  const headerIntro = showPersonalHeader ? personalCopy.intro : ui.intro;
 
   return (
     <main className="shell">
@@ -342,9 +421,9 @@ export function AdolescentPrototype() {
       />
       <div className="topbar app-header">
         <div>
-          <p className="eyebrow">{ui.eyebrow}</p>
-          <h1>{ui.title}</h1>
-          <p className="muted">{ui.intro}</p>
+          <p className="eyebrow">{headerEyebrow}</p>
+          <h1>{headerTitle}</h1>
+          <p className="muted">{headerIntro}</p>
         </div>
         <div className="action-row">
           <AuthButton lang={lang} />
@@ -424,13 +503,20 @@ export function AdolescentPrototype() {
             </div>
           </div>
 
-          {accessState !== "ready" && (
+          {effectiveAccessState !== "ready" && (
             <StudentAccessGate
               lang={lang}
-              state={accessState}
+              state={effectiveAccessState}
               isAcceptingConsent={isAcceptingConsent}
               onAcceptConsent={handleAcceptConsent}
             />
+          )}
+
+          {effectiveAccessState === "ready" && isIndependentSession && (
+            <section className="panel mb-16" role="status">
+              <h3 className="mt-0">{personalCopy.noticeTitle}</h3>
+              <p className="muted mb-0">{personalCopy.noticeText}</p>
+            </section>
           )}
 
           {/* Registration form */}
@@ -488,7 +574,7 @@ export function AdolescentPrototype() {
           */}
 
           {/* History review */}
-          {accessState === "ready" && hasActiveChild && pastSessions.length > 0 && showHistory && (
+          {effectiveAccessState === "ready" && hasSessionAccess && pastSessions.length > 0 && showHistory && (
             <HistoryReviewPanel
               ui={ui}
               pastSessions={pastSessions}
@@ -498,7 +584,7 @@ export function AdolescentPrototype() {
           )}
 
           {/* Main session content */}
-          {accessState === "ready" && hasActiveChild && (!showHistory || pastSessions.length === 0) && (
+          {effectiveAccessState === "ready" && hasSessionAccess && (!showHistory || pastSessions.length === 0) && (
             <>
               <label className="field">
                 <span>{ui.context}</span>
@@ -530,9 +616,10 @@ export function AdolescentPrototype() {
                   finalNote={finalNote}
                   onRestart={handleRestart}
                   lang={lang}
-                  childIdFromUrl={childIdFromUrl}
                   currentChildId={currentChildId}
                   isLinkedToTeacher={isLinkedToTeacher}
+                  isIndependentSession={isIndependentSession}
+                  personalDoneText={personalCopy.doneText}
                   feedbackSubmitted={feedbackSubmitted}
                   onFeedbackSubmitted={() => setFeedbackSubmitted(true)}
                 />
@@ -746,19 +833,20 @@ function HistoryReviewPanel({
 }
 
 function CompletionView({
-  ui, finalNote, onRestart, lang, childIdFromUrl, currentChildId, isLinkedToTeacher, feedbackSubmitted, onFeedbackSubmitted
+  ui, finalNote, onRestart, lang, currentChildId, isLinkedToTeacher, isIndependentSession, personalDoneText, feedbackSubmitted, onFeedbackSubmitted
 }: {
   ui: ReturnType<typeof useUiText>;
   finalNote: string;
   onRestart: () => void;
   lang: AppLang;
-  childIdFromUrl: string | null;
   currentChildId: string | null;
   isLinkedToTeacher: boolean;
+  isIndependentSession: boolean;
+  personalDoneText: string;
   feedbackSubmitted: boolean;
   onFeedbackSubmitted: () => void;
 }) {
-  const effectiveChildId = childIdFromUrl || currentChildId;
+  const effectiveChildId = isIndependentSession ? null : currentChildId;
 
   return (
     <div className="final-note">
@@ -773,7 +861,9 @@ function CompletionView({
         )}
         <button className="button secondary" type="button" onClick={onRestart}>{ui.restart}</button>
       </div>
-      {effectiveChildId ? (
+      {isIndependentSession ? (
+        <p className="muted fs-13 mt-12">{personalDoneText}</p>
+      ) : effectiveChildId ? (
         <p className="muted fs-13 mt-12">
           {isLinkedToTeacher
             ? (lang === "en" ? "Results are saved in your dashboard and available to the linked teacher." : "Результаты сохранены в кабинете и доступны привязанному педагогу.")
@@ -782,7 +872,7 @@ function CompletionView({
       ) : (
         <p className="muted fs-13 mt-12">{lang === "en" ? "You can start over anytime." : "Можно начать заново в любое время."}</p>
       )}
-      {!feedbackSubmitted && effectiveChildId && <AdolescentFeedbackForm lang={lang} childIdFromUrl={childIdFromUrl} currentChildId={currentChildId} onSubmitted={onFeedbackSubmitted} />}
+      {!feedbackSubmitted && effectiveChildId && <AdolescentFeedbackForm lang={lang} childIdFromUrl={null} currentChildId={currentChildId} onSubmitted={onFeedbackSubmitted} />}
       {feedbackSubmitted && <p className="fs-13 c-accent mt-8">{lang === "en" ? "Feedback saved." : "Обратная связь сохранена."}</p>}
     </div>
   );

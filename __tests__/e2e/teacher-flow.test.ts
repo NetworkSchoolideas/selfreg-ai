@@ -40,9 +40,10 @@ test.describe("Public smoke flows", () => {
 
     await expect(page).toHaveURL(/\/\?lang=ru$/);
     await expect(page.getByRole("button", { name: "Войти" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Саморегуляция в учебной ситуации." })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Поддержка саморегуляции в период взросления" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Начать сессию" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Кабинет педагога" })).toBeVisible();
+    await expect(page.locator('a[href^="mailto:"]')).toHaveCount(0);
 
     const apiGuideTab = page.getByRole("tab", { name: "Ключ GitHub API" });
     await expect(apiGuideTab).toBeVisible();

@@ -53,6 +53,30 @@ async function createAndLoginStudent(page: Page, request: APIRequestContext) {
   return childId!;
 }
 
+async function createAndLoginTeacher(page: Page, request: APIRequestContext) {
+  const timestamp = Date.now();
+  const email = `selfreg.playwright.personal.${timestamp}@selfreg.test`;
+  const password = `SelfRegE2E!Teacher${timestamp}`;
+  const setupResponse = await request.post("/api/e2e/setup", {
+    headers: { "x-e2e-secret": e2eSecret },
+    data: {
+      users: [{ email, password, role: "teacher", fullName: `Playwright Teacher ${timestamp}` }],
+    },
+  });
+  expect(setupResponse.ok()).toBe(true);
+
+  await page.addInitScript(() => {
+    window.localStorage.clear();
+    window.localStorage.setItem("selfreg_onboarding_seen_adolescent", "1");
+  });
+
+  await page.goto("/auth/login?role=teacher&lang=en", { waitUntil: "networkidle" });
+  await page.getByPlaceholder("you@example.com").fill(email);
+  await page.locator(".password-input-row input").fill(password);
+  await page.locator('button[type="submit"]').click();
+  await expect(page).toHaveURL(/\/teacher\?lang=en$/, { timeout: 15_000 });
+}
+
 async function openRegisteredAdolescentSession(page: Page, request: APIRequestContext) {
   const childId = await createAndLoginStudent(page, request);
 
@@ -116,6 +140,37 @@ test.describe("Adolescent prototype flows", () => {
     await expect(page).toHaveURL(/\/student\/dashboard\?lang=en$/);
     await expect(page.getByText("math exam preparation").first()).toBeVisible();
 
+    expectHealthyClient(tracker);
+  });
+
+  test("lets a teacher run a private self-regulation session without accessing student data", async ({ page, request }) => {
+    const tracker = collectClientErrors(page);
+    await createAndLoginTeacher(page, request);
+
+    await page.goto("/adolescent?lang=en&mode=new", { waitUntil: "networkidle" });
+    await expect(page.getByRole("heading", { name: "Practice self-regulation for yourself" })).toBeVisible();
+    await expect(page.getByText("This draft is isolated to your signed-in account in this browser.")).toBeVisible();
+    await expect(page.getByText("student dashboards or teacher analytics")).toBeVisible();
+
+    await page.setViewportSize({ width: 375, height: 812 });
+    await expect(page.locator("main")).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+    const providerSelect = page.locator(".provider-box select");
+    await providerSelect.selectOption("mock");
+    await page.getByPlaceholder("e.g.: exam, project").fill("staff meeting preparation");
+    await page.getByPlaceholder("Write 1-3 sentences").fill(
+      "I will prepare one clear agenda item and ask for feedback after the meeting.",
+    );
+    await page.getByRole("button", { name: "Continue" }).click();
+
+    await expect(page.locator(".stage-pill")).toContainText("Step 2 of 5", { timeout: 15_000 });
+    await expect(page.getByRole("link", { name: "Open dashboard" })).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Logout" }).click();
+    await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Sign in to start a personal session" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Practice self-regulation for yourself" })).toHaveCount(0);
     expectHealthyClient(tracker);
   });
 

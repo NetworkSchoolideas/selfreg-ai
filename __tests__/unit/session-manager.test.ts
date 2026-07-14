@@ -89,4 +89,18 @@ describe("SessionManager", () => {
 
     expect(manager.loadSession()).toBeNull();
   });
+
+  it("keeps an independent local session separate from the default demo session", () => {
+    const manager = new SessionManager();
+    const personalKey = "selfreg_personal_session:teacher-1";
+    const session = makeSession("2026-01-04T00:00:00.000Z", "personal");
+
+    manager.saveLocalSession(session, personalKey);
+
+    expect(manager.loadLocalSession(personalKey)).toEqual(session);
+    expect(manager.loadSession()).toBeNull();
+
+    manager.clearLocalSession(personalKey);
+    expect(manager.loadLocalSession(personalKey)).toBeNull();
+  });
 });
