@@ -12,19 +12,20 @@ export interface KeyStatus {
 interface ApiKeyManagerProps {
   lang: "ru" | "en";
   provider: string;
+  model?: string;
   onKeyChange: (key: string) => void;
   onStatusChange?: (status: KeyStatus) => void;
 }
 
-type KeyStorage = "local" | "session";
+export type KeyStorage = "local" | "session";
 
-function readSavedKey(provider: string): { key: string; storage: KeyStorage } {
-  if (typeof window === "undefined") return { key: "", storage: "local" };
-  const local = localStorage.getItem(`api_key_${provider}`) ?? "";
-  if (local) return { key: local, storage: "local" };
+export function readSavedKey(provider: string): { key: string; storage: KeyStorage } {
+  if (typeof window === "undefined") return { key: "", storage: "session" };
   const session = sessionStorage.getItem(`api_key_${provider}`) ?? "";
   if (session) return { key: session, storage: "session" };
-  return { key: "", storage: "local" };
+  const local = localStorage.getItem(`api_key_${provider}`) ?? "";
+  if (local) return { key: local, storage: "local" };
+  return { key: "", storage: "session" };
 }
 
 function saveKey(provider: string, key: string, storage: KeyStorage) {
@@ -43,15 +44,12 @@ function removeKey(provider: string) {
   sessionStorage.removeItem(`api_key_${provider}`);
 }
 
-export function ApiKeyManager({ lang, provider, onKeyChange, onStatusChange }: ApiKeyManagerProps) {
-  const saved = readSavedKey(provider);
+export function ApiKeyManager({ lang, provider, model, onKeyChange, onStatusChange }: ApiKeyManagerProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [key, setKey] = useState(saved.key);
-  const [storage, setStorage] = useState<KeyStorage>(saved.storage);
-  const [isSaved, setIsSaved] = useState(Boolean(saved.key));
-  const [isValid, setIsValid] = useState<boolean | null>(
-    provider !== "gigachat" || !saved.key || validateGigaChatKey(saved.key) ? null : false,
-  );
+  const [key, setKey] = useState("");
+  const [storage, setStorage] = useState<KeyStorage>("session");
+  const [isSaved, setIsSaved] = useState(false);
+  const [isValid, setIsValid] = useState<boolean | null>(null);
   const [testStatus, setTestStatus] = useState<string | null>(null);
   const [isTesting, setIsTesting] = useState(false);
 
@@ -60,8 +58,8 @@ export function ApiKeyManager({ lang, provider, onKeyChange, onStatusChange }: A
       title: lang === "en" ? "API key settings" : "Настройки API-ключа",
       description:
         lang === "en"
-          ? "Save a key for the selected provider."
-          : "Сохраните ключ для выбранного провайдера.",
+          ? "Use your own key only for the selected provider. It stays in this tab by default."
+          : "Используйте собственный ключ только для выбранного провайдера. По умолчанию он остаётся только в этой вкладке.",
       placeholder:
         lang === "en"
           ? provider === "gigachat"
@@ -90,8 +88,8 @@ export function ApiKeyManager({ lang, provider, onKeyChange, onStatusChange }: A
       invalidKey: lang === "en" ? "Invalid key" : "Ключ не прошёл проверку",
       note:
         lang === "en"
-          ? "For the demo, the key is stored only locally. Do not enter a personal key on shared devices."
-          : "В демо ключ хранится только локально. Не вводите личный ключ на общем устройстве.",
+          ? "The key is sent only with the current request and is never stored on the server. Do not enter a personal key on shared devices."
+          : "Ключ передаётся только с текущим запросом и не сохраняется на сервере. Не вводите личный ключ на общем устройстве.",
       gigachatNote:
         lang === "en"
           ? "GigaChat expects an Authorization Key in base64(Client_ID:Client_Secret) format."
@@ -100,16 +98,15 @@ export function ApiKeyManager({ lang, provider, onKeyChange, onStatusChange }: A
         lang === "en"
           ? "Test the key before starting a live session."
           : "Проверьте ключ перед запуском прототипа.",
-      storageLabel:
+      persistentStorageLabel:
         lang === "en"
-          ? "Save for this session only"
-          : "Сохранить только на эту сессию",
-      storageHint:
+          ? "Keep this key in this browser after closing the tab"
+          : "Сохранить ключ в браузере после закрытия вкладки",
+      persistentStorageHint:
         lang === "en"
-          ? "Session storage: key is cleared when you close the browser tab"
-          : "На сессию: ключ удалится при закрытии вкладки",
+          ? "Off by default. When off, the key is cleared when you close the tab."
+          : "По умолчанию выключено. Если не включать, ключ удалится при закрытии вкладки.",
       notTested: lang === "en" ? "not tested" : "не проверен",
-      autoTest: lang === "en" ? "Auto-verifying..." : "Автопроверка...",
       testFailed: lang === "en" ? "Test failed" : "Ошибка проверки",
     }),
     [lang, provider],
@@ -125,10 +122,24 @@ export function ApiKeyManager({ lang, provider, onKeyChange, onStatusChange }: A
     setKey(next.key);
     setStorage(next.storage);
     setIsSaved(Boolean(next.key));
-    setIsValid(null);
+    setIsValid(provider !== "gigachat" || !next.key || validateGigaChatKey(next.key) ? null : false);
     setTestStatus(null);
     onKeyChange(next.key);
   }
+
+  // Storage is browser-only. Loading it after hydration avoids a server/client
+  // mismatch and keeps a resumed exercise request in sync with the visible key.
+  useEffect(() => {
+    queueMicrotask(() => {
+      const next = readSavedKey(provider);
+      setKey(next.key);
+      setStorage(next.storage);
+      setIsSaved(Boolean(next.key));
+      setIsValid(provider !== "gigachat" || !next.key || validateGigaChatKey(next.key) ? null : false);
+      setTestStatus(null);
+      onKeyChange(next.key);
+    });
+  }, [onKeyChange, provider]);
 
   function handleExpand() {
     syncFromStorage();
@@ -184,6 +195,7 @@ export function ApiKeyManager({ lang, provider, onKeyChange, onStatusChange }: A
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           provider,
+          model,
           userApiKey: keyToTest,
           lang,
         }),
@@ -193,33 +205,7 @@ export function ApiKeyManager({ lang, provider, onKeyChange, onStatusChange }: A
     } catch {
       return false;
     }
-  }, [lang, provider]);
-
-  // Auto-test saved key when the selected provider has a saved key.
-  useEffect(() => {
-    if (!saved.key || provider === "mock") return;
-
-    queueMicrotask(() => {
-      setTestStatus(ui.autoTest);
-      setIsTesting(true);
-    });
-    performKeyTest(saved.key)
-      .then((ok) => {
-        queueMicrotask(() => {
-          setIsValid(ok);
-          setTestStatus(ok ? ui.validKey : `${ui.testFailed}: ${ui.invalidKey}`);
-        });
-      })
-      .catch(() => {
-        queueMicrotask(() => {
-          setIsValid(false);
-          setTestStatus(`${ui.testFailed}: ${ui.invalidKey}`);
-        });
-      })
-      .finally(() => {
-        queueMicrotask(() => setIsTesting(false));
-      });
-  }, [performKeyTest, provider, saved.key, ui.autoTest, ui.invalidKey, ui.testFailed, ui.validKey]);
+  }, [lang, model, provider]);
 
   async function handleTestKey() {
     const trimmedKey = key.trim();
@@ -339,7 +325,7 @@ export function ApiKeyManager({ lang, provider, onKeyChange, onStatusChange }: A
             }}
           />
 
-          {/* Storage toggle */}
+          {/* Persistent browser storage is an explicit opt-in; session storage is the default. */}
           <label
             style={{
               display: "flex",
@@ -353,12 +339,12 @@ export function ApiKeyManager({ lang, provider, onKeyChange, onStatusChange }: A
           >
             <input
               type="checkbox"
-              checked={storage === "session"}
-              onChange={(e) => setStorage(e.target.checked ? "session" : "local")}
+              checked={storage === "local"}
+              onChange={(e) => setStorage(e.target.checked ? "local" : "session")}
             />
-            <span>{ui.storageLabel}</span>
+            <span>{ui.persistentStorageLabel}</span>
             <span style={{ fontSize: 11, color: "var(--muted)" }}>
-              ({ui.storageHint})
+              ({ui.persistentStorageHint})
             </span>
           </label>
 

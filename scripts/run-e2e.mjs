@@ -92,7 +92,14 @@ async function stopProcessTree(child) {
 }
 
 async function runPlaywright() {
-  const testProcess = spawnProcess(playwrightCommand, playwrightArgs);
+  const testProcess = spawnProcess(playwrightCommand, playwrightArgs, {
+    // The remote E2E fixture provisions and confirms Supabase Auth users.
+    // Keep the standard command serial so local runs do not overload it.
+    env: {
+      ...process.env,
+      CI: process.env.CI || "1",
+    },
+  });
 
   return await new Promise((resolve) => {
     testProcess.on("exit", (code, signal) => {

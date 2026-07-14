@@ -85,6 +85,7 @@ export class AIService {
         feedback: data.feedback || "",
         finalNote: data.dashboardNote || "",
         responseMode: (data.responseMode as ResponseMode) || "mock",
+        ...(data.safety ? { safety: data.safety } : {}),
       };
     } catch (error) {
       if (controller.signal.aborted) {

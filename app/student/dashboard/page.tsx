@@ -335,7 +335,9 @@ function StudentDashboardContent() {
     ? sortedSessions.find((session) => getSessionKey(session) === selectedSessionId) ?? null
     : null;
   const newSessionHref = `/adolescent?childId=${effectiveChildId}&mode=new&lang=${lang}`;
-  const insightHref = `/adolescent?childId=${effectiveChildId}&lang=${lang}`;
+  const missingInsightText = lang === "en"
+    ? "No recommendation is available for this session."
+    : "Для этой сессии пока нет рекомендации.";
 
   const handleConfirmArchiveSession = async () => {
     if (!archiveCandidate) {
@@ -662,15 +664,6 @@ function StudentDashboardContent() {
                             {t.continueSession}
                           </Link>
                         )}
-                        {isCompleted && !session.historyInsight && (
-                          <Link
-                            href={insightHref}
-                            className="button secondary no-underline"
-                            style={{ padding: "8px 12px" }}
-                          >
-                            {t.getAiInsight}
-                          </Link>
-                        )}
                         <button
                           type="button"
                           className="button secondary"
@@ -724,17 +717,8 @@ function StudentDashboardContent() {
               <div className="profile-field mb-16" style={{ background: selectedSession.historyInsight ? "#f0fdf4" : "#fff7ed" }}>
                 <div className="fs-14 fw-600 mb-6">{t.aiInsight}</div>
                 <div className="fs-14 c-muted">
-                  {selectedSession.historyInsight || t.aiInsightMissing}
+                  {selectedSession.historyInsight || missingInsightText}
                 </div>
-                {!selectedSession.historyInsight && (
-                  <Link
-                    href={insightHref}
-                    className="button secondary no-underline mt-12"
-                    style={{ padding: "8px 12px", display: "inline-flex" }}
-                  >
-                    {t.getAiInsight}
-                  </Link>
-                )}
               </div>
 
               <h3 className="fs-16 mb-12">{t.answers}</h3>

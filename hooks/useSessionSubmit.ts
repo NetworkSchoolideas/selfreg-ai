@@ -11,7 +11,7 @@ import { makeMockFeedback } from "@/lib/selfreg-model";
 import type { ProviderId } from "@/lib/provider-registry";
 import type { AppLang } from "@/lib/app-i18n";
 import type { StageId } from "@/lib/selfreg-model";
-import type { RecordItem, Session, AiStageResult, AnswerQualityResult } from "@/types/session";
+import type { RecordItem, Session, AiStageResult, AnswerQualityResult, SafetyResult } from "@/types/session";
 
 const log = (message: string) => {
   if (process.env.NODE_ENV === "development") {
@@ -28,6 +28,7 @@ export interface SubmitResult {
   responseMode?: string;
   clarificationNeeded?: boolean;
   clarifyFeedback?: string;
+  safety?: SafetyResult;
 }
 
 interface UseSessionSubmitOptions {
@@ -77,6 +78,7 @@ export function useSessionSubmit(options: UseSessionSubmitOptions) {
 
   const [isSending, setIsSending] = useState(false);
   const [answerQualityWarning, setAnswerQualityWarning] = useState<string | null>(null);
+  const [safetyNotice, setSafetyNotice] = useState<SafetyResult | null>(null);
   const inFlightRef = useRef(false);
 
   const validateAnswer = useCallback((answer: string): AnswerQualityResult => {
@@ -214,6 +216,17 @@ export function useSessionSubmit(options: UseSessionSubmitOptions) {
         }
       }
 
+      if (apiResult.safety) {
+        setProviderStatus(apiResult.safety.message);
+        setAnswerQualityWarning(apiResult.safety.message);
+        setSafetyNotice(apiResult.safety);
+        return {
+          success: false,
+          error: apiResult.safety.message,
+          safety: apiResult.safety,
+        };
+      }
+
       if (apiResult.scenario === "clarify") {
         const clarifyRecord: RecordItem = {
           stageId,
@@ -324,8 +337,10 @@ export function useSessionSubmit(options: UseSessionSubmitOptions) {
   return {
     isSending,
     answerQualityWarning,
+    safetyNotice,
     submitAnswer,
     saveSessionSnapshot: saveSession,
     setAnswerQualityWarning,
+    setSafetyNotice,
   };
 }

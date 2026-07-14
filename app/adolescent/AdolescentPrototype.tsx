@@ -19,7 +19,6 @@ import {
   isProviderEnabledInRelease,
   type ProviderId,
 } from "@/lib/provider-registry";
-import { ConsentModal } from "@/app/components/ConsentModal";
 import { ChildrenStorage, createChildId } from "@/lib/children-storage";
 import { DataService } from "@/lib/data-service";
 import type { RecordItem, CompletedSession } from "@/types/session";
@@ -90,7 +89,6 @@ export function AdolescentPrototype() {
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
   const [justClearedClarify, setJustClearedClarify] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
-  const [showConsentModal, setShowConsentModal] = useState(false);
   const [childLookupAttempted, setChildLookupAttempted] = useState(false);
   const [childLookupFailed, setChildLookupFailed] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -126,17 +124,6 @@ export function AdolescentPrototype() {
       const seen = localStorage.getItem("selfreg_onboarding_seen_adolescent");
       if (!seen) setShowOnboarding(true);
     });
-  }, []);
-
-  // Consent handlers
-  const handleConsent = useCallback(() => {
-    setConsentGiven(true);
-    setShowConsentModal(false);
-  }, []);
-
-  const handleDeclineConsent = useCallback(() => {
-    setConsentGiven(false);
-    setShowConsentModal(false);
   }, []);
 
   // Load child info from URL on mount
@@ -226,7 +213,15 @@ export function AdolescentPrototype() {
 
   // Submit hook
   const [providerStatus, setProviderStatus] = useState(`${DEFAULT_LIVE_PROVIDER}: ready`);
-  const { isSending, answerQualityWarning, submitAnswer, saveSessionSnapshot, setAnswerQualityWarning } = useSessionSubmit({
+  const {
+    isSending,
+    answerQualityWarning,
+    safetyNotice,
+    submitAnswer,
+    saveSessionSnapshot,
+    setAnswerQualityWarning,
+    setSafetyNotice,
+  } = useSessionSubmit({
     sessionId, context, stageId, stageTitle: stage.title, currentQuestion, records, finalNote, lang,
     provider, model, userApiKey, currentChildId, pendingHistoryInsight: null,
     addProcessRecord,
@@ -455,11 +450,12 @@ export function AdolescentPrototype() {
               </label>
             </div>
 
-            {/* API Key Manager - persistent per user per provider */}
+            {/* API Key Manager - session-only by default, persistent browser storage is opt-in. */}
             <ApiKeyManager
               lang={lang}
               provider={provider}
-              onKeyChange={(savedKey) => setUserApiKey(savedKey)}
+              model={model}
+              onKeyChange={setUserApiKey}
               onStatusChange={handleKeyStatusChange}
             />
 
@@ -555,7 +551,14 @@ export function AdolescentPrototype() {
                 <input value={context} onChange={(e) => setContext(e.target.value)} placeholder={ui.contextPlaceholder} />
               </label>
 
-              <div className="progress-line" aria-label={`Progress ${progress}%`}>
+              <div
+                className="progress-line"
+                role="progressbar"
+                aria-label={lang === "en" ? "Session progress" : "Прогресс сессии"}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={progress}
+              >
                 <span style={{ width: `${progress}%` }} />
               </div>
 
@@ -589,6 +592,11 @@ export function AdolescentPrototype() {
                   provider={provider}
                   isSending={isSending}
                   answerQualityWarning={answerQualityWarning}
+                  safetyNotice={safetyNotice}
+                  onSafetyNoticeClear={() => {
+                    setSafetyNotice(null);
+                    setAnswerQualityWarning(null);
+                  }}
                   justClearedClarify={justClearedClarify}
                   onClearAndRetry={handleClearClarificationAndRetry}
                   onSkip={handleSkipClarification}
@@ -734,6 +742,11 @@ function CompletionView({
       <p>{finalNote}</p>
       <p className="muted">{ui.doneText}</p>
       <div className="action-row mt-16">
+        {effectiveChildId && (
+          <Link className="button" href={`/student/dashboard?lang=${lang}`}>
+            {lang === "en" ? "Open dashboard" : "Открыть кабинет"}
+          </Link>
+        )}
         <button className="button secondary" type="button" onClick={onRestart}>{ui.restart}</button>
       </div>
       {effectiveChildId ? (
@@ -749,7 +762,7 @@ function CompletionView({
 
 function SessionForm({
   ui, currentQuestion, answer, updateAnswer, lastClarificationFeedback, lang, provider, isSending,
-  answerQualityWarning, justClearedClarify, onClearAndRetry, onSkip, onSubmit, onRestart,
+  answerQualityWarning, safetyNotice, onSafetyNoticeClear, justClearedClarify, onClearAndRetry, onSkip, onSubmit, onRestart,
   onNeedClarification, onGoBack, canGoBack
 }: {
   ui: ReturnType<typeof useUiText>;
@@ -761,6 +774,8 @@ function SessionForm({
   provider: ProviderId;
   isSending: boolean;
   answerQualityWarning: string | null;
+  safetyNotice: import("@/types/session").SafetyResult | null;
+  onSafetyNoticeClear: () => void;
   justClearedClarify: boolean;
   onClearAndRetry: () => void;
   onSkip: () => void;
@@ -786,10 +801,16 @@ function SessionForm({
 
       <label className="field">
         <span>{ui.answerLabel}</span>
-        <textarea value={answer} onChange={(e) => { updateAnswer(e.target.value); if (answerQualityWarning) updateAnswer(e.target.value); }} rows={5} placeholder={ui.answerPlaceholder} />
+        <textarea value={answer} onChange={(e) => { updateAnswer(e.target.value); onSafetyNoticeClear(); }} rows={5} placeholder={ui.answerPlaceholder} />
       </label>
 
-      {answerQualityWarning && (
+      {safetyNotice && (
+        <div role="alert" style={{ background: "#fff1f2", border: "2px solid #e11d48", borderRadius: 8, padding: "12px 14px", fontSize: 14, marginBottom: 12, color: "#881337" }}>
+          {safetyNotice.message}
+        </div>
+      )}
+
+      {answerQualityWarning && !safetyNotice && (
         <div style={{ background: '#fff8e1', border: '1px solid #f0d36f', borderRadius: 6, padding: '8px 12px', fontSize: 13, marginBottom: 8, color: '#664e03' }}>
           {answerQualityWarning}
         </div>

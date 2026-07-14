@@ -2,9 +2,14 @@ const analyzeMock = jest.fn();
 const getAiProviderMock = jest.fn(() => ({
   analyze: analyzeMock,
 }));
+const requireServerUserAccessMock = jest.fn();
 
 jest.mock("@/lib/ai-provider", () => ({
   getAiProvider: (provider?: string) => getAiProviderMock(provider),
+}));
+
+jest.mock("@/lib/server-user-access", () => ({
+  requireServerUserAccess: () => requireServerUserAccessMock(),
 }));
 
 import { POST } from "@/app/api/provider-check/route";
@@ -12,6 +17,9 @@ import { POST } from "@/app/api/provider-check/route";
 describe("provider-check route", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    requireServerUserAccessMock.mockResolvedValue({
+      context: { userId: "authenticated-user", role: "student", email: "student@example.test", fullName: null },
+    });
     analyzeMock.mockResolvedValue({
       scenario: "A",
       feedback: "Provider is working",
@@ -45,7 +53,7 @@ describe("provider-check route", () => {
     expect(getAiProviderMock).toHaveBeenCalledWith("mock");
     expect(analyzeMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        userId: "provider-check",
+        userId: "authenticated-user",
         currentStage: "1",
         provider: "mock",
         model: "test-model",
@@ -53,5 +61,21 @@ describe("provider-check route", () => {
         lang: "en",
       })
     );
+  });
+
+  it("rejects an anonymous provider check", async () => {
+    requireServerUserAccessMock.mockResolvedValue({
+      response: new Response(JSON.stringify({ error: "Authentication required" }), { status: 401 }),
+    });
+
+    const response = await POST(
+      new Request("https://selfreg.ai/api/provider-check", {
+        method: "POST",
+        body: JSON.stringify({ provider: "mock" }),
+      }),
+    );
+
+    expect(response.status).toBe(401);
+    expect(analyzeMock).not.toHaveBeenCalled();
   });
 });

@@ -1,6 +1,6 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { ApiKeyManager } from "@/app/components/ApiKeyManager";
+import { ApiKeyManager, readSavedKey } from "@/app/components/ApiKeyManager";
 
 function createStorageMock(initial: Record<string, string> = {}) {
   const store = new Map(Object.entries(initial));
@@ -43,23 +43,16 @@ describe("ApiKeyManager", () => {
     expect(html).toContain("not set");
   });
 
-  it("shows saved status when a provider key exists", () => {
+  it("loads a provider key from persistent browser storage", () => {
     installStorage({ api_key_openrouter: "sk-test-key" });
 
-    const html = renderToStaticMarkup(
-      <ApiKeyManager lang="en" provider="openrouter" onKeyChange={jest.fn()} />
-    );
-
-    expect(html).toContain("Saved");
+    expect(readSavedKey("openrouter")).toEqual({ key: "sk-test-key", storage: "local" });
   });
 
-  it("shows invalid status for malformed saved GigaChat keys", () => {
+  it("loads a session key before an older persistent key", () => {
     installStorage({ api_key_gigachat: "not-base64" });
+    installStorage({ api_key_openrouter: "old-key" }, { api_key_openrouter: "session-key" });
 
-    const html = renderToStaticMarkup(
-      <ApiKeyManager lang="en" provider="gigachat" onKeyChange={jest.fn()} />
-    );
-
-    expect(html).toContain("invalid");
+    expect(readSavedKey("openrouter")).toEqual({ key: "session-key", storage: "session" });
   });
 });

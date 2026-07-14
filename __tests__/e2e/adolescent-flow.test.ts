@@ -69,6 +69,21 @@ async function openRegisteredAdolescentSession(page: Page, request: APIRequestCo
 test.describe("Adolescent prototype flows", () => {
   test.setTimeout(90_000);
 
+  test("shows the pre-start safety disclosure and closes it from the keyboard", async ({ page }) => {
+    const tracker = collectClientErrors(page);
+    await page.addInitScript(() => window.localStorage.clear());
+    await page.goto("/adolescent?lang=en", { waitUntil: "networkidle" });
+
+    const dialog = page.getByRole("dialog", { name: "Welcome to SelfReg AI" });
+    await expect(dialog).toContainText("not therapy or emergency help");
+    await expect(dialog).toContainText("teacher linked to your account");
+    await expect(dialog).toContainText("Do not enter passwords");
+    await page.getByRole("button", { name: "Got it, let's start!" }).press("Enter");
+    await expect(dialog).toBeHidden();
+
+    expectHealthyClient(tracker);
+  });
+
   test("completes the full five-stage mock cycle", async ({ page, request }) => {
     const tracker = collectClientErrors(page);
     await openRegisteredAdolescentSession(page, request);
@@ -86,7 +101,13 @@ test.describe("Adolescent prototype flows", () => {
 
     await expect(page.getByText("Session completed")).toBeVisible({ timeout: 15000 });
     await expect(page.getByRole("heading", { name: "Summary" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Open dashboard" })).toBeVisible();
     await expect(page.locator(".record")).toHaveCount(5);
+
+    await page.setViewportSize({ width: 375, height: 812 });
+    await expect(page.getByRole("link", { name: "Open dashboard" })).toBeVisible();
+    await page.getByRole("link", { name: "Open dashboard" }).click();
+    await expect(page).toHaveURL(/\/student\/dashboard\?lang=en$/);
 
     expectHealthyClient(tracker);
   });
@@ -107,6 +128,19 @@ test.describe("Adolescent prototype flows", () => {
     ]);
 
     await expect(page.locator(".stage-pill")).toContainText("Step 2 of 5", { timeout: 15000 });
+    expectHealthyClient(tracker);
+  });
+
+  test("stops the exercise for a safety-risk answer without saving progress", async ({ page, request }) => {
+    const tracker = collectClientErrors(page);
+    await openRegisteredAdolescentSession(page, request);
+
+    await page.getByPlaceholder("Write 1-3 sentences").fill("I do not want to live anymore.");
+    await page.getByRole("button", { name: "Continue" }).click();
+
+    await expect(page.getByRole("alert").filter({ hasText: "contact a trusted adult" })).toContainText("contact a trusted adult", { timeout: 15000 });
+    await expect(page.locator(".stage-pill")).toContainText("Step 1 of 5");
+    await expect(page.locator(".record")).toHaveCount(0);
     expectHealthyClient(tracker);
   });
 });

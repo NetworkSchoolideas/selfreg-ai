@@ -96,12 +96,21 @@ export interface AdvanceResult {
 /** Режим получения ответа ИИ. */
 export type ResponseMode = "mock" | "llm-json" | "llm-text" | "llm-fallback";
 
+export type SafetyRiskCategory = "self_harm" | "immediate_danger" | "violence_threat";
+
+export interface SafetyResult {
+  blocked: true;
+  category: SafetyRiskCategory;
+  message: string;
+}
+
 /** Нормализованный результат одного обращения к AI. */
 export interface AiStageResult {
   scenario: Scenario;
   feedback: string;
   finalNote: string;
   responseMode: ResponseMode;
+  safety?: SafetyResult;
 }
 
 /** Элемент истории, передаваемый в /api/chat. */

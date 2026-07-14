@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+
 interface OnboardingModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -133,25 +135,109 @@ function getContent(lang: "ru" | "en", type: "adolescent" | "teacher") {
 }
 
 export function OnboardingModal({ isOpen, onClose, lang, type }: OnboardingModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const focusTimer = window.setTimeout(() => closeButtonRef.current?.focus(), 0);
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+
+    document.addEventListener("keydown", onEscape);
+    return () => {
+      window.clearTimeout(focusTimer);
+      document.removeEventListener("keydown", onEscape);
+      previouslyFocused?.focus();
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const content = getContent(lang, type);
+  const disclosure = type === "adolescent"
+    ? {
+        title: lang === "en" ? "Before you start" : "Перед началом",
+        items: lang === "en"
+          ? [
+              "This is a learning exercise for self-reflection, not therapy or emergency help.",
+              "Your saved answers can be viewed by the teacher linked to your account.",
+              "Do not enter passwords, access codes, or other secrets.",
+              "If you are in danger, stop the exercise and contact a trusted adult or local emergency services.",
+            ]
+          : [
+              "Это учебное упражнение для саморефлексии, а не терапия и не экстренная помощь.",
+              "Сохранённые ответы может просматривать педагог, привязанный к вашему аккаунту.",
+              "Не вводите пароли, коды доступа и другие секреты.",
+              "Если вы в опасности, остановите упражнение и обратитесь к взрослому, которому доверяете, или в местные экстренные службы.",
+            ],
+      }
+    : null;
+  const notes = type === "adolescent"
+    ? lang === "en"
+      ? [
+          "Choose Mock mode if you want to complete the exercise without an external AI service.",
+          'If a question is unclear, use "Need clarification" to get a simpler prompt.',
+          "For the demo, use a fictional learning situation and a pseudonym.",
+        ]
+      : [
+          "Выберите Mock-режим, если хотите пройти упражнение без внешнего ИИ-сервиса.",
+          'Если вопрос непонятен, нажмите «Не понял вопрос», чтобы получить более простую формулировку.',
+          "Для демонстрации используйте вымышленную учебную ситуацию и псевдоним.",
+        ]
+    : content.notes;
+
+  const handleDialogKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Tab") return;
+
+    const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    );
+    if (!focusable?.length) return;
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="onboarding-title"
         className="modal-content"
         onClick={(event) => event.stopPropagation()}
+        onKeyDown={handleDialogKeyDown}
         style={{ maxWidth: 520 }}
       >
-        <button onClick={onClose} className="modal-close">
+        <button ref={closeButtonRef} onClick={onClose} className="modal-close" aria-label={lang === "en" ? "Close onboarding" : "Закрыть подсказку"}>
           x
         </button>
 
-        <h2 className="m-0 mb-8 fs-20">{content.title}</h2>
+        <h2 id="onboarding-title" className="m-0 mb-8 fs-20">{content.title}</h2>
         <p className="m-0 mb-20 fs-14 c-muted" style={{ lineHeight: 1.5 }}>
           {content.subtitle}
         </p>
+
+        {disclosure && (
+          <section className="onboarding-disclosure" aria-labelledby="onboarding-disclosure-title">
+            <h3 id="onboarding-disclosure-title">{disclosure.title}</h3>
+            <ul>
+              {disclosure.items.map((item) => <li key={item}>{item}</li>)}
+            </ul>
+          </section>
+        )}
 
         <div className="onboarding-body">
           {content.steps.map((step, index) => (
@@ -165,9 +251,9 @@ export function OnboardingModal({ isOpen, onClose, lang, type }: OnboardingModal
           ))}
         </div>
 
-        {content.notes.length > 0 && (
+        {notes.length > 0 && (
           <div className="mt-16" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {content.notes.map((note, index) => (
+            {notes.map((note, index) => (
               <p key={index} className="m-0 fs-13 c-muted" style={{ lineHeight: 1.4 }}>
                 {note}
               </p>

@@ -20,6 +20,19 @@ npx playwright install
 npm run test:e2e
 ```
 
+### Opt-in Live BYOK Scenario Test
+
+`__tests__/e2e/live-ai-flow.test.ts` checks two adjacent live responses: a normal academic answer must produce scenario `A`, and an overload/stuck answer on the next stage must produce `B`. It is skipped unless `SELFREG_LIVE_AI_API_KEY` is supplied only in the current shell.
+
+```powershell
+$env:SELFREG_LIVE_AI_API_KEY = "<your temporary provider key>"
+$env:SELFREG_LIVE_AI_PROVIDER = "github-models"
+$env:SELFREG_LIVE_AI_MODEL = "openai/gpt-4o-mini"
+npx.cmd playwright test __tests__/e2e/live-ai-flow.test.ts
+```
+
+The test disables trace, screenshot, and video collection. Never put the key in `.env` committed to the repository, test code, or CI logs.
+
 ### All Tests
 
 ```bash

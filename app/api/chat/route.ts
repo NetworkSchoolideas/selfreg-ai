@@ -4,8 +4,11 @@ import { getAiProvider } from "@/lib/ai-provider";
 import { normalizeAppLang } from "@/lib/app-i18n";
 import { assertUserKeyPolicy } from "@/lib/key-security";
 import { detectNonAcademicContext } from "@/lib/scenario-guards";
+import { detectSafetyRisk } from "@/lib/safety-guard";
 import { getNextStage, type StageId } from "@/lib/selfreg-model";
 import { decideSupportScenarioDetailed } from "@/lib/scenario-engine";
+import { requireServerUserAccess } from "@/lib/server-user-access";
+import { acquireRequestSlot } from "@/lib/request-rate-limit";
 import { clientError, serverError } from "@/lib/api-errors";
 
 const ChatRequest = z.object({
@@ -33,10 +36,39 @@ const ChatRequest = z.object({
 });
 
 export async function POST(request: Request) {
+  let releaseRequestSlot: (() => void) | undefined;
+
   try {
+    const access = await requireServerUserAccess();
+    if (access.response) return access.response;
+
+    const slot = acquireRequestSlot(`chat:${access.context.userId}`, {
+      windowMs: 60_000,
+      maxRequests: 12,
+      maxInFlight: 1,
+    });
+    if (!slot.allowed) return clientError("Please wait before sending another request", "RATE_LIMITED");
+    releaseRequestSlot = slot.release;
+
     const body = ChatRequest.parse(await request.json());
     const lang = normalizeAppLang(body.lang);
     assertUserKeyPolicy(body.userApiKey);
+
+    const safety = detectSafetyRisk({
+      answer: body.answer,
+      context: body.context,
+      history: body.history,
+      lang,
+    });
+    if (safety) {
+      return NextResponse.json({
+        scenario: "clarify",
+        feedback: safety.message,
+        finalNote: "",
+        responseMode: "mock",
+        safety,
+      });
+    }
 
     const currentStage = body.currentStage as StageId;
 
@@ -54,6 +86,7 @@ export async function POST(request: Request) {
     const provider = getAiProvider(body.provider);
     const result = await provider.analyze({
       ...body,
+      userId: access.context.userId,
       lang,
       currentStage,
       nonAcademicContext: nonAcademic.detected,
@@ -77,5 +110,7 @@ export async function POST(request: Request) {
     }
 
     return clientError(message);
+  } finally {
+    releaseRequestSlot?.();
   }
 }

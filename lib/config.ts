@@ -44,7 +44,7 @@ const EnvSchema = z.object({
   APP_BASE_URL: z.string().url().optional(),
   ALLOW_EPHEMERAL_USER_KEYS: z.enum(["true", "false"]).optional().default("true"),
   ALLOW_STORED_USER_KEYS: z.enum(["true", "false"]).optional().default("false"),
-  APP_ENCRYPTION_KEY: z.string().min(16).optional(), // only required if ALLOW_STORED_USER_KEYS=true
+  APP_ENCRYPTION_KEY: z.string().optional(), // validated only when stored keys are enabled
 
   // === Development / Misc ===
   NODE_ENV: z.enum(["development", "production", "test"]).optional().default("development"),
@@ -64,8 +64,8 @@ function loadConfig(): AppConfig {
   const config = parsed.data;
 
   // Additional business rules
-  if (config.ALLOW_STORED_USER_KEYS === "true" && !config.APP_ENCRYPTION_KEY) {
-    throw new Error("APP_ENCRYPTION_KEY is required when ALLOW_STORED_USER_KEYS is enabled.");
+  if (config.ALLOW_STORED_USER_KEYS === "true" && (!config.APP_ENCRYPTION_KEY || config.APP_ENCRYPTION_KEY.length < 16)) {
+    throw new Error("APP_ENCRYPTION_KEY must contain at least 16 characters when stored user API keys are enabled.");
   }
 
   return config;
