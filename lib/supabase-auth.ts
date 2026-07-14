@@ -194,6 +194,12 @@ async function ensureUserProfile(user: User, options?: AuthProfileOptions): Prom
 
   if (existingProfileError) {
     console.error("[Supabase] Failed to read profile during bootstrap:", existingProfileError);
+    throw existingProfileError;
+  }
+
+  if (existingProfile) {
+    clearStoredPendingRole();
+    return existingProfile as UserProfile;
   }
 
   const fullName =
@@ -201,24 +207,24 @@ async function ensureUserProfile(user: User, options?: AuthProfileOptions): Prom
       ? user.user_metadata.full_name
       : typeof user.user_metadata?.name === "string"
         ? user.user_metadata.name
-        : existingProfile?.full_name || user.email?.split("@")[0] || "";
+        : user.email?.split("@")[0] || "";
 
   const avatarUrl =
     typeof user.user_metadata?.avatar_url === "string"
       ? user.user_metadata.avatar_url
       : typeof user.user_metadata?.picture === "string"
         ? user.user_metadata.picture
-        : existingProfile?.avatar_url || buildAvatarUrl(fullName);
+        : buildAvatarUrl(fullName);
 
-  const profileRole = existingProfile?.role || resolvedRole;
-  const metadata = mergeProfileMetadata(existingProfile?.metadata, user, options?.metadata);
+  const profileRole = resolvedRole;
+  const metadata = mergeProfileMetadata(null, user, options?.metadata);
 
   const profilesTable: any = supabase.from("profiles");
   const { data, error } = await profilesTable
     .upsert(
       {
         id: user.id,
-        email: user.email || existingProfile?.email || "",
+        email: user.email || "",
         full_name: fullName,
         avatar_url: avatarUrl,
         role: profileRole,

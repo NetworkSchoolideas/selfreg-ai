@@ -92,6 +92,7 @@ describe("signUpWithEmail", () => {
   });
 
   it("bootstraps the profile when signup returns an authenticated session", async () => {
+    mockMaybeSingle.mockResolvedValueOnce({ data: null, error: null });
     mockSignUp.mockResolvedValue({
       data: {
         user: {
@@ -204,5 +205,6 @@ describe("signInWithEmail", () => {
 
     expect(result.error).toBeNull();
     expect(result.profile?.role).toBe("student");
+    expect(mockUpsert).not.toHaveBeenCalled();
   });
 });
