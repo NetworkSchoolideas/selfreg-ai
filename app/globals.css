@@ -2445,3 +2445,293 @@ td {
     animation-iteration-count: 1 !important;
   }
 }
+
+/* Product entry page */
+.app-home {
+  padding-top: 22px;
+  padding-bottom: 28px;
+}
+
+.home-topbar {
+  align-items: center;
+  border: 0;
+  padding-bottom: 24px;
+}
+
+.home-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+  font-size: 19px;
+  font-weight: 850;
+  letter-spacing: -0.03em;
+  text-decoration: none;
+}
+
+.home-brand-mark {
+  display: grid;
+  grid-template-columns: repeat(2, 6px);
+  gap: 3px;
+  padding: 5px;
+  border-radius: 10px;
+  background: #e7f4f2;
+}
+
+.home-brand-mark i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+}
+
+.home-brand-mark i:nth-child(2),
+.home-brand-mark i:nth-child(3) {
+  background: var(--accent);
+}
+
+.home-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(360px, 0.92fr);
+  gap: 36px;
+  overflow: hidden;
+  min-height: 438px;
+  padding: clamp(30px, 6vw, 68px);
+  border: 1px solid #cfe4e4;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 83% 18%, rgba(47, 128, 237, 0.24), transparent 25%),
+    radial-gradient(circle at 76% 84%, rgba(35, 150, 127, 0.2), transparent 23%),
+    linear-gradient(120deg, #f9fdfd, #eaf7f4);
+}
+
+.home-hero::after {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image: radial-gradient(rgba(19, 34, 56, 0.13) 1px, transparent 1px);
+  background-size: 18px 18px;
+  content: "";
+  mask-image: linear-gradient(90deg, transparent 36%, black);
+  pointer-events: none;
+}
+
+.home-hero-copy,
+.home-hero-visual {
+  position: relative;
+  z-index: 1;
+}
+
+.home-hero h1 {
+  max-width: 760px;
+  margin: 0;
+  font-size: clamp(36px, 5.25vw, 68px);
+  line-height: 0.98;
+  letter-spacing: -0.055em;
+}
+
+.home-lead {
+  max-width: 660px;
+  margin: 24px 0;
+  color: #43566c;
+  font-size: 18px;
+  line-height: 1.55;
+}
+
+.home-hero-actions .button {
+  min-width: 158px;
+}
+
+.home-privacy-note {
+  max-width: 560px;
+  margin: 18px 0 0;
+  color: #596c7d;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.home-hero-visual {
+  min-height: 300px;
+}
+
+.home-orbit {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border: 1px solid rgba(47, 128, 237, 0.34);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.home-orbit-one { width: 170px; height: 170px; }
+.home-orbit-two { width: 290px; height: 290px; border-color: rgba(35, 150, 127, 0.38); }
+.home-orbit-three { width: 410px; height: 410px; border-color: rgba(19, 34, 56, 0.15); }
+
+.home-visual-core {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: grid;
+  width: 92px;
+  height: 92px;
+  place-items: center;
+  border-radius: 29px;
+  background: var(--text);
+  box-shadow: 0 20px 42px rgba(19, 34, 56, 0.24);
+  color: white;
+  font-size: 46px;
+  font-weight: 400;
+  transform: translate(-50%, -50%);
+}
+
+.home-step {
+  position: absolute;
+  display: grid;
+  gap: 5px;
+  min-width: 112px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.88);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 14px 30px rgba(19, 34, 56, 0.12);
+  backdrop-filter: blur(8px);
+}
+
+.home-step span { color: var(--accent); font-size: 12px; font-weight: 850; }
+.home-step b { font-size: 15px; }
+.home-step-one { left: 4%; top: 7%; }
+.home-step-two { right: 0; top: 38%; }
+.home-step-three { bottom: 4%; left: 16%; }
+
+.home-role-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 18px 0 44px;
+}
+
+.home-role-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 202px;
+  padding: 25px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--panel);
+}
+
+.home-role-card::after {
+  position: absolute;
+  right: -60px;
+  bottom: -72px;
+  width: 172px;
+  height: 172px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  content: "";
+}
+
+.home-role-teacher::after { background: var(--green-soft); }
+.home-role-card > * { position: relative; z-index: 1; }
+.home-role-kicker { color: var(--green); font-size: 13px; font-weight: 850; }
+.home-role-card h2 { margin: 11px 0 9px; font-size: 24px; letter-spacing: -0.03em; }
+.home-role-card p { max-width: 490px; margin: 0 0 18px; color: var(--muted); line-height: 1.5; }
+.home-role-card a,
+.text-link { color: #1250a3; font-weight: 800; text-decoration: none; }
+.home-role-card a:hover,
+.text-link:hover { text-decoration: underline; }
+
+.home-guides { margin-top: 20px; }
+.home-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 16px; }
+.home-section-heading .eyebrow { margin-bottom: 6px; }
+.home-section-heading h2 { margin: 0; font-size: clamp(28px, 3.2vw, 42px); letter-spacing: -0.045em; }
+.home-guide-list { display: grid; gap: 10px; }
+
+.home-guide {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+}
+
+.home-guide summary {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 24px;
+  gap: 12px;
+  align-items: center;
+  padding: 19px 21px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.home-guide summary::-webkit-details-marker { display: none; }
+.home-guide summary span { color: var(--green); font-size: 13px; font-weight: 850; }
+.home-guide summary strong { font-size: 18px; }
+.home-guide summary b { color: var(--accent); font-size: 24px; font-weight: 400; text-align: center; transition: transform 160ms ease; }
+.home-guide[open] summary { border-bottom: 1px solid #e4ebf1; background: #fbfefe; }
+.home-guide[open] summary b { transform: rotate(45deg); }
+.home-guide > div { padding: 18px 75px 22px; }
+.home-guide p { max-width: 780px; margin: 0 0 8px; line-height: 1.55; }
+
+.home-contact {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.62fr);
+  gap: 32px;
+  align-items: center;
+  margin-top: 42px;
+  padding: clamp(24px, 4vw, 44px);
+  border-radius: 20px;
+  background: var(--text);
+  color: white;
+}
+
+.home-contact .eyebrow { color: #78d3bd; }
+.home-contact h2 { max-width: 610px; margin: 0 0 10px; font-size: clamp(27px, 3.5vw, 42px); line-height: 1.02; letter-spacing: -0.045em; }
+.home-contact p { max-width: 610px; margin: 0 0 21px; color: #d9e5ef; line-height: 1.55; }
+.home-contact .button { border-color: white; background: white; color: var(--text); }
+
+.home-contact-person {
+  display: grid;
+  gap: 8px;
+  padding: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 14px;
+  color: #d9e5ef;
+  font-size: 14px;
+  font-style: normal;
+  line-height: 1.45;
+}
+
+.home-contact-person strong { color: white; font-size: 17px; }
+.home-contact-person a { color: #8ce2cf; font-weight: 750; }
+.home-footer { display: flex; justify-content: space-between; gap: 16px; padding: 25px 2px 0; color: var(--muted); font-size: 13px; }
+.home-footer a { color: var(--muted); font-weight: 750; text-decoration: none; }
+.home-footer a:hover { color: var(--text); text-decoration: underline; }
+
+@media (max-width: 840px) {
+  .home-hero { grid-template-columns: 1fr; min-height: 0; gap: 0; }
+  .home-hero-visual { min-height: 235px; margin: 12px -18px -26px; }
+  .home-orbit-three { width: 330px; height: 330px; }
+  .home-step-one { left: 8%; }
+  .home-step-two { right: 8%; }
+  .home-contact { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .app-home { padding-top: 12px; }
+  .home-topbar { align-items: flex-start; }
+  .home-topbar-actions { justify-content: flex-end; }
+  .home-topbar-actions .button { width: auto; }
+  .home-hero { padding: 28px 22px; border-radius: 18px; }
+  .home-hero h1 { font-size: clamp(36px, 11vw, 51px); }
+  .home-lead { margin: 18px 0; font-size: 16px; }
+  .home-hero-actions { display: grid; grid-template-columns: 1fr; }
+  .home-role-grid { grid-template-columns: 1fr; margin-bottom: 34px; }
+  .home-section-heading { display: block; }
+  .home-guide summary { grid-template-columns: 31px minmax(0, 1fr) 20px; padding: 16px; }
+  .home-guide summary strong { font-size: 16px; }
+  .home-guide > div { padding: 16px; }
+  .home-contact { margin-top: 32px; padding: 25px 20px; border-radius: 18px; }
+  .home-footer { align-items: flex-start; flex-direction: column; }
+}
