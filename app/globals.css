@@ -2604,130 +2604,36 @@ td {
 .home-step-two { right: 0; top: 38%; }
 .home-step-three { bottom: 4%; left: 16%; }
 
-.home-role-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  margin: 18px 0 44px;
-}
-
-.home-role-card {
-  position: relative;
-  overflow: hidden;
-  min-height: 202px;
-  padding: 25px;
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  background: var(--panel);
-}
-
-.home-role-card::after {
-  position: absolute;
-  right: -60px;
-  bottom: -72px;
-  width: 172px;
-  height: 172px;
-  border-radius: 50%;
-  background: var(--accent-soft);
-  content: "";
-}
-
-.home-role-teacher::after { background: var(--green-soft); }
-.home-role-card > * { position: relative; z-index: 1; }
-.home-role-kicker { color: var(--green); font-size: 13px; font-weight: 850; }
-.home-role-card h2 { margin: 11px 0 9px; font-size: 24px; letter-spacing: -0.03em; }
-.home-role-card p { max-width: 490px; margin: 0 0 18px; color: var(--muted); line-height: 1.5; }
-.home-role-card a,
-.text-link { color: #1250a3; font-weight: 800; text-decoration: none; }
-.home-role-card a:hover,
-.text-link:hover { text-decoration: underline; }
-
-.home-guides { margin-top: 20px; }
-.home-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 16px; }
-.home-section-heading .eyebrow { margin-bottom: 6px; }
-.home-section-heading h2 { margin: 0; font-size: clamp(28px, 3.2vw, 42px); letter-spacing: -0.045em; }
-.home-guide-tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-  padding: 6px;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: #f4f8fa;
-}
-
-.home-guide-tabs button {
-  min-height: 43px;
-  flex: 1;
-  padding: 9px 14px;
-  border: 1px solid transparent;
-  border-radius: 11px;
-  background: transparent;
-  color: #526579;
-  cursor: pointer;
-  font: inherit;
-  font-size: 14px;
-  font-weight: 800;
-}
-
+.home-guides { margin-top: 28px; }
+.home-guides > h2 { margin: 0 0 14px; font-size: clamp(24px, 3vw, 34px); letter-spacing: -0.04em; }
+.home-guide-tabs { display: flex; gap: 8px; margin-bottom: 12px; padding: 6px; border: 1px solid var(--line); border-radius: 16px; background: #f4f8fa; }
+.home-guide-tabs button { min-height: 43px; flex: 1; padding: 9px 14px; border: 1px solid transparent; border-radius: 11px; background: transparent; color: #526579; cursor: pointer; font: inherit; font-size: 14px; font-weight: 800; }
 .home-guide-tabs button:hover { color: var(--text); background: rgba(255, 255, 255, 0.72); }
 .home-guide-tabs button:focus-visible { outline: 3px solid rgba(47, 128, 237, 0.38); outline-offset: 2px; }
 .home-guide-tabs button.is-active { border-color: #d5e5ec; background: white; box-shadow: 0 3px 12px rgba(19, 34, 56, 0.08); color: var(--text); }
-
-.home-guide-panel {
-  overflow: hidden;
-  border: 1px solid #cddfe7;
-  border-radius: 20px;
-  background:
-    linear-gradient(140deg, rgba(234, 247, 244, 0.88), rgba(255, 255, 255, 0.98) 42%),
-    var(--panel);
-}
-
+.home-guide-panel { overflow: hidden; border: 1px solid #cddfe7; border-radius: 20px; background: linear-gradient(140deg, rgba(234, 247, 244, 0.88), rgba(255, 255, 255, 0.98) 42%), var(--panel); }
 .home-guide-intro { padding: clamp(23px, 4vw, 38px) clamp(22px, 5vw, 50px) 24px; border-bottom: 1px solid #dce9ed; }
-.home-guide-tab-kicker { margin: 0 0 8px; color: var(--green); font-size: 12px; font-weight: 850; letter-spacing: 0.08em; text-transform: uppercase; }
+.home-guide-intro > p:first-child { margin: 0 0 8px; color: var(--green); font-size: 12px; font-weight: 850; letter-spacing: 0.08em; text-transform: uppercase; }
 .home-guide-intro h3 { max-width: 790px; margin: 0 0 10px; font-size: clamp(24px, 3vw, 35px); letter-spacing: -0.04em; line-height: 1.05; }
 .home-guide-intro > p:last-child { max-width: 780px; margin: 0; color: #506276; line-height: 1.55; }
-
 .home-guide-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin: 0; padding: 0; list-style: none; }
-.home-guide-steps li { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; padding: 25px clamp(18px, 3vw, 31px) 29px; }
+.home-guide-steps li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; padding: 25px clamp(18px, 3vw, 31px) 29px; }
 .home-guide-steps li + li { border-left: 1px solid #dce9ed; }
 .home-guide-steps li > span { display: grid; width: 36px; height: 36px; place-items: center; border-radius: 12px; background: var(--text); color: white; font-size: 11px; font-weight: 850; }
 .home-guide-steps p { margin: 0; color: #5a6c7e; font-size: 14px; line-height: 1.5; }
 .home-guide-steps div > p:first-child { margin-bottom: 5px; color: var(--green); font-size: 11px; font-weight: 850; letter-spacing: 0.06em; text-transform: uppercase; }
 .home-guide-steps h4 { margin: 0 0 8px; font-size: 18px; letter-spacing: -0.025em; line-height: 1.15; }
 .home-guide-actions { display: flex; align-items: center; gap: 20px; padding: 0 clamp(22px, 5vw, 50px) 34px; }
+.text-link { color: #1250a3; font-weight: 800; text-decoration: none; }
+.text-link:hover { text-decoration: underline; }
 
-.home-contact {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.62fr);
-  gap: 32px;
-  align-items: center;
-  margin-top: 42px;
-  padding: clamp(24px, 4vw, 44px);
-  border-radius: 20px;
-  background: var(--text);
-  color: white;
-}
-
+.home-contact { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 0.62fr); gap: 32px; align-items: center; margin-top: 42px; padding: clamp(24px, 4vw, 44px); border-radius: 20px; background: var(--text); color: white; }
 .home-contact .eyebrow { color: #78d3bd; }
 .home-contact h2 { max-width: 610px; margin: 0 0 10px; font-size: clamp(27px, 3.5vw, 42px); line-height: 1.02; letter-spacing: -0.045em; }
 .home-contact p { max-width: 610px; margin: 0 0 21px; color: #d9e5ef; line-height: 1.55; }
 .home-contact .button { border-color: white; background: white; color: var(--text); }
-.home-contact .button:hover,
-.home-contact .button:focus-visible { color: white; }
-
-.home-contact-person {
-  display: grid;
-  gap: 8px;
-  padding: 22px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-radius: 14px;
-  color: #d9e5ef;
-  font-size: 14px;
-  font-style: normal;
-  line-height: 1.45;
-}
-
+.home-contact .button:hover, .home-contact .button:focus-visible { color: white; }
+.home-contact-person { display: grid; gap: 8px; padding: 22px; border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 14px; color: #d9e5ef; font-size: 14px; font-style: normal; line-height: 1.45; }
 .home-contact-person strong { color: white; font-size: 17px; }
 .home-contact-person a { color: #8ce2cf; font-weight: 750; }
 .home-footer { display: flex; justify-content: space-between; gap: 16px; padding: 25px 2px 0; color: var(--muted); font-size: 13px; }
@@ -2752,8 +2658,6 @@ td {
   .home-hero h1 { font-size: clamp(36px, 11vw, 51px); }
   .home-lead { margin: 18px 0; font-size: 16px; }
   .home-hero-actions { display: grid; grid-template-columns: 1fr; }
-  .home-role-grid { grid-template-columns: 1fr; margin-bottom: 34px; }
-  .home-section-heading { display: block; }
   .home-guide-tabs { overflow-x: auto; }
   .home-guide-tabs button { min-width: max-content; }
   .home-guide-steps { grid-template-columns: 1fr; }
