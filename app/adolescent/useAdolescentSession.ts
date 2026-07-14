@@ -90,8 +90,8 @@ export function useAdolescentSession({ initialContext, lang }: UseAdolescentSess
       eventType: "clarify_request",
       answer: lang === "en" ? "The question was not clear." : "Вопрос был непонятен.",
       feedback: lang === "en"
-        ? "The adolescent asked to clarify the wording. This signal is important for the teacher: the difficulty may be in the language of the prompt, not only in self-regulation."
-        : "Подросток попросил уточнить формулировку. Для педагога это важный сигнал: трудность может быть не только в саморегуляции, но и в языке вопроса.",
+        ? "You asked to clarify the wording. That is useful: the difficulty may be in the language of the prompt, not only in self-regulation."
+        : "Ты попросил уточнить формулировку. Это полезный сигнал: трудность может быть не только в саморегуляции, но и в языке вопроса.",
       question: currentQuestionText,
       timestamp: new Date().toISOString(),
     };

@@ -29,7 +29,7 @@ test.describe("Responsive layout smoke", () => {
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto("/?lang=en");
 
-    await expect(page.getByRole("heading", { name: "SelfReg AI" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Self-regulation for a learning situation." })).toBeVisible();
     await expectNoHorizontalOverflow(page);
     expectHealthyClient(tracker);
   });

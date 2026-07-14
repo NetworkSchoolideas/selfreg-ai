@@ -39,11 +39,17 @@ test.describe("Public smoke flows", () => {
     await page.goto("/?lang=ru");
 
     await expect(page).toHaveURL(/\/\?lang=ru$/);
-    await expect(page.getByRole("heading", { name: "SelfReg AI" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Открыть сессию" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Дашборд педагога" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Настройки API" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Лендинг проекта" })).toHaveAttribute(
+    await expect(page.getByRole("button", { name: "Войти" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Саморегуляция в учебной ситуации." })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Начать сессию" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Кабинет педагога" })).toBeVisible();
+
+    const apiGuideTab = page.getByRole("tab", { name: "Ключ GitHub API" });
+    await expect(apiGuideTab).toBeVisible();
+    await apiGuideTab.click();
+    await expect(page.getByRole("link", { name: "Открыть настройки API" })).toBeVisible();
+
+    await expect(page.getByRole("link", { name: "Лендинг проекта ↗" })).toHaveAttribute(
       "href",
       projectLandingUrl,
     );

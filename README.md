@@ -1,232 +1,110 @@
-﻿# SelfReg AI — Intelligent Self-Regulation Support System
+# SelfReg AI
 
-A Next.js 16 application for adolescent self-regulation support with a teacher dashboard. Bilingual (RU/EN), works with or without AI (Mock mode), supports BYOK (Bring Your Own Key).
+SelfReg AI is a bilingual (RU/EN) Next.js application for practicing self-regulation in a learning situation. A student works through a short five-stage cycle; a linked teacher can review the student's sessions and analytics in read-only mode.
 
-## 🚀 Features
+The public release is available at [selfreg-ai.vercel.app](https://selfreg-ai.vercel.app).
 
-### For Adolescents
-- ✅ 5-stage self-regulation cycle (Goal → Move to action → Feedback → Comparison → Adjustment)
-- ✅ A/B scenario system (normal support vs pressure/self-attack support)
-- ✅ Clarification flow for ambiguous answers
-- ✅ Session history with AI-powered insights
-- ✅ BYOK — choose your AI provider (Mock, GigaChat, OpenRouter, GitHub Models, Vercel Gateway)
+## Release scope
 
-### For Teachers
-- ✅ Dashboard with student list and real-time analytics
-- ✅ Class distribution and student progress visualization
-- ✅ Detailed session records per student
-- ✅ A/B scenario distribution tracking
-- ✅ CSV export of all data
-- ✅ Copy shareable links for students
+### Student
 
-### Technical
-- ✅ Bilingual (RU/EN) — all pages support both languages
-- ✅ Works with or without AI (Mock mode)
-- ✅ BYOK — user brings their own API key
-- ✅ localStorage (default) + Supabase (optional) storage
-- ✅ Mobile-first responsive design (tablet + mobile breakpoints)
-- ✅ TypeScript strict mode
-- ✅ Next.js 16 App Router with proxy.ts
-- ✅ Unit tests (Jest) + E2E tests (Playwright)
-- ✅ CI pipeline (GitHub Actions)
+- Authenticated personal dashboard and consent before the first saved session.
+- Five stages: goal, move to action, feedback, comparison, and adjustment.
+- Clarification, back, restart, and session history.
+- Russian and English UI. New AI responses are requested in the language selected for the session.
+- A student can link one profile to a teacher using the teacher's code.
 
-## 📁 Project Structure
+### Teacher
 
-```
-selfreg-ai/
-├── app/                          # Next.js App Router
-│   ├── adolescent/               # Self-regulation session prototype
-│   │   ├── AdolescentPrototype.tsx
-│   │   └── useAdolescentSession.ts
-│   ├── teacher/                  # Teacher routes
-│   │   ├── TeacherDashboard.tsx   # Main teacher dashboard (working)
-│   │   ├── register.tsx          # Teacher registration
-│   │   ├── register-success.tsx  # Post-registration with teacher code
-│   │   └── dashboard/            # Dashboard pages
-│   ├── student/dashboard/        # Student dashboard
-│   ├── auth/                     # Auth pages (login, register)
-│   ├── role-selection/           # Role selection page
-│   ├── settings/                 # Settings page
-│   ├── components/               # Shared components
-│   │   ├── ApiKeyManager.tsx     # BYOK key management
-│   │   ├── OnboardingModal.tsx   # First-time onboarding
-│   │   ├── LanguageToggle.tsx    # RU/EN switcher
-│   │   ├── AuthButton.tsx        # Auth state button
-│   │   ├── ErrorBoundary.tsx     # Error boundary wrapper
-│   │   └── ...
-│   └── api/                      # API routes
-│       ├── chat/                 # AI chat endpoint
-│       ├── children/             # Children CRUD
-│       ├── sessions/             # Sessions CRUD
-│       ├── provider-check/       # AI provider health check
-│       └── ...
-├── components/analytics/         # Analytics components
-│   ├── ClassStats.tsx
-│   └── ProgressChart.tsx
-├── hooks/                        # Custom React hooks
-│   ├── useSessionSubmit.ts       # Session submission logic
-│   ├── useSessionHistory.ts      # Session history loading
-│   ├── useAuth.ts                # Auth state management
-│   └── useSupabaseAuth.ts        # Supabase auth integration
-├── lib/                          # Core libraries
-│   ├── selfreg-model.ts          # 5-stage self-regulation model
-│   ├── scenario-engine.ts        # A/B scenario detection
-│   ├── selfreg-flow-machine.ts   # Flow state machine
-│   ├── data-service.ts           # Unified data layer (Supabase + localStorage)
-│   ├── children-storage.ts       # Children storage (localStorage)
-│   ├── session-manager.ts        # Session management
-│   ├── app-i18n.ts               # Bilingual i18n system
-│   ├── provider-registry.ts      # AI provider registry
-│   └── ...
-├── services/                     # Service layer
-│   └── ai-service.ts             # AI service (all providers)
-├── types/                        # TypeScript types
-│   ├── session.ts
-│   └── supabase.ts
-├── __tests__/                    # Test files
-│   ├── unit/                     # Jest unit tests
-│   └── e2e/                      # Playwright E2E tests
-├── .github/workflows/            # CI pipeline
-│   └── ci.yml
-├── supabase/                     # Database migrations
-│   └── migrations/
-└── styles/                       # Global styles
-```
+- Personal teacher code and a list of linked student profiles.
+- Read-only review of linked students' sessions, records, and analytics.
+- Removing a student from the teacher dashboard removes only the link; it never deletes the student's sessions.
 
-## 🛠️ Tech Stack
+### AI and API keys
 
-- **Framework:** Next.js 16.2.6 (App Router)
-- **Language:** TypeScript (strict mode)
-- **Storage:** localStorage (default) + Supabase (PostgreSQL, optional)
-- **Auth:** Supabase Auth (optional, email/password + Google)
-- **AI Providers:** Mock (no AI), GigaChat, OpenRouter, GitHub Models, Vercel Gateway
-- **Styling:** Custom CSS (mobile-first, two breakpoints: 1024px tablet, 768px mobile)
-- **Testing:** Jest (unit) + Playwright (E2E)
-- **CI:** GitHub Actions (lint → typecheck → test → build)
+- **Mock** mode works without an external key and is suitable for a demonstration.
+- **GitHub Models** is the recommended live BYOK provider.
+- **OpenRouter** is an advanced alternative that must be checked with the selected model.
+- **GigaChat** is shown as in development and is disabled for live release sessions.
+- An API key stays in `sessionStorage` by default and is removed when the tab closes. Persistent browser storage is an explicit opt-in. Keys are not stored in the database.
 
-## 📦 Installation
+## Architecture
+
+- Next.js 16, TypeScript, App Router.
+- Supabase Auth plus PostgreSQL for authenticated profiles, sessions, records, feedback, and teacher links.
+- Server routes enforce ownership for student writes. Linked teachers may read authorised student data but cannot modify sessions or feedback.
+- GitHub Actions run lint, typecheck, unit tests, and production build.
+
+## Local setup
 
 ```bash
-# Clone repository
 git clone <repository-url>
 cd selfreg-ai
-
-# Install dependencies
 npm install
-
-# Set up environment variables
-cp .env.example .env.local
-# Edit .env.local with your Supabase credentials (optional)
-
-# Run development server
-npm run dev
-
-# Build for production
-npm run build
+copy .env.example .env.local
 ```
 
-## 🧪 Testing
-
-```bash
-# Run unit tests (Jest)
-npm run test:unit
-
-# Run all tests
-npm test
-
-# Test with coverage
-npm run test:coverage
-
-# E2E tests (requires Playwright browsers)
-npm run test:e2e
-```
-
-## 🔐 Environment Variables
+Set the Supabase variables in `.env.local`:
 
 ```env
-# Public app links
 NEXT_PUBLIC_PROJECT_LANDING_URL=https://selfreg-ai-networkschool.vercel.app
-
-# Supabase (optional — app works with localStorage without it)
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-key
-NEXT_PUBLIC_SUPABASE_ENABLED=false
+NEXT_PUBLIC_SUPABASE_ENABLED=true
 ```
 
-`NEXT_PUBLIC_PROJECT_LANDING_URL` controls the landing-page link shown on the home screen. If it is not set, the app falls back to the current production landing URL.
-
-## 🌐 Bilingual Support
-
-All pages support Russian (default) and English. Use the `LanguageToggle` component to switch. The `normalizeAppLang()` function from `lib/app-i18n.ts` detects the user's language preference.
-
-## 🤖 AI Providers (BYOK)
-
-The app works with or without AI. In Mock mode, no API key is needed. Users can bring their own key for:
-- **GigaChat** — Russian AI provider
-- **OpenRouter** — Multi-model gateway
-- **GitHub Models** — GitHub's AI models
-- **Vercel Gateway** — Vercel's AI gateway
-
-Provider selection and key management happen on the session page, not during registration.
-
-## 📖 Documentation
-
-- [Architecture Overview](ARCHITECTURE.md) — Data flow, storage layers, component design
-- [Testing Guide](TESTING.md) — How to run and write tests
-- [Deployment Guide](DEPLOYMENT.md) — Deploy to production
-- [Setup Guide](supabase/SETUP.md) — Database and Supabase setup
-- [RLS Policies](supabase/README.md) — Security policies
-
-## 🎯 User Flow
-
-### Adolescent (Self-Regulation Session)
-1. Visit `/adolescent`
-2. Enter context (optional) or start immediately
-3. Choose AI provider (or use Mock mode)
-4. Go through 5 stages of self-regulation
-5. Receive A/B scenario support based on answers
-6. View session history with AI insights
-
-### Teacher
-1. Visit `/role-selection` → select "Teacher"
-2. Register (or use existing teacher dashboard at `/teacher`)
-3. Add students manually or share links
-4. View dashboard with analytics and session records
-5. Export data to CSV
-
-## 🔒 Security
-
-- Row Level Security (RLS) on Supabase tables (when Supabase is enabled)
-- API keys stored in localStorage (client-side only)
-- No server-side storage of user API keys
-- Error boundaries on all pages
-
-## 📊 Analytics
-
-### Teacher Dashboard
-- Total students, sessions, classes
-- Class distribution chart
-- Student progress tracking
-- A/B scenario distribution
-- Stage-by-stage support analysis
-- Session signals (clarifications, returns, retries)
-
-## 🚢 Deployment
-
-### Vercel (Recommended)
+Run the app:
 
 ```bash
-npm i -g vercel
-vercel
+npm.cmd run dev
 ```
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions.
+On Windows, use `npm.cmd` because PowerShell may block `npm.ps1`.
 
-## 📄 License
+## Testing
+
+```bash
+npm.cmd run typecheck
+npm.cmd run lint
+npm.cmd run test:unit -- --runInBand
+npm.cmd run build
+```
+
+Playwright starts a local development server with the isolated E2E setup enabled:
+
+```bash
+npm.cmd run test:e2e
+
+# Run a focused E2E file
+npm.cmd run test:e2e -- __tests__/e2e/adolescent-flow.test.ts
+```
+
+The E2E setup creates synthetic test users only. Do not use production participant data in E2E tests.
+
+## User flow
+
+1. A student creates an account or signs in.
+2. The student confirms data processing and starts a personal session.
+3. The student may use Mock mode or add a personal API key for a live provider.
+4. The completed session is saved in the student dashboard.
+5. If the student enters a teacher code, that teacher can review all of the student's sessions in read-only mode.
+
+## Documentation
+
+- [Architecture](ARCHITECTURE.md)
+- [Testing guide](TESTING.md)
+- [Deployment guide](DEPLOYMENT.md)
+- [Supabase setup](supabase/SETUP.md)
+- [RLS policies](supabase/README.md)
+
+## Safety and privacy boundaries
+
+- SelfReg AI is a learning-support tool, not therapy or emergency help.
+- Do not enter passwords, access codes, or other secrets into session answers.
+- The release does not provide clinical claims, diagnoses, or crisis support.
+- Do not commit `.env` files, API keys, or private participant data.
+
+## License
 
 MIT License
-
----
-
-**Built with ❤️ using Next.js, TypeScript, and Supabase**

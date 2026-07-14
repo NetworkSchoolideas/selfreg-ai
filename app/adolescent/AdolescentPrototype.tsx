@@ -19,7 +19,7 @@ import {
   isProviderEnabledInRelease,
   type ProviderId,
 } from "@/lib/provider-registry";
-import { DataService } from "@/lib/data-service";
+import { ChildrenStorage } from "@/lib/children-storage";
 import type { RecordItem, CompletedSession } from "@/types/session";
 import { useSessionSubmit } from "@/hooks/useSessionSubmit";
 import { useSessionHistory } from "@/hooks/useSessionHistory";
@@ -77,6 +77,7 @@ export function AdolescentPrototype() {
   const [currentChildName, setCurrentChildName] = useState<string | null>(null);
   const [currentChildId, setCurrentChildId] = useState<string | null>(null);
   const [isRegistered, setIsRegistered] = useState(false);
+  const [isLinkedToTeacher, setIsLinkedToTeacher] = useState(false);
   const [teacherCode, setTeacherCode] = useState(initialTeacherCode);
 
   // UI-only state
@@ -92,7 +93,7 @@ export function AdolescentPrototype() {
   const linkChildToTeacherByCode = useCallback(async (childId: string, rawTeacherCode: string) => {
     const normalizedTeacherCode = rawTeacherCode.trim();
     if (!normalizedTeacherCode) {
-      return;
+      return false;
     }
 
     try {
@@ -103,12 +104,14 @@ export function AdolescentPrototype() {
       });
 
       if (!joinResponse.ok) {
-        return;
+        return false;
       }
 
-      await joinResponse.json();
+      const payload = await joinResponse.json().catch(() => null);
+      return Boolean(payload?.ok);
     } catch (err) {
       console.error("[Join Teacher] Error:", err);
+      return false;
     }
   }, []);
 
@@ -149,6 +152,12 @@ export function AdolescentPrototype() {
         const payload = await response.json();
         if (!active || !payload?.child) throw new Error("No child in response");
 
+        // Session writes use the local profile as the authenticated cache key.
+        // Keep it aligned with the protected server response before any exercise
+        // can begin; otherwise a newly consented student can finish a session
+        // that has nowhere to persist locally or remotely.
+        ChildrenStorage.upsertLocalChild(payload.child);
+
         const resumeSession = resumeSessionId
           ? payload.child.sessions?.find((item: import("@/types/session").Session) => item.sessionId === resumeSessionId)
           : null;
@@ -160,12 +169,12 @@ export function AdolescentPrototype() {
           setShowHistory(false);
         }
 
-        const sessionsCount = payload.child.sessions?.length || 0;
-        const name = sessionsCount > 0 ? `${payload.child.name} (${sessionsCount})` : payload.child.name;
-        setCurrentChildName(name);
+        setCurrentChildName(payload.child.name);
         setCurrentChildId(payload.child.id);
         setIsRegistered(true);
-        await linkChildToTeacherByCode(payload.child.id, teacherCode);
+        setIsLinkedToTeacher(Boolean(payload.child.teacherId));
+        const linkedByCode = await linkChildToTeacherByCode(payload.child.id, teacherCode);
+        if (active && linkedByCode) setIsLinkedToTeacher(true);
         if (active) setAccessState(payload.child.consentGiven ? "ready" : "consent");
       } catch {
         if (active) setAccessState("error");
@@ -223,6 +232,7 @@ export function AdolescentPrototype() {
       });
       const payload = await response.json();
       if (!response.ok || !payload?.child) throw new Error("Consent was not saved");
+      ChildrenStorage.upsertLocalChild(payload.child);
       setCurrentChildId(payload.child.id);
       setCurrentChildName(payload.child.name);
       setIsRegistered(true);
@@ -510,7 +520,7 @@ export function AdolescentPrototype() {
 
               {currentChildName && (
                 <div className="bg-soft b-line br-6 p-10 fs-13 mb-12">
-                  👤 Сессия для: <strong>{currentChildName}</strong>
+                  👤 {ui.sessionFor}: <strong>{currentChildName}</strong>
                 </div>
               )}
 
@@ -522,6 +532,7 @@ export function AdolescentPrototype() {
                   lang={lang}
                   childIdFromUrl={childIdFromUrl}
                   currentChildId={currentChildId}
+                  isLinkedToTeacher={isLinkedToTeacher}
                   feedbackSubmitted={feedbackSubmitted}
                   onFeedbackSubmitted={() => setFeedbackSubmitted(true)}
                 />
@@ -608,6 +619,7 @@ function useUiText(lang: "ru" | "en") {
     collected: lang === "en" ? "Collected" : "Собрано",
     empty: lang === "en" ? "No answers yet." : "Пока нет ответов.",
     result: lang === "en" ? "Summary" : "Итог",
+    sessionFor: lang === "en" ? "Session for" : "Сессия для",
     registrationTitle: lang === "en" ? "Session registration" : "Регистрация сессии",
     registrationText: lang === "en" ? "Enter your name so the teacher can see your results." : "Введи имя, чтобы педагог увидел результаты.",
     fullName: lang === "en" ? "Full name" : "ФИО",
@@ -734,7 +746,7 @@ function HistoryReviewPanel({
 }
 
 function CompletionView({
-  ui, finalNote, onRestart, lang, childIdFromUrl, currentChildId, feedbackSubmitted, onFeedbackSubmitted
+  ui, finalNote, onRestart, lang, childIdFromUrl, currentChildId, isLinkedToTeacher, feedbackSubmitted, onFeedbackSubmitted
 }: {
   ui: ReturnType<typeof useUiText>;
   finalNote: string;
@@ -742,6 +754,7 @@ function CompletionView({
   lang: AppLang;
   childIdFromUrl: string | null;
   currentChildId: string | null;
+  isLinkedToTeacher: boolean;
   feedbackSubmitted: boolean;
   onFeedbackSubmitted: () => void;
 }) {
@@ -761,7 +774,11 @@ function CompletionView({
         <button className="button secondary" type="button" onClick={onRestart}>{ui.restart}</button>
       </div>
       {effectiveChildId ? (
-        <p className="muted fs-13 mt-12">{lang === "en" ? "Results saved for teacher." : "Результаты сохранены для педагога."}</p>
+        <p className="muted fs-13 mt-12">
+          {isLinkedToTeacher
+            ? (lang === "en" ? "Results are saved in your dashboard and available to the linked teacher." : "Результаты сохранены в кабинете и доступны привязанному педагогу.")
+            : (lang === "en" ? "Results are saved in your personal dashboard." : "Результаты сохранены в личном кабинете.")}
+        </p>
       ) : (
         <p className="muted fs-13 mt-12">{lang === "en" ? "You can start over anytime." : "Можно начать заново в любое время."}</p>
       )}

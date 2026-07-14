@@ -33,6 +33,7 @@ function StudentDashboardContent() {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [archiveCandidateId, setArchiveCandidateId] = useState<string | null>(null);
   const [sessionSaveError, setSessionSaveError] = useState<string | null>(null);
+  const [showOriginalSessionText, setShowOriginalSessionText] = useState(false);
 
   const ui = {
     ru: {
@@ -93,6 +94,9 @@ function StudentDashboardContent() {
       teacherLinkSuccess: "\u0421\u0432\u044f\u0437\u044c \u0441 \u043f\u0435\u0434\u0430\u0433\u043e\u0433\u043e\u043c \u043d\u0430\u0441\u0442\u0440\u043e\u0435\u043d\u0430.",
       teacherLinkError: "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0438\u0442\u044c \u043f\u0435\u0434\u0430\u0433\u043e\u0433\u0430",
       sessionSaveError: "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u0438\u0437\u043c\u0435\u043d\u0435\u043d\u0438\u0435. \u0421\u0435\u0441\u0441\u0438\u044f \u043e\u0441\u0442\u0430\u043b\u0430\u0441\u044c \u0432 \u0441\u043f\u0438\u0441\u043a\u0435 \u2014 \u043f\u043e\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u0435\u0449\u0451 \u0440\u0430\u0437.",
+      otherLanguageSession: "Эта сессия пройдена на английском. Оригинальные ответы и рекомендации скрыты, чтобы язык кабинета оставался русским.",
+      showOriginalSessionText: "Показать текст на английском",
+      hideOriginalSessionText: "Скрыть оригинал",
     },
     en: {
       title: "Dashboard",
@@ -152,6 +156,9 @@ function StudentDashboardContent() {
       teacherLinkSuccess: "Teacher connection is active.",
       teacherLinkError: "Failed to connect teacher",
       sessionSaveError: "Could not save this change. The session remains in your list — please try again.",
+      otherLanguageSession: "This session was completed in Russian. The original answers and recommendations are hidden so the dashboard stays in English.",
+      showOriginalSessionText: "Show Russian original",
+      hideOriginalSessionText: "Hide original",
     },
   };
 
@@ -334,6 +341,10 @@ function StudentDashboardContent() {
   const selectedSession = selectedSessionId
     ? sortedSessions.find((session) => getSessionKey(session) === selectedSessionId) ?? null
     : null;
+  const selectedSessionMatchesLanguage = Boolean(
+    selectedSession && (!selectedSession.lang || selectedSession.lang === lang)
+  );
+  const showSelectedSessionContent = selectedSessionMatchesLanguage || showOriginalSessionText;
   const newSessionHref = `/adolescent?childId=${effectiveChildId}&mode=new&lang=${lang}`;
   const missingInsightText = lang === "en"
     ? "No recommendation is available for this session."
@@ -363,6 +374,7 @@ function StudentDashboardContent() {
       };
     });
     setSelectedSessionId((current) => (current === getSessionKey(archiveCandidate) ? null : current));
+    setShowOriginalSessionText(false);
     setArchiveCandidateId(null);
 
     try {
@@ -605,6 +617,7 @@ function StudentDashboardContent() {
                           ? { background: "#fee2e2", color: "#991b1b" }
                           : { background: "#e0f2fe", color: "#075985" };
                   const sessionKey = getSessionKey(session);
+                  const sessionMatchesLanguage = !session.lang || session.lang === lang;
                   const continueHref = session.sessionId
                     ? `/adolescent?childId=${effectiveChildId}&resumeSessionId=${session.sessionId}&lang=${lang}`
                     : newSessionHref;
@@ -626,7 +639,7 @@ function StudentDashboardContent() {
                       </div>
                       {session.finalNote && (
                         <div className="fs-14 c-muted mb-8">
-                          {session.finalNote}
+                          {sessionMatchesLanguage ? session.finalNote : t.otherLanguageSession}
                         </div>
                       )}
                       <div className="fs-12" style={{ color: "#9ca3af" }}>
@@ -634,7 +647,7 @@ function StudentDashboardContent() {
                         {" · "}
                         {session.records?.length ?? 0} {t.stepsCount}
                       </div>
-                      {session.historyInsight && (
+                      {session.historyInsight && sessionMatchesLanguage && (
                         <div
                           className="mt-12 p-12 br-8 fs-13"
                           style={{
@@ -650,7 +663,10 @@ function StudentDashboardContent() {
                         <button
                           type="button"
                           className="button secondary"
-                          onClick={() => setSelectedSessionId(sessionKey)}
+                          onClick={() => {
+                            setShowOriginalSessionText(false);
+                            setSelectedSessionId(sessionKey);
+                          }}
                           style={{ padding: "8px 12px" }}
                         >
                           {t.openSession}
@@ -692,7 +708,10 @@ function StudentDashboardContent() {
                 <button
                   type="button"
                   className="button secondary"
-                  onClick={() => setSelectedSessionId(null)}
+                  onClick={() => {
+                    setShowOriginalSessionText(false);
+                    setSelectedSessionId(null);
+                  }}
                   style={{ padding: "8px 12px" }}
                 >
                   {t.closeDetails}
@@ -707,33 +726,64 @@ function StudentDashboardContent() {
                 </button>
               </div>
 
-              {selectedSession.finalNote && (
+              {!selectedSessionMatchesLanguage && !showOriginalSessionText && (
+                <div className="profile-field mb-16" style={{ background: "#eff6ff", border: "1px solid #bfdbfe" }}>
+                  <p className="fs-14 c-muted mb-12">{t.otherLanguageSession}</p>
+                  <button
+                    type="button"
+                    className="button secondary"
+                    onClick={() => setShowOriginalSessionText(true)}
+                    style={{ padding: "8px 12px" }}
+                  >
+                    {t.showOriginalSessionText}
+                  </button>
+                </div>
+              )}
+
+              {!selectedSessionMatchesLanguage && showOriginalSessionText && (
+                <button
+                  type="button"
+                  className="button secondary mb-16"
+                  onClick={() => setShowOriginalSessionText(false)}
+                  style={{ padding: "8px 12px" }}
+                >
+                  {t.hideOriginalSessionText}
+                </button>
+              )}
+
+              {showSelectedSessionContent && selectedSession.finalNote && (
                 <div className="profile-field mb-16" style={{ background: "#f8fafc" }}>
                   <div className="fs-14 c-muted mb-4">{t.completedLabel}</div>
                   <div className="fs-15">{selectedSession.finalNote}</div>
                 </div>
               )}
 
-              <div className="profile-field mb-16" style={{ background: selectedSession.historyInsight ? "#f0fdf4" : "#fff7ed" }}>
-                <div className="fs-14 fw-600 mb-6">{t.aiInsight}</div>
-                <div className="fs-14 c-muted">
-                  {selectedSession.historyInsight || missingInsightText}
-                </div>
-              </div>
-
-              <h3 className="fs-16 mb-12">{t.answers}</h3>
-              <div className="flex-col gap-12">
-                {(selectedSession.records ?? []).map((record, index) => (
-                  <div key={`${record.stageId}-${record.timestamp}-${index}`} className="profile-field">
-                    <div className="fs-13 c-muted mb-4">
-                      {record.stageTitle} · {record.scenario}
-                    </div>
-                    <div className="fs-14 fw-500 mb-6">{record.question}</div>
-                    <div className="fs-14 mb-8">{record.answer}</div>
-                    <div className="fs-13 c-muted">{record.feedback}</div>
+              {showSelectedSessionContent && (
+                <div className="profile-field mb-16" style={{ background: selectedSession.historyInsight ? "#f0fdf4" : "#fff7ed" }}>
+                  <div className="fs-14 fw-600 mb-6">{t.aiInsight}</div>
+                  <div className="fs-14 c-muted">
+                    {selectedSession.historyInsight || missingInsightText}
                   </div>
-                ))}
-              </div>
+                </div>
+              )}
+
+              {showSelectedSessionContent && (
+                <>
+                  <h3 className="fs-16 mb-12">{t.answers}</h3>
+                  <div className="flex-col gap-12">
+                    {(selectedSession.records ?? []).map((record, index) => (
+                      <div key={`${record.stageId}-${record.timestamp}-${index}`} className="profile-field">
+                        <div className="fs-13 c-muted mb-4">
+                          {record.stageTitle} · {record.scenario}
+                        </div>
+                        <div className="fs-14 fw-500 mb-6">{record.question}</div>
+                        <div className="fs-14 mb-8">{record.answer}</div>
+                        <div className="fs-13 c-muted">{record.feedback}</div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>

@@ -6,7 +6,7 @@ const baseUrl = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
 const devCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 const devArgs = ["run", "dev", "--", "--hostname", "localhost", "--port", "3000"];
 const playwrightCommand = process.platform === "win32" ? "npx.cmd" : "npx";
-const playwrightArgs = ["playwright", "test"];
+const playwrightArgs = ["playwright", "test", ...process.argv.slice(2)];
 
 function quoteShellArg(value) {
   if (/^[A-Za-z0-9_./:=@-]+$/.test(value)) {
@@ -115,6 +115,7 @@ async function runPlaywright() {
 
 async function main() {
   let devServer = null;
+  let isStoppingDevServer = false;
   let exitCode = 1;
 
   try {
@@ -130,7 +131,7 @@ async function main() {
       });
 
       devServer.on("exit", (code) => {
-        if (code && code !== 0) {
+        if (!isStoppingDevServer && code && code !== 0) {
           console.error(`Dev server exited early with code ${code}`);
         }
       });
@@ -140,6 +141,7 @@ async function main() {
 
     exitCode = await runPlaywright();
   } finally {
+    isStoppingDevServer = true;
     await stopProcessTree(devServer);
   }
 

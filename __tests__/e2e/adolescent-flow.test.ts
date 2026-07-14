@@ -57,6 +57,10 @@ async function openRegisteredAdolescentSession(page: Page, request: APIRequestCo
   const childId = await createAndLoginStudent(page, request);
 
   await page.goto(`/adolescent?lang=en&childId=${encodeURIComponent(childId)}&mode=new`, { waitUntil: "networkidle" });
+  const consentButton = page.getByRole("button", { name: "I agree and continue" });
+  if (await consentButton.isVisible().catch(() => false)) {
+    await consentButton.click();
+  }
   const providerSelect = page.locator(".provider-box select");
   await expect(providerSelect).toBeVisible();
   await providerSelect.selectOption("mock");
@@ -93,21 +97,24 @@ test.describe("Adolescent prototype flows", () => {
       await page.getByPlaceholder("Write 1-3 sentences").fill(
         `For step ${step}, I will make one concrete calm action and review the result after finishing it.`,
       );
-      await Promise.all([
-        page.waitForResponse((response) => response.url().includes("/api/session-sync") && response.request().method() === "POST"),
-        page.getByRole("button", { name: "Continue" }).click(),
-      ]);
+      await page.getByRole("button", { name: "Continue" }).click();
+
+      if (step < 5) {
+        await expect(page.locator(".stage-pill")).toContainText(`Step ${step + 1} of 5`);
+      }
     }
 
     await expect(page.getByText("Session completed")).toBeVisible({ timeout: 15000 });
     await expect(page.getByRole("heading", { name: "Summary" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Open dashboard" })).toBeVisible();
+    await expect(page.getByText("Results are saved in your personal dashboard.")).toBeVisible();
     await expect(page.locator(".record")).toHaveCount(5);
 
     await page.setViewportSize({ width: 375, height: 812 });
     await expect(page.getByRole("link", { name: "Open dashboard" })).toBeVisible();
     await page.getByRole("link", { name: "Open dashboard" }).click();
     await expect(page).toHaveURL(/\/student\/dashboard\?lang=en$/);
+    await expect(page.getByText("math exam preparation").first()).toBeVisible();
 
     expectHealthyClient(tracker);
   });
@@ -122,10 +129,7 @@ test.describe("Adolescent prototype flows", () => {
     await page.getByPlaceholder("Write 1-3 sentences").fill(
       "I want to prepare for the math exam by solving five practice tasks calmly today.",
     );
-    await Promise.all([
-      page.waitForResponse((response) => response.url().includes("/api/session-sync") && response.request().method() === "POST"),
-      page.getByRole("button", { name: "Continue" }).click(),
-    ]);
+    await page.getByRole("button", { name: "Continue" }).click();
 
     await expect(page.locator(".stage-pill")).toContainText("Step 2 of 5", { timeout: 15000 });
     expectHealthyClient(tracker);
