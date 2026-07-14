@@ -153,10 +153,6 @@ export async function DELETE(request: Request) {
       return clientError("childId is required", "VALIDATION_ERROR");
     }
 
-    if (!teacherId) {
-      return clientError("teacherId is required", "VALIDATION_ERROR");
-    }
-
     const access = await requireTeacherAccess(teacherId);
     if (access.response) {
       return access.response;

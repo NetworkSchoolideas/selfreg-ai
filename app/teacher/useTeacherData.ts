@@ -87,6 +87,10 @@ export function useTeacherData({
         lang === "en"
           ? "Failed to copy the link. Check browser clipboard permissions."
           : "Не удалось скопировать ссылку. Проверьте доступ браузера к буферу обмена.",
+      deleteStudentFailed:
+        lang === "en"
+          ? "Could not delete the student. The student and sessions were left unchanged."
+          : "Не удалось удалить ученика. Данные ученика и сессии не изменены.",
     }),
     [lang],
   );
@@ -496,26 +500,36 @@ export function useTeacherData({
         setConfirmDialog(null);
 
         void (async () => {
-          if (serverBackedDashboard) {
-            try {
+          try {
+            if (serverBackedDashboard) {
               const teacherQuery = teacherIdFromUrl ? `&teacherId=${encodeURIComponent(teacherIdFromUrl)}` : "";
-              await fetch(`/api/children?childId=${encodeURIComponent(selectedChild.id)}${teacherQuery}`, {
+              const response = await fetch(`/api/children?childId=${encodeURIComponent(selectedChild.id)}${teacherQuery}`, {
                 method: "DELETE",
               });
-            } catch {}
-          }
 
-          await DataService.deleteChild(selectedChild.id);
-          const fresh = await getFreshChildren();
-          setChildren(fresh);
-          setLastDeleted(null);
-          setNewSessionHint(null);
+              if (!response.ok) {
+                showNotice({ tone: "error", message: messages.deleteStudentFailed }, 4200);
+                return;
+              }
 
-          if (fresh.length > 0) {
-            applySelectedChildId(fresh[0].id);
-            setSelectedSessionIdx(0);
-          } else {
-            applySelectedChildId(null);
+              ChildrenStorage.removeLocalChild(selectedChild.id);
+            } else {
+              await DataService.deleteChild(selectedChild.id);
+            }
+
+            const fresh = await getFreshChildren();
+            setChildren(fresh);
+            setLastDeleted(null);
+            setNewSessionHint(null);
+
+            if (fresh.length > 0) {
+              applySelectedChildId(fresh[0].id);
+              setSelectedSessionIdx(0);
+            } else {
+              applySelectedChildId(null);
+            }
+          } catch {
+            showNotice({ tone: "error", message: messages.deleteStudentFailed }, 4200);
           }
         })();
       },

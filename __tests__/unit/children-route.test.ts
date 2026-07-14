@@ -242,4 +242,18 @@ describe("children route teacher access", () => {
     expect(response.status).toBe(400);
     expect(deleteChildFromSupabase).not.toHaveBeenCalled();
   });
+
+  it("deletes an owned child for the authenticated teacher when teacherId is omitted", async () => {
+    (requireTeacherAccess as jest.Mock).mockResolvedValue({ teacherId: "teacher-auth-1" });
+    (fetchChildFromSupabase as jest.Mock).mockResolvedValue({ id: "child-1", teacherId: "teacher-auth-1" });
+
+    const response = await DELETE(new Request("https://selfreg.ai/api/children?childId=child-1", {
+      method: "DELETE",
+    }));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ ok: true, childId: "child-1" });
+    expect(requireTeacherAccess).toHaveBeenCalledWith(null);
+    expect(deleteChildFromSupabase).toHaveBeenCalledWith("child-1");
+  });
 });
