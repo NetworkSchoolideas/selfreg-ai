@@ -13,7 +13,9 @@ function buildClient(existingProfile: { role: string; metadata: unknown } | null
   const eq = jest.fn().mockReturnValue({ maybeSingle });
   const select = jest.fn().mockReturnValue({ eq });
   const upsert = jest.fn().mockResolvedValue({ error: null });
-  const from = jest.fn().mockReturnValue({ select, upsert });
+  const updateEq = jest.fn().mockResolvedValue({ error: null });
+  const update = jest.fn().mockReturnValue({ eq: updateEq });
+  const from = jest.fn().mockReturnValue({ select, upsert, update });
 
   createServerClientMock.mockReturnValue({
     auth: {
@@ -31,7 +33,7 @@ function buildClient(existingProfile: { role: string; metadata: unknown } | null
     from,
   });
 
-  return { select, upsert };
+  return { select, upsert, update, updateEq };
 }
 
 function buildRequest(role: "teacher" | "student") {
@@ -78,6 +80,26 @@ describe("profile role route", () => {
       teacherCode: "T123456",
     });
     expect(mocks.upsert).not.toHaveBeenCalled();
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  it("creates a teacher code for a legacy teacher profile that does not have one", async () => {
+    const mocks = buildClient({ role: "teacher", metadata: null });
+    const { POST } = await import("@/app/api/profile-role/route");
+
+    const response = await POST(buildRequest("teacher"));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual(expect.objectContaining({
+      ok: true,
+      role: "teacher",
+      teacherCode: expect.stringMatching(/^U\d{6}$/),
+    }));
+    expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({
+      metadata: { teacher_code: expect.stringMatching(/^U\d{6}$/) },
+      updated_at: expect.any(String),
+    }));
+    expect(mocks.updateEq).toHaveBeenCalledWith("id", "user-1");
   });
 
   it("allows the initial role selection when no profile exists", async () => {

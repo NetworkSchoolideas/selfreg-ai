@@ -11,7 +11,7 @@ interface TeacherChildHeaderUi {
   session: string;
   sessions: string;
   lastUpdate: string;
-  deleteStudent: string;
+  removeStudent: string;
   openPrototype: string;
   copyLinkBtn: string;
 }
@@ -24,7 +24,7 @@ interface TeacherChildHeaderProps {
   prototypeHref: string;
   onToggleIdentity: (nextValue: boolean) => void;
   onCopyLink: () => void;
-  onDeleteChild: () => void;
+  onRemoveChild: () => void;
 }
 
 export function TeacherChildHeader({
@@ -35,7 +35,7 @@ export function TeacherChildHeader({
   prototypeHref,
   onToggleIdentity,
   onCopyLink,
-  onDeleteChild,
+  onRemoveChild,
 }: TeacherChildHeaderProps) {
   const displayName = getChildDisplayName(selectedChild);
   const technicalLabel = getChildTechnicalLabel(selectedChild);
@@ -94,8 +94,8 @@ export function TeacherChildHeader({
             </button>
           </div>
 
-          <button onClick={onDeleteChild} className="button secondary delete-student-btn">
-            {ui.deleteStudent}
+          <button onClick={onRemoveChild} className="button secondary delete-student-btn">
+            {ui.removeStudent}
           </button>
         </div>
       </div>

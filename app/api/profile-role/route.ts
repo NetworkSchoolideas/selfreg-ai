@@ -79,9 +79,23 @@ export async function POST(request: Request) {
       }
 
       const metadata = asMetadata(existingProfile?.metadata);
-      const teacherCode = existingRole === "teacher" && typeof metadata.teacher_code === "string"
+      let teacherCode = existingRole === "teacher" && typeof metadata.teacher_code === "string"
         ? metadata.teacher_code
         : null;
+
+      if (existingRole === "teacher" && !teacherCode) {
+        teacherCode = generateTeacherCode(user.email || user.id);
+        metadata.teacher_code = teacherCode;
+
+        const { error: teacherCodeUpdateError } = await supabase
+          .from("profiles")
+          .update({ metadata, updated_at: new Date().toISOString() })
+          .eq("id", user.id);
+
+        if (teacherCodeUpdateError) {
+          return serverError(teacherCodeUpdateError.message, "TEACHER_CODE_SAVE_ERROR");
+        }
+      }
 
       return NextResponse.json({
         ok: true,

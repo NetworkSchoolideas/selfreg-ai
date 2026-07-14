@@ -68,11 +68,11 @@ export function useTeacherData({
 
   const messages = useMemo(
     () => ({
-      deleteStudentTitle: lang === "en" ? "Delete student" : "Удалить ученика",
+      deleteStudentTitle: lang === "en" ? "Remove from my dashboard" : "Убрать из моего кабинета",
       deleteStudentMessage: (childLabel: string) =>
         lang === "en"
-          ? `Delete student ${childLabel} and all linked sessions? This action cannot be undone.`
-          : `Удалить ученика ${childLabel} и все связанные сессии? Это действие нельзя отменить.`,
+          ? `Remove ${childLabel} from your dashboard? The student profile and all sessions will remain available to the student.`
+          : `Убрать ученика ${childLabel} из вашего кабинета? Профиль и все сессии останутся доступны ученику.`,
       deleteSessionTitle: lang === "en" ? "Delete session" : "Удалить сессию",
       deleteSessionMessage:
         lang === "en"
@@ -89,8 +89,8 @@ export function useTeacherData({
           : "Не удалось скопировать ссылку. Проверьте доступ браузера к буферу обмена.",
       deleteStudentFailed:
         lang === "en"
-          ? "Could not delete the student. The student and sessions were left unchanged."
-          : "Не удалось удалить ученика. Данные ученика и сессии не изменены.",
+          ? "Could not remove the student from your dashboard. The student and sessions were left unchanged."
+          : "Не удалось убрать ученика из кабинета. Данные ученика и сессии не изменены.",
     }),
     [lang],
   );
@@ -486,7 +486,7 @@ export function useTeacherData({
     setLastDeleted(null);
   }
 
-  function deleteCurrentChild() {
+  function removeCurrentChildFromDashboard() {
     if (!selectedChild) {
       return;
     }
@@ -514,7 +514,7 @@ export function useTeacherData({
 
               ChildrenStorage.removeLocalChild(selectedChild.id);
             } else {
-              await DataService.deleteChild(selectedChild.id);
+              ChildrenStorage.removeLocalChild(selectedChild.id);
             }
 
             const fresh = await getFreshChildren();
@@ -725,7 +725,7 @@ export function useTeacherData({
     selectSession,
     createNewSessionForChild,
     createNewSessionFromInput,
-    deleteCurrentChild,
+    removeCurrentChildFromDashboard,
     copyAllLinks,
     copyChildLink,
     addChild,

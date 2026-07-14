@@ -420,6 +420,28 @@ export async function deleteChildFromSupabase(childId: string): Promise<void> {
   }
 }
 
+/**
+ * Removes only the teacher-to-student link. The student profile, sessions and
+ * session records remain intact so that clearing a teacher dashboard never
+ * destroys a student's history.
+ */
+export async function unlinkChildFromTeacherInSupabase(childId: string, teacherId: string): Promise<void> {
+  if (!isSupabaseAdminAvailable()) {
+    throw new Error("Supabase admin client is not configured");
+  }
+
+  const supabaseAdmin: any = getSupabaseAdmin();
+  const { error } = await supabaseAdmin
+    .from("children")
+    .update({ teacher_id: null, updated_at: new Date().toISOString() })
+    .eq("id", childId)
+    .eq("teacher_id", teacherId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
 // ========================================================================
 // Analytics
 // ========================================================================

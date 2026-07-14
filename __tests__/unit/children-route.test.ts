@@ -1,10 +1,10 @@
 import { DELETE, GET, POST } from "@/app/api/children/route";
 import {
-  deleteChildFromSupabase,
   ensureStudentChildForAuthUserInSupabase,
   fetchChildFromSupabase,
   fetchChildByUserIdFromSupabase,
   fetchChildrenFromSupabase,
+  unlinkChildFromTeacherInSupabase,
   upsertChildInSupabase,
 } from "@/lib/server-storage";
 import { requireTeacherAccess } from "@/lib/server-teacher-access";
@@ -16,7 +16,7 @@ jest.mock("@/lib/server-storage", () => ({
   fetchChildFromSupabase: jest.fn(),
   fetchChildrenFromSupabase: jest.fn(),
   upsertChildInSupabase: jest.fn(),
-  deleteChildFromSupabase: jest.fn(),
+  unlinkChildFromTeacherInSupabase: jest.fn(),
 }));
 
 jest.mock("@/lib/server-teacher-access", () => ({
@@ -216,22 +216,22 @@ describe("children route teacher access", () => {
     expect(upsertChildInSupabase).not.toHaveBeenCalled();
   });
 
-  it("checks ownership before action-based child deletion", async () => {
+  it("unlinks only the authenticated teacher from an action-based removal", async () => {
     (requireTeacherAccess as jest.Mock).mockResolvedValue({ teacherId: "teacher-auth-1" });
-    (fetchChildFromSupabase as jest.Mock).mockResolvedValue({ id: "child-2", teacherId: "teacher-auth-2" });
+    (fetchChildFromSupabase as jest.Mock).mockResolvedValue({ id: "child-1", teacherId: "teacher-auth-1" });
 
     const response = await POST(
       new Request("https://selfreg.ai/api/children", {
         method: "POST",
-        body: JSON.stringify({ action: "delete", childId: "child-2" }),
+        body: JSON.stringify({ action: "delete", childId: "child-1" }),
       })
     );
 
-    expect(response.status).toBe(400);
-    expect(deleteChildFromSupabase).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    expect(unlinkChildFromTeacherInSupabase).toHaveBeenCalledWith("child-1", "teacher-auth-1");
   });
 
-  it("checks ownership before DELETE removes a child", async () => {
+  it("checks ownership before DELETE removes a teacher link", async () => {
     (requireTeacherAccess as jest.Mock).mockResolvedValue({ teacherId: "teacher-auth-1" });
     (fetchChildFromSupabase as jest.Mock).mockResolvedValue({ id: "child-2", teacherId: "teacher-auth-2" });
 
@@ -240,10 +240,10 @@ describe("children route teacher access", () => {
     }));
 
     expect(response.status).toBe(400);
-    expect(deleteChildFromSupabase).not.toHaveBeenCalled();
+    expect(unlinkChildFromTeacherInSupabase).not.toHaveBeenCalled();
   });
 
-  it("deletes an owned child for the authenticated teacher when teacherId is omitted", async () => {
+  it("removes the teacher link without deleting an owned student when teacherId is omitted", async () => {
     (requireTeacherAccess as jest.Mock).mockResolvedValue({ teacherId: "teacher-auth-1" });
     (fetchChildFromSupabase as jest.Mock).mockResolvedValue({ id: "child-1", teacherId: "teacher-auth-1" });
 
@@ -254,6 +254,6 @@ describe("children route teacher access", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ ok: true, childId: "child-1" });
     expect(requireTeacherAccess).toHaveBeenCalledWith(null);
-    expect(deleteChildFromSupabase).toHaveBeenCalledWith("child-1");
+    expect(unlinkChildFromTeacherInSupabase).toHaveBeenCalledWith("child-1", "teacher-auth-1");
   });
 });

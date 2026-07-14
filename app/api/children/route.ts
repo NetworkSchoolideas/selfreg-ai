@@ -3,10 +3,10 @@ import { z } from "zod";
 import { clientError, serverError } from "@/lib/api-errors";
 import {
   ensureStudentChildForAuthUserInSupabase,
-  deleteChildFromSupabase,
   fetchChildByUserIdFromSupabase,
   fetchChildFromSupabase,
   fetchChildrenFromSupabase,
+  unlinkChildFromTeacherInSupabase,
   upsertChildInSupabase,
 } from "@/lib/server-storage";
 import { requireTeacherAccess } from "@/lib/server-teacher-access";
@@ -114,7 +114,7 @@ export async function POST(request: Request) {
         return clientError("Child not found for this teacher", "CHILD_NOT_FOUND");
       }
 
-      await deleteChildFromSupabase(body.childId);
+      await unlinkChildFromTeacherInSupabase(body.childId, access.teacherId!);
       return NextResponse.json({ ok: true, childId: body.childId });
     }
 
@@ -162,10 +162,10 @@ export async function DELETE(request: Request) {
       return clientError("Child not found for this teacher", "CHILD_NOT_FOUND");
     }
 
-    await deleteChildFromSupabase(childId);
+    await unlinkChildFromTeacherInSupabase(childId, access.teacherId!);
     return NextResponse.json({ ok: true, childId });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to delete child";
-    return serverError(message, "CHILD_DELETE_ERROR");
+    const message = error instanceof Error ? error.message : "Failed to remove student from teacher dashboard";
+    return serverError(message, "CHILD_UNLINK_ERROR");
   }
 }

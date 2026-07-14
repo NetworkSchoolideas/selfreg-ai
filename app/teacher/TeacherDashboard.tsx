@@ -90,7 +90,7 @@ export function TeacherDashboard() {
       quickCreateButton: lang === "en" ? "+ New session" : "+ Новая сессия",
       openPrototype: lang === "en" ? "Open session" : "Открыть сессию",
       copyLinkBtn: lang === "en" ? "📋 Link" : "📋 Ссылка",
-      deleteStudent: lang === "en" ? "Delete student" : "Удалить ученика",
+      removeStudent: lang === "en" ? "Remove from my dashboard" : "Убрать из моего кабинета",
       analyticsTitle:
         lang === "en"
           ? "Aggregated analytics (all student sessions)"
@@ -190,7 +190,7 @@ export function TeacherDashboard() {
     setRevealIdentity,
     selectChild,
     selectSession,
-    deleteCurrentChild,
+    removeCurrentChildFromDashboard,
     copyAllLinks,
     copyChildLink,
     addChild,
@@ -207,12 +207,39 @@ export function TeacherDashboard() {
     deferInitialLoad,
   });
 
-  const [isTeacherCodeCopied, setIsTeacherCodeCopied] = useState(false);
-  const teacherCodeCopyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const teacherCode =
+  const metadataTeacherCode =
     typeof authUser?.metadata?.teacher_code === "string" && authUser.metadata.teacher_code.trim()
       ? authUser.metadata.teacher_code.trim()
       : null;
+  const [generatedTeacherCode, setGeneratedTeacherCode] = useState<string | null>(null);
+  const teacherCode = isTeacher && authUser?.id ? metadataTeacherCode || generatedTeacherCode : null;
+  const [isTeacherCodeCopied, setIsTeacherCodeCopied] = useState(false);
+  const teacherCodeCopyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!authUser?.id || !isTeacher || metadataTeacherCode) {
+      return;
+    }
+
+    let active = true;
+
+    void fetch("/api/profile-role", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role: "teacher" }),
+    })
+      .then(async (response) => (response.ok ? response.json() : null))
+      .then((payload) => {
+        if (active && typeof payload?.teacherCode === "string" && payload.teacherCode.trim()) {
+          setGeneratedTeacherCode(payload.teacherCode.trim());
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      active = false;
+    };
+  }, [authUser?.id, isTeacher, metadataTeacherCode]);
 
   useEffect(() => {
     return () => {
@@ -344,7 +371,7 @@ export function TeacherDashboard() {
                 prototypeHref={buildPrototypeHref(selectedChild)}
                 onToggleIdentity={setRevealIdentity}
                 onCopyLink={() => copyChildLink(selectedChild)}
-                onDeleteChild={deleteCurrentChild}
+                onRemoveChild={removeCurrentChildFromDashboard}
               />
 
               <div className="panel mb-16">
