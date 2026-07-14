@@ -86,8 +86,8 @@ export function HomeClient() {
           <h2>{lang === "en" ? "Architecture" : "Архитектура"}</h2>
           <p>
             {lang === "en"
-              ? "Next.js on Vercel, AI provider adapters, future session storage, and the transition from the Telegram test to a web app."
-              : "Next.js на Vercel, адаптеры для ИИ-провайдеров, будущая база сессий и переход от Telegram-теста к веб-приложению."}
+              ? "Next.js on Vercel, protected session storage, and adaptable AI provider connections."
+              : "Next.js на Vercel, защищённое хранение сессий и подключаемые ИИ-провайдеры."}
           </p>
         </article>
         <article className="panel">
