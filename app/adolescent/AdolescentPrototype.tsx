@@ -265,7 +265,7 @@ export function AdolescentPrototype() {
   });
 
   // Submit hook
-  const [providerStatus, setProviderStatus] = useState(`${DEFAULT_LIVE_PROVIDER}: ready`);
+  const [providerStatus, setProviderStatus] = useState("");
   const {
     isSending,
     answerQualityWarning,
@@ -332,7 +332,7 @@ export function AdolescentPrototype() {
     setKeyStatus({ isValid: null, isTesting: false, hasSavedKey: false });
     setModel(getProviderMeta(nextProvider).defaultModel);
     
-    setProviderStatus(nextProvider === "mock" ? ui.mockStatus : `${nextProvider}: ready`);
+    setProviderStatus(nextProvider === "mock" ? ui.mockStatus : "");
   }, [setProviderStatus, ui.mockStatus]);
 
   // Skip clarification handler
@@ -423,6 +423,9 @@ export function AdolescentPrototype() {
   const headerEyebrow = showPersonalHeader ? personalCopy.eyebrow : ui.eyebrow;
   const headerTitle = showPersonalHeader ? personalCopy.title : ui.title;
   const headerIntro = showPersonalHeader ? personalCopy.intro : ui.intro;
+  const isTeacherAccount = authUser?.role === "teacher";
+  const accountHref = withLang(isTeacherAccount ? "/teacher" : "/student/dashboard", lang);
+  const accountLabel = isTeacherAccount ? ui.teacher : ui.dashboard;
 
   return (
     <main className="shell">
@@ -445,7 +448,7 @@ export function AdolescentPrototype() {
           <AuthButton lang={lang} />
           <LanguageToggle />
           <Link className="button secondary" href={withLang("/", lang)}>{ui.home}</Link>
-          <Link className="button secondary" href={withLang("/teacher", lang)}>{ui.teacher}</Link>
+          <Link className="button secondary" href={accountHref}>{accountLabel}</Link>
         </div>
       </div>
 
@@ -515,7 +518,7 @@ export function AdolescentPrototype() {
                   {lang === "en" ? "Key saved, not tested" : "Ключ сохранён, не проверен"}
                 </span>
               ) : null}
-              <span className="muted small-text">{providerStatus}</span>
+              {providerStatus && <span className="muted small-text">{providerStatus}</span>}
             </div>
           </div>
 
@@ -703,7 +706,8 @@ function useUiText(lang: "ru" | "en") {
     howTitle: lang === "en" ? "How to use it" : "Как пользоваться",
     howText: lang === "en" ? "Write about a situation where you want to cope better: study, project, sport, creativity, communication, or a habit." : "Напиши о ситуации, где хочешь справляться лучше: учеба, проект, спорт, творчество, общение или привычка.",
     home: lang === "en" ? "Home" : "Главная",
-    teacher: lang === "en" ? "Teacher view" : "Педагогу",
+    dashboard: lang === "en" ? "Dashboard" : "Личный кабинет",
+    teacher: lang === "en" ? "Teacher dashboard" : "Кабинет педагога",
     provider: lang === "en" ? "AI provider" : "ИИ-провайдер",
     model: lang === "en" ? "Model" : "Модель",
     key: lang === "en" ? "One-time API key" : "API-ключ",

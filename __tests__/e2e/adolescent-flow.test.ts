@@ -87,6 +87,9 @@ async function openRegisteredAdolescentSession(page: Page, request: APIRequestCo
   }
   const providerSelect = page.locator(".provider-box select");
   await expect(providerSelect).toBeVisible();
+  await expect(page.getByRole("link", { name: "Dashboard", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Teacher dashboard", exact: true })).toHaveCount(0);
+  await expect(page.getByText("github-models: ready", { exact: true })).toHaveCount(0);
   await providerSelect.selectOption("mock");
   await expect(providerSelect).toHaveValue("mock");
   await expect(page.getByText("Mock mode: no external key needed")).toBeVisible();
@@ -172,6 +175,8 @@ test.describe("Adolescent prototype flows", () => {
 
     await page.goto("/adolescent?lang=en&mode=new", { waitUntil: "networkidle" });
     await expect(page.getByRole("heading", { name: "Practice self-regulation for yourself" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Teacher dashboard", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Dashboard", exact: true })).toHaveCount(0);
     await expect(page.getByText("This draft is isolated to your signed-in account in this browser.")).toBeVisible();
     await expect(page.getByText("student dashboards or teacher analytics")).toBeVisible();
 
