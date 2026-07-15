@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import type { Child } from "@/lib/children-storage";
 import { getChildDisplayName, getChildTechnicalLabel } from "@/lib/child-display";
@@ -12,8 +11,6 @@ interface TeacherSidebarUi {
   session: string;
   sessions: string;
   hasRealData: string;
-  openPrototype: string;
-  start: string;
   copyLink: string;
   copied: string;
   addNamePlaceholder: string;
@@ -37,7 +34,6 @@ interface TeacherSidebarProps {
   onSelectChild: (childId: string) => void;
   onCopyChildLink: (child: Child) => void;
   onAddChild: (name: string) => Promise<void>;
-  buildPrototypeHref: (child: Child) => string;
 }
 
 export function TeacherSidebar({
@@ -55,7 +51,6 @@ export function TeacherSidebar({
   onSelectChild,
   onCopyChildLink,
   onAddChild,
-  buildPrototypeHref,
 }: TeacherSidebarProps) {
   const [newChildName, setNewChildName] = useState("");
 
@@ -145,15 +140,6 @@ export function TeacherSidebar({
                   </div>
 
                   <div className="child-item-actions" onClick={(event) => event.stopPropagation()}>
-                    <Link
-                      href={buildPrototypeHref(child)}
-                      className="button"
-                      target="_blank"
-                      style={{ fontSize: 10, padding: "1px 6px", minHeight: 24 }}
-                      title={ui.openPrototype}
-                    >
-                      {ui.start}
-                    </Link>
                     <button
                       className="button secondary"
                       onClick={() => onCopyChildLink(child)}

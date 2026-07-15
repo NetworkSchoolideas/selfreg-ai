@@ -220,9 +220,8 @@ test.describe("Public smoke flows", () => {
     await expect(page.getByText("Дашборд педагога")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Обзор учеников + инфографика" })).toBeVisible();
     await expect(page.getByRole("button", { name: "CSV Экспорт" })).toBeVisible();
-    const sharedLink = page.getByRole("link", { name: "Старт" }).first();
-    await expect(sharedLink).toHaveAttribute("href", /\/adolescent\?childId=/);
-    expect(await sharedLink.getAttribute("href")).not.toContain("teacher=");
+    await expect(page.locator('a[href*="/adolescent?childId="]')).toHaveCount(0);
+    await expect(page.getByTitle("Скопировать ссылку").first()).toBeVisible();
 
     expectHealthyClient(tracker);
   });
@@ -252,6 +251,7 @@ test.describe("Public smoke flows", () => {
     await expect(page.locator(".session-context-input")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "+ Новая сессия" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Удалить выбранную" })).toHaveCount(0);
+    await expect(studentHeader.getByRole("link", { name: "Открыть сессию" })).toHaveCount(0);
 
     expectHealthyClient(tracker);
   });
@@ -278,6 +278,7 @@ test.describe("Public smoke flows", () => {
     await expect(page.locator(".session-context-input")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "+ New session" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Delete selected" })).toHaveCount(0);
+    await expect(studentHeader.getByRole("link", { name: "Open session" })).toHaveCount(0);
 
     expectHealthyClient(tracker);
   });

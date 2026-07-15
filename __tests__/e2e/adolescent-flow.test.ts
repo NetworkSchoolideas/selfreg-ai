@@ -137,11 +137,18 @@ test.describe("Adolescent prototype flows", () => {
     await expect(page.getByText("Results are saved in your personal dashboard.")).toBeVisible();
     await expect(page.locator(".record")).toHaveCount(5);
 
+    await page.getByRole("button", { name: "5 stars" }).click();
+    await page.getByPlaceholder("What was helpful? What could be better?").fill("The five-stage route was clear.");
+    await page.getByRole("button", { name: "Send feedback to teacher" }).click();
+    await expect(page.getByText("Feedback saved.")).toBeVisible();
+
     await page.setViewportSize({ width: 375, height: 812 });
     await expect(page.getByRole("link", { name: "Open dashboard" })).toBeVisible();
     await page.getByRole("link", { name: "Open dashboard" }).click();
     await expect(page).toHaveURL(/\/student\/dashboard\?lang=en$/);
     await expect(page.getByText("math exam preparation").first()).toBeVisible();
+    await expect(page.getByText("5 steps").first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Logout" })).toBeVisible();
 
     expectHealthyClient(tracker);
   });

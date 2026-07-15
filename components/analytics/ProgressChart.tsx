@@ -1,5 +1,7 @@
 ﻿"use client";
 
+import type { AppLang } from "@/lib/app-i18n";
+
 interface ProgressStats {
   totalSessions: number;
   completedSessions: number;
@@ -10,9 +12,28 @@ interface ProgressStats {
 interface ProgressChartProps {
   data: ProgressStats[];
   title?: string;
+  lang?: AppLang;
 }
 
-export default function ProgressChart({ data, title = "Прогресс учеников" }: ProgressChartProps) {
+export default function ProgressChart({ data, title = "Прогресс учеников", lang = "ru" }: ProgressChartProps) {
+  const copy = lang === "en"
+    ? {
+        empty: "No data to display",
+        student: "Student",
+        sessions: "sessions",
+        averageScore: "average score",
+        latestActivity: "Latest activity",
+        shown: (visible: number, total: number) => `Showing ${visible} of ${total} students`,
+      }
+    : {
+        empty: "Нет данных для отображения",
+        student: "Ученик",
+        sessions: "сессий",
+        averageScore: "средний балл",
+        latestActivity: "Последняя активность",
+        shown: (visible: number, total: number) => `Показано ${visible} из ${total} учеников`,
+      };
+
   if (!data || data.length === 0) {
     return (
       <div style={{
@@ -23,13 +44,11 @@ export default function ProgressChart({ data, title = "Прогресс учен
       }}>
         <h3 style={{ fontSize: 18, marginBottom: 16 }}>{title}</h3>
         <div style={{ textAlign: "center", padding: 40, color: "#6b7280" }}>
-          Нет данных для отображения
+          {copy.empty}
         </div>
       </div>
     );
   }
-
-  const maxSessions = Math.max(...data.map(d => d.totalSessions), 1);
 
   return (
     <div style={{
@@ -42,7 +61,9 @@ export default function ProgressChart({ data, title = "Прогресс учен
 
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         {data.slice(0, 10).map((item, index) => {
-          const progressPercent = (item.completedSessions / item.totalSessions) * 100;
+          const progressPercent = item.totalSessions > 0
+            ? (item.completedSessions / item.totalSessions) * 100
+            : 0;
           const colors = [
             "#4f46e5", "#10b981", "#f59e0b", "#ef4444",
             "#8b5cf6", "#ec4899", "#06b6d4", "#84cc16",
@@ -59,10 +80,10 @@ export default function ProgressChart({ data, title = "Прогресс учен
             }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                 <div style={{ fontSize: 14, fontWeight: 500, color: "#374151" }}>
-                  Ученик {index + 1}
+                  {copy.student} {index + 1}
                 </div>
                 <div style={{ fontSize: 12, color: "#6b7280" }}>
-                  {item.completedSessions}/{item.totalSessions} сессий
+                  {item.completedSessions}/{item.totalSessions} {copy.sessions}
                 </div>
               </div>
 
@@ -88,13 +109,13 @@ export default function ProgressChart({ data, title = "Прогресс учен
                     <span style={{ color: "#10b981", fontWeight: 600 }}>
                       {item.averageScore.toFixed(1)}
                     </span>
-                    {" "}средний балл
+                    {" "}{copy.averageScore}
                   </div>
                 )}
                 {item.lastActivity && (
                   <div>
-                    Последняя активность:{" "}
-                    {new Date(item.lastActivity).toLocaleDateString("ru-RU")}
+                    {copy.latestActivity}:{" "}
+                    {new Date(item.lastActivity).toLocaleDateString(lang === "en" ? "en-US" : "ru-RU")}
                   </div>
                 )}
               </div>
@@ -113,7 +134,7 @@ export default function ProgressChart({ data, title = "Прогресс учен
           color: "#6b7280",
           fontSize: 14,
         }}>
-          Показано 10 из {data.length} учеников
+          {copy.shown(10, data.length)}
         </div>
       )}
     </div>

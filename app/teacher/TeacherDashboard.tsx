@@ -61,7 +61,6 @@ export function TeacherDashboard() {
       session: lang === "en" ? "session" : "сессия",
       lastUpdate: lang === "en" ? "last update" : "последнее обновление",
       hasRealData: lang === "en" ? "has real data" : "есть реальные данные",
-      start: lang === "en" ? "Start" : "Старт",
       copyLink: lang === "en" ? "Copy link" : "Скопировать ссылку",
       copied: lang === "en" ? "✓" : "✓",
       copyAllLinks: lang === "en" ? "📋 Copy all links" : "📋 Все ссылки",
@@ -89,7 +88,6 @@ export function TeacherDashboard() {
           ? "Context for a new session (study, sport...)"
           : "Контекст новой сессии (учёба, спорт...)",
       quickCreateButton: lang === "en" ? "+ New session" : "+ Новая сессия",
-      openPrototype: lang === "en" ? "Open session" : "Открыть сессию",
       copyLinkBtn: lang === "en" ? "📋 Link" : "📋 Ссылка",
       removeStudent: lang === "en" ? "Remove from my dashboard" : "Убрать из моего кабинета",
       analyticsTitle:
@@ -195,7 +193,6 @@ export function TeacherDashboard() {
     copyAllLinks,
     copyChildLink,
     addChild,
-    buildPrototypeHref,
     exportToCsv,
     dismissNotice,
     closeConfirmDialog,
@@ -350,7 +347,6 @@ export function TeacherDashboard() {
           onSelectChild={selectChild}
           onCopyChildLink={copyChildLink}
           onAddChild={addChild}
-          buildPrototypeHref={buildPrototypeHref}
         />
 
         <div className="dashboard-main">
@@ -370,7 +366,6 @@ export function TeacherDashboard() {
                 locale={locale}
                 revealIdentity={revealIdentity}
                 ui={ui}
-                prototypeHref={buildPrototypeHref(selectedChild)}
                 onToggleIdentity={setRevealIdentity}
                 onCopyLink={() => copyChildLink(selectedChild)}
                 onRemoveChild={removeCurrentChildFromDashboard}
@@ -472,6 +467,7 @@ export function TeacherDashboard() {
                           lastActivity: item.lastActivity ?? undefined,
                         }))}
                         title={lang === "en" ? "Student Progress" : "Прогресс учеников"}
+                        lang={lang}
                       />
                     </div>
                   </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import type { Session } from "@/lib/children-storage";
-import { inferRecordEventType } from "@/lib/session-helpers";
+import { countProgressStages, inferRecordEventType } from "@/lib/session-helpers";
 import { getSessionSignals } from "@/lib/teacher-dashboard-analytics";
 
 interface TeacherSessionsPanelUi {
@@ -51,7 +51,7 @@ export function TeacherSessionsPanel({
           {sortedSessions.map((session, idx) => {
             const isSelected = idx === selectedSessionIdx;
             const isNew = session.updatedAt === highlightedSessionUpdatedAt;
-            const recordCount = session.records.length;
+            const stageCount = countProgressStages(session.records);
             const answerRecords = session.records.filter((record) => inferRecordEventType(record) === "answer");
             const scenarioACount = answerRecords.filter((record) => record.scenario === "A").length;
             const scenarioBCount = answerRecords.filter((record) => record.scenario === "B").length;
@@ -82,7 +82,7 @@ export function TeacherSessionsPanel({
                   <span className="session-card-date">{new Date(session.updatedAt).toLocaleDateString(locale)}</span>
                 </div>
                 <div className="session-card-subtitle">
-                  {recordCount} {ui.stepsShort}
+                  {stageCount} {ui.stepsShort}
                   <span className="ml-8">{processBits}</span>
                 </div>
                 {session.studentArchivedAt && (

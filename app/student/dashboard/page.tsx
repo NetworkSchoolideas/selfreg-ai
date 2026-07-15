@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ErrorBoundary } from "@/app/components/ErrorBoundary";
 import { LanguageToggle } from "@/app/components/LanguageToggle";
+import { AuthButton } from "@/app/components/AuthButton";
 import { ConfirmDialog } from "@/app/components/ConfirmDialog";
 import { normalizeAppLang, withLang } from "@/lib/app-i18n";
 import { DataService } from "@/lib/data-service";
@@ -16,6 +17,7 @@ import {
   isSessionArchivedForStudent,
 } from "@/lib/student-dashboard";
 import type { ChildProfile, Session } from "@/types/session";
+import { countProgressStages } from "@/lib/session-helpers";
 
 function StudentDashboardContent() {
   const searchParams = useSearchParams();
@@ -415,7 +417,10 @@ function StudentDashboardContent() {
                 {displayName}{displayClass ? `, ${displayClass}` : ""}
               </p>
             </div>
-            <LanguageToggle />
+            <div className="flex-row gap-8 items-center flex-wrap">
+              <AuthButton lang={lang} />
+              <LanguageToggle />
+            </div>
           </div>
         </header>
 
@@ -645,7 +650,7 @@ function StudentDashboardContent() {
                       <div className="fs-12" style={{ color: "#9ca3af" }}>
                         {new Date(session.updatedAt).toLocaleString(lang === "en" ? "en-US" : "ru-RU")}
                         {" · "}
-                        {session.records?.length ?? 0} {t.stepsCount}
+                        {countProgressStages(session.records ?? [])} {t.stepsCount}
                       </div>
                       {session.historyInsight && sessionMatchesLanguage && (
                         <div

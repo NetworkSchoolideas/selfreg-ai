@@ -17,6 +17,14 @@ export function isProgressRecord(record: RecordItem): boolean {
   return isFlowProgressRecord(record);
 }
 
+export function countProgressStages(records: RecordItem[]): number {
+  return new Set(
+    records
+      .filter(isProgressRecord)
+      .map((record) => record.stageId),
+  ).size;
+}
+
 export function isAnswerRecord(record: RecordItem): boolean {
   return inferRecordEventType(record) === "answer";
 }

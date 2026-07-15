@@ -119,6 +119,35 @@ describe("ChildrenStorage", () => {
     expect(ChildrenStorage.getLatestSessionForChild(child.id)?.adolescentFeedback).toEqual(feedback);
   });
 
+  it("persists feedback through the API before updating a server-backed child", async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_ENABLED = "true";
+    const feedback: AdolescentFeedback = {
+      rating: 5,
+      comment: "Useful",
+      timestamp: "2026-01-01T00:00:00.000Z",
+    };
+    const child: ChildProfile = {
+      id: "server-feedback-child",
+      name: "Student",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      sessions: [makeSession("2026-01-01T00:00:00.000Z", "done")],
+      realData: { fio: "Student", klass: "10A" },
+    };
+    ChildrenStorage.upsertLocalChild(child);
+
+    await expect(ChildrenStorage.saveAdolescentFeedbackAsync(child.id, feedback)).resolves.toBe(true);
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/session-feedback",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ childId: child.id, adolescentFeedback: feedback }),
+      }),
+    );
+    expect(ChildrenStorage.getLatestSessionForChild(child.id)?.adolescentFeedback).toEqual(feedback);
+  });
+
   it("upserts an existing child instead of duplicating it", () => {
     const child = ChildrenStorage.addChild("Test Student");
     const updated: ChildProfile = {

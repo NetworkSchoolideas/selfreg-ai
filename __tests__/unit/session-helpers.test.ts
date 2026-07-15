@@ -1,4 +1,5 @@
 import {
+  countProgressStages,
   createRecord,
   getNextStageInfo,
   isSessionComplete,
@@ -45,6 +46,21 @@ describe("session helpers", () => {
   it("requires progress on all stages before a session is complete", () => {
     expect(isSessionComplete(["1", "2", "3", "4", "5"].map((stageId) => answerRecord(stageId as RecordItem["stageId"])), 5)).toBe(true);
     expect(isSessionComplete(["1", "2", "3"].map((stageId) => answerRecord(stageId as RecordItem["stageId"])), 5)).toBe(false);
+  });
+
+  it("counts completed stages without inflating clarification and retry events", () => {
+    const stageOne = answerRecord("1");
+    const clarification: RecordItem = {
+      ...answerRecord("2"),
+      scenario: "clarify",
+      eventType: "clarify_request",
+    };
+    const retry = {
+      ...answerRecord("2"),
+      eventType: "retry" as const,
+    };
+
+    expect(countProgressStages([stageOne, clarification, retry, answerRecord("2")])).toBe(2);
   });
 
   it("returns the next stage metadata and question", () => {

@@ -18,11 +18,13 @@ export function AdolescentFeedbackForm({
 }: AdolescentFeedbackFormProps) {
   const [rating, setRating] = useState<number | null>(null);
   const [comment, setComment] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const effectiveChildId = childIdFromUrl || currentChildId;
 
-  const handleSubmit = () => {
-    if (!effectiveChildId) return;
+  const handleSubmit = async () => {
+    if (!effectiveChildId || isSubmitting) return;
 
     const fb = {
       rating: rating || undefined,
@@ -30,10 +32,25 @@ export function AdolescentFeedbackForm({
       timestamp: new Date().toISOString(),
     };
 
-    ChildrenStorage.saveAdolescentFeedback(effectiveChildId, fb);
-    onSubmitted();
-    setComment("");
-    setRating(null);
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      const saved = await ChildrenStorage.saveAdolescentFeedbackAsync(effectiveChildId, fb);
+      if (!saved) {
+        throw new Error("Feedback session is unavailable");
+      }
+      onSubmitted();
+      setComment("");
+      setRating(null);
+    } catch {
+      setSubmitError(
+        lang === "en"
+          ? "Could not save feedback. Please try again."
+          : "Не удалось сохранить обратную связь. Попробуйте ещё раз.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -80,12 +97,19 @@ export function AdolescentFeedbackForm({
         <button
           type="button"
           className="button"
-          disabled={!comment.trim() && !rating}
-          onClick={handleSubmit}
+          disabled={isSubmitting || (!comment.trim() && !rating)}
+          onClick={() => void handleSubmit()}
         >
-          {lang === "en" ? "Send feedback to teacher" : "Отправить педагогу"}
+          {isSubmitting
+            ? (lang === "en" ? "Saving..." : "Сохраняем...")
+            : (lang === "en" ? "Send feedback to teacher" : "Отправить педагогу")}
         </button>
       </div>
+      {submitError && (
+        <p role="alert" style={{ fontSize: 12, color: "#b91c1c", marginTop: 8 }}>
+          {submitError}
+        </p>
+      )}
       <p className="muted" style={{ fontSize: 11, marginTop: 6 }}>
         {lang === "en" ? "Your feedback will be visible to the teacher in the dashboard." : "Педагог увидит эту обратную связь в дашборде."}
       </p>

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import type { Child } from "@/lib/children-storage";
 import { getChildDisplayName, getChildTechnicalLabel } from "@/lib/child-display";
 
@@ -12,7 +11,6 @@ interface TeacherChildHeaderUi {
   sessions: string;
   lastUpdate: string;
   removeStudent: string;
-  openPrototype: string;
   copyLinkBtn: string;
 }
 
@@ -21,7 +19,6 @@ interface TeacherChildHeaderProps {
   locale: string;
   revealIdentity: boolean;
   ui: TeacherChildHeaderUi;
-  prototypeHref: string;
   onToggleIdentity: (nextValue: boolean) => void;
   onCopyLink: () => void;
   onRemoveChild: () => void;
@@ -32,7 +29,6 @@ export function TeacherChildHeader({
   locale,
   revealIdentity,
   ui,
-  prototypeHref,
   onToggleIdentity,
   onCopyLink,
   onRemoveChild,
@@ -81,14 +77,6 @@ export function TeacherChildHeader({
 
         <div className="flex-col gap-6 items-end">
           <div className="flex-row gap-6 items-center flex-wrap">
-            <Link
-              href={prototypeHref}
-              className="button secondary"
-              target="_blank"
-              style={{ padding: "7px 12px" }}
-            >
-              {ui.openPrototype}
-            </Link>
             <button className="button secondary" onClick={onCopyLink} style={{ padding: "7px 10px" }}>
               {ui.copyLinkBtn}
             </button>
