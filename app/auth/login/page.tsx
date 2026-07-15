@@ -145,7 +145,6 @@ function LoginContent() {
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   placeholder={ui.passwordPlaceholder}
-                  minLength={6}
                   required
                   disabled={isLoading}
                 />

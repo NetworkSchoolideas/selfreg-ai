@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { LanguageToggle } from "@/app/components/LanguageToggle";
 import { ErrorBoundary } from "@/app/components/ErrorBoundary";
 import { normalizeAppLang, withLang } from "@/lib/app-i18n";
-import { isGoogleAuthEnabled } from "@/lib/auth-config";
+import { isGoogleAuthEnabled, MIN_PASSWORD_LENGTH } from "@/lib/auth-config";
 import { buildAuthCallbackUrl, signInWithGoogle, signUpWithEmail } from "@/lib/supabase-auth";
 
 function RegisterContent() {
@@ -40,7 +40,7 @@ function RegisterContent() {
     emailLabel: "Email",
     emailPlaceholder: "you@example.com",
     passwordLabel: lang === "en" ? "Password" : "Пароль",
-    passwordPlaceholder: lang === "en" ? "Min. 6 characters" : "Минимум 6 символов",
+    passwordPlaceholder: lang === "en" ? "At least 8 characters" : "Минимум 8 символов",
     fullNameLabel: lang === "en" ? "Full name" : "ФИО",
     fullNamePlaceholder: lang === "en" ? "Ivan Ivanov" : "Иван Иванов",
     roleLabel: lang === "en" ? "I am a" : "Я",
@@ -205,7 +205,7 @@ function RegisterContent() {
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   placeholder={ui.passwordPlaceholder}
-                  minLength={6}
+                  minLength={MIN_PASSWORD_LENGTH}
                   required
                   disabled={isLoading || !!success}
                 />

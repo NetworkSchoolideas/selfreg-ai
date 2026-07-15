@@ -5,7 +5,7 @@ import { Suspense, useCallback, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ErrorBoundary } from "@/app/components/ErrorBoundary";
 import { normalizeAppLang, withLang } from "@/lib/app-i18n";
-import { isGoogleAuthEnabled } from "@/lib/auth-config";
+import { isGoogleAuthEnabled, MIN_PASSWORD_LENGTH } from "@/lib/auth-config";
 import { buildAuthCallbackUrl, signInWithGoogle, signUpWithEmail } from "@/lib/supabase-auth";
 
 function TeacherRegisterContent() {
@@ -32,6 +32,7 @@ function TeacherRegisterContent() {
       email: "Email",
       emailPlaceholder: "your@email.com",
       password: "Пароль",
+      passwordPlaceholder: "Минимум 8 символов",
       confirmPassword: "Подтвердите пароль",
       name: "ФИО",
       namePlaceholder: "Иванов Иван Иванович",
@@ -54,6 +55,7 @@ function TeacherRegisterContent() {
       email: "Email",
       emailPlaceholder: "your@email.com",
       password: "Password",
+      passwordPlaceholder: "At least 8 characters",
       confirmPassword: "Confirm password",
       name: "Full name",
       namePlaceholder: "John Doe",
@@ -105,7 +107,7 @@ function TeacherRegisterContent() {
           school,
           teacher_code: teacherCode,
         },
-        redirectTo: buildAuthCallbackUrl({ role: "teacher" }),
+        redirectTo: buildAuthCallbackUrl({ role: "teacher", lang }),
       });
 
       if (result.error) {
@@ -230,8 +232,9 @@ function TeacherRegisterContent() {
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
+                placeholder={t.passwordPlaceholder}
                 required
-                minLength={6}
+                minLength={MIN_PASSWORD_LENGTH}
                 className="form-input"
               />
               <button
@@ -256,8 +259,9 @@ function TeacherRegisterContent() {
                 type={showConfirmPassword ? "text" : "password"}
                 value={confirmPassword}
                 onChange={(event) => setConfirmPassword(event.target.value)}
+                placeholder={t.passwordPlaceholder}
                 required
-                minLength={6}
+                minLength={MIN_PASSWORD_LENGTH}
                 className="form-input"
               />
               <button

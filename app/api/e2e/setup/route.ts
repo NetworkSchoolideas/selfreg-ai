@@ -1,11 +1,12 @@
 import { z } from "zod";
 import { createErrorResponse, serverError } from "@/lib/api-errors";
+import { MIN_PASSWORD_LENGTH } from "@/lib/auth-config";
 import { getSupabaseAdmin, isSupabaseAdminAvailable } from "@/lib/supabase";
 import type { Database } from "@/types/supabase";
 
 const E2ESetupUserSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(6),
+  password: z.string().min(MIN_PASSWORD_LENGTH),
   role: z.enum(["teacher", "student"]),
   fullName: z.string().min(1).optional(),
   school: z.string().min(1).optional(),

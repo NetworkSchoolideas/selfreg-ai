@@ -88,8 +88,21 @@ test.describe("Public smoke flows", () => {
     await expect(page).toHaveURL(/\/auth\/login\?lang=ru$/);
     await expect(page.getByRole("heading", { name: "Вход" })).toBeVisible();
     await expect(page.getByPlaceholder("you@example.com")).toBeVisible();
+    await expect(page.getByPlaceholder("Введите пароль")).not.toHaveAttribute("minlength");
     await expect(page.getByRole("button", { name: "Войти", exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "Создать аккаунт" })).toBeVisible();
+
+    expectHealthyClient(tracker);
+  });
+
+  test("student registration mirrors the eight-character Supabase policy", async ({ page }) => {
+    const tracker = collectClientErrors(page);
+
+    await page.goto("/auth/register?role=student&lang=ru");
+
+    const passwordInput = page.getByPlaceholder("Минимум 8 символов");
+    await expect(passwordInput).toBeVisible();
+    await expect(passwordInput).toHaveAttribute("minlength", "8");
 
     expectHealthyClient(tracker);
   });
@@ -150,6 +163,8 @@ test.describe("Public smoke flows", () => {
     await expect(page.getByRole("heading", { name: "Регистрация педагога" })).toBeVisible();
     await expect(page.getByPlaceholder("Иванов Иван Иванович")).toBeVisible();
     await expect(page.getByPlaceholder("Название школы")).toBeVisible();
+    await expect(page.getByPlaceholder("Минимум 8 символов")).toHaveCount(2);
+    await expect(page.getByPlaceholder("Минимум 8 символов").first()).toHaveAttribute("minlength", "8");
     await expect(page.getByRole("link", { name: "Войти" })).toBeVisible();
 
     await page.getByRole("link", { name: "Войти" }).click();

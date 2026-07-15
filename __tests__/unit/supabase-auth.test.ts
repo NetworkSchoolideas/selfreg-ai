@@ -70,6 +70,15 @@ describe("signUpWithEmail", () => {
     });
   });
 
+  it("rejects passwords shorter than the Supabase policy before calling Auth", async () => {
+    const result = await signUpWithEmail("teacher@example.com", "Ab1!xy", "Teacher", { role: "teacher" });
+
+    expect(result.error).toMatchObject({ code: "weak_password" });
+    expect(result.hasSession).toBe(false);
+    expect(result.needsEmailConfirmation).toBe(false);
+    expect(mockSignUp).not.toHaveBeenCalled();
+  });
+
   it("marks signup as pending confirmation when user exists without a session", async () => {
     mockSignUp.mockResolvedValue({
       data: {

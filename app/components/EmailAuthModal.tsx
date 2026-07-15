@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { MIN_PASSWORD_LENGTH } from "@/lib/auth-config";
 import { signInWithEmail, signUpWithEmail } from "@/lib/supabase-auth";
 
 interface EmailAuthModalProps {
@@ -61,7 +62,9 @@ export function EmailAuthModal({ isOpen, onClose, lang }: EmailAuthModalProps) {
     email: lang === "en" ? "Email" : "Email",
     emailPlaceholder: lang === "en" ? "you@example.com" : "you@example.com",
     password: lang === "en" ? "Password" : "Пароль",
-    passwordPlaceholder: lang === "en" ? "Min. 6 characters" : "Мин. 6 символов",
+    passwordPlaceholder: isLogin
+      ? (lang === "en" ? "Enter your password" : "Введите пароль")
+      : (lang === "en" ? "At least 8 characters" : "Минимум 8 символов"),
     fullName: lang === "en" ? "Full name (optional)" : "ФИО (необязательно)",
     fullNamePlaceholder: lang === "en" ? "Ivan Ivanov" : "Иван Иванов",
     submit: isLogin 
@@ -138,7 +141,7 @@ export function EmailAuthModal({ isOpen, onClose, lang }: EmailAuthModalProps) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={ui.passwordPlaceholder}
-                minLength={6}
+                minLength={isLogin ? undefined : MIN_PASSWORD_LENGTH}
                 required
                 className="modal-form-input"
               />

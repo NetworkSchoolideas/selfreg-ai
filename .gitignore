@@ -41,3 +41,13 @@ next-env.d.ts
 BUGFIX_PLAN.md
 lint-report.txt
 tsconfig.tsbuildinfo
+
+# Local agent workspace and release handoff
+/.agents/
+/.codex/
+/AGENTS.md
+/CODEX_HANDOFF.md
+
+# Generated QA artifacts and superseded working plans
+/output/
+/plans/

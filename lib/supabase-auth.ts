@@ -6,6 +6,7 @@
  */
 
 import { supabase } from "@/lib/supabase";
+import { MIN_PASSWORD_LENGTH } from "@/lib/auth-config";
 import type { User } from "@supabase/supabase-js";
 import type { Json } from "@/types/supabase";
 
@@ -323,6 +324,18 @@ export async function signUpWithEmail(
     return {
       data: null,
       error: { message: "Supabase not configured" },
+      hasSession: false,
+      needsEmailConfirmation: false,
+    };
+  }
+
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return {
+      data: null,
+      error: {
+        code: "weak_password",
+        message: `Password should be at least ${MIN_PASSWORD_LENGTH} characters.`,
+      },
       hasSession: false,
       needsEmailConfirmation: false,
     };

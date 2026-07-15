@@ -1,269 +1,137 @@
-# SelfReg AI — Architecture Overview
+# SelfReg AI architecture
 
-## System Architecture
+This document describes the current release implementation. Historical implementation plans are intentionally not kept in the repository.
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Next.js 16 App Router                 │
-│                                                         │
-│  ┌─────────────┐  ┌──────────────┐  ┌────────────────┐ │
-│  │  Adolescent  │  │   Teacher    │  │   Student      │ │
-│  │  Prototype   │  │  Dashboard   │  │   Dashboard    │ │
-│  └──────┬───────┘  └──────┬───────┘  └───────┬────────┘ │
-│         │                 │                   │          │
-│  ┌──────┴─────────────────┴───────────────────┴────────┐ │
-│  │                    Hooks Layer                       │ │
-│  │  useSessionSubmit  │  useSessionHistory  │  useAuth  │ │
-│  └──────────────────────┬───────────────────────────────┘ │
-│                         │                                 │
-│  ┌──────────────────────┴───────────────────────────────┐ │
-│  │                  Service Layer                       │ │
-│  │  AIService  │  DataService  │  SessionManager        │ │
-│  └──────┬───────────────────┬───────────────────────────┘ │
-│         │                   │                             │
-│  ┌──────┴──────┐  ┌────────┴────────┐                    │
-│  │  AI Providers│  │  Storage Layer  │                    │
-│  │  (BYOK)     │  │  ┌──────────┐   │                    │
-│  │  ┌────────┐ │  │  │ Supabase │   │                    │
-│  │  │ GigaChat│ │  │  │(optional)│   │                    │
-│  │  │OpenRouter│ │  │  └──────────┘   │                    │
-│  │  │GitHub   │ │  │  ┌──────────┐   │                    │
-│  │  │Vercel   │ │  │  │localStor.│   │                    │
-│  │  │Mock     │ │  │  │ (default)│   │                    │
-│  │  └────────┘ │  │  └──────────┘   │                    │
-│  └─────────────┘  └─────────────────┘                    │
-└─────────────────────────────────────────────────────────┘
-```
+## Product boundaries
 
-## Core Domain: Self-Regulation Model
+SelfReg AI is a bilingual learning-support application built around a fixed five-stage self-regulation process. The application, not the language model, controls stage order, scenario selection, clarification, back navigation, and completion.
 
-The application implements a **5-stage self-regulation cycle**:
+The supported release roles are:
 
-```
-Goal → Move to action → Feedback → Comparison → Adjustment
-  1          2              3            4            5
+- **Student** — owns a profile, consent state, sessions, records, feedback, and teacher link.
+- **Teacher** — receives a personal code, reviews linked student data in read-only mode, and may run an isolated personal browser-only session.
+
+A student links their profile to one teacher by entering the teacher code. Once linked, saved student sessions are visible to that teacher automatically. Removing the student from the teacher dashboard removes only the link; it never deletes student sessions.
+
+## Runtime topology
+
+```text
+Browser
+  ├─ Next.js App Router pages and client components
+  ├─ Supabase Auth session cookie
+  ├─ sessionStorage for API keys by default
+  └─ localStorage for explicit key persistence and isolated UI/session caches
+       │
+       ▼
+Next.js route handlers
+  ├─ authenticate the Supabase user
+  ├─ enforce role and child ownership/link access
+  ├─ call AI providers without persisting user keys
+  └─ write through the server-only Supabase client
+       │
+       ▼
+Supabase
+  ├─ Auth users
+  └─ PostgreSQL: profiles, children, sessions, session_records
 ```
 
-### Stage Details
+Production is deployed by pushing `main` to GitHub. Vercel's Git integration builds that commit and assigns `selfreg-ai.vercel.app`; direct Vercel deploys are not part of the release process.
 
-| Stage | ID | Description |
-|-------|----|-------------|
-| Goal | `1` | Define the goal of the session |
-| Move to action | `2` | Describe actions taken toward the goal |
-| Feedback | `3` | Receive and process feedback |
-| Comparison | `4` | Compare results with the goal |
-| Adjustment | `5` | Plan adjustments for next time |
+## Routes and access
 
-### A/B Scenario System
+| Route | Purpose | Access |
+| --- | --- | --- |
+| `/` | Product entry and role guides | Public |
+| `/auth/login` | Email/password login | Public |
+| `/auth/register` | Student registration and consent | Public |
+| `/teacher/register` | Teacher registration | Public |
+| `/role-selection` | Completes a profile without a role | Authenticated |
+| `/adolescent` | Self-regulation session shell | Public shell; exercise requires an authenticated account |
+| `/student/dashboard` | Student profile and session history | Student only |
+| `/teacher` | Teacher dashboard and linked student analytics | Teacher only |
+| `/settings` | User/provider settings | Authenticated |
 
-Based on the user's answers, the system detects whether the user is in:
-- **Scenario A** — Normal support (constructive, encouraging)
-- **Scenario B** — Pressure/self-attack support (addressing self-criticism)
-- **Clarify** — Ambiguous answers trigger clarification questions
+`proxy.ts` applies role redirects for protected pages. Every API route remains responsible for its own authentication and authorization; route visibility is not treated as data authorization.
 
-Detection is done heuristically in [`lib/scenario-engine.ts`](lib/scenario-engine.ts) using keyword analysis.
+## Authentication and profiles
 
-### Flow State Machine
+Supabase Auth is the identity provider. Email/password is the release path. New passwords must contain at least eight characters, matching the production Supabase Auth policy. Existing users are not rejected at the login form based on registration rules.
 
-The [`lib/selfreg-flow-machine.ts`](lib/selfreg-flow-machine.ts) implements a deterministic state machine:
+`profiles.id` equals `auth.users.id`. `profiles.role` is either `teacher` or `student`. Teacher code and organisation metadata live in `profiles.metadata`.
 
-```
-States: 1 → 2 → 3 → 4 → 5 → COMPLETE
-         ↑    ↓    ↓    ↓
-         └────┴────┴────┘ (BACK)
-         CLARIFY_REQUEST (at any stage)
-```
+Google OAuth code remains behind explicit release flags:
 
-Events: `ANSWER`, `BACK`, `CLARIFY_REQUEST`, `SKIP`, `RETRY`, `COMPLETE`
-
-## Storage Architecture
-
-### Two-Layer Storage
-
-The app supports two storage backends, managed by [`lib/data-service.ts`](lib/data-service.ts):
-
-```
-DataService
-├── Supabase (primary, when enabled + authenticated)
-│   ├── children table
-│   ├── sessions table
-│   └── session_records table
-└── localStorage (fallback, always available)
-    ├── selfreg_children key
-    ├── selfreg_sessions key
-    └── selfreg_onboarding_seen_* keys
+```env
+NEXT_PUBLIC_GOOGLE_AUTH_ENABLED=true
+NEXT_PUBLIC_GOOGLE_AUTH_BETA_ACK=true
 ```
 
-### Data Flow
+Without both flags, Google controls are not shown.
 
-```
-Component → Hook → DataService → Supabase/localStorage
-                              ↕
-                    SessionManager (caching layer)
-```
+## Data model
 
-### Key Files
+### `profiles`
 
-| File | Purpose |
-|------|---------|
-| [`lib/data-service.ts`](lib/data-service.ts) | Unified data layer, auto-selects storage backend |
-| [`lib/children-storage.ts`](lib/children-storage.ts) | localStorage operations for children/sessions |
-| [`lib/session-manager.ts`](lib/session-manager.ts) | Session CRUD with caching |
-| [`lib/server-storage.ts`](lib/server-storage.ts) | Supabase server-side operations |
-| [`lib/supabase.ts`](lib/supabase.ts) | Supabase client initialization |
+Auth-linked display name, email, role, avatar, and role metadata.
 
-## AI Provider System (BYOK)
+### `children`
 
-### Architecture
+Student participant row. `user_id` links the owning student account. `teacher_id` stores the linked teacher profile UUID as text for compatibility with the existing schema. Consent state is stored on this row.
 
-```
-AIService (services/ai-service.ts)
-├── MockProvider (lib/mock-provider.ts) — No AI, deterministic responses
-├── GigaChatProvider (lib/gigachat-provider.ts)
-├── OpenRouterProvider (lib/openrouter-provider.ts)
-├── GitHubModelsProvider (lib/github-models-provider.ts)
-└── VercelGatewayProvider (lib/vercel-gateway-provider.ts)
-```
+### `sessions`
 
-### BYOK Flow
+One self-regulation attempt with language, status, context, final note, feedback, completion time, and student archive state.
 
-1. User selects provider on the session page
-2. User enters API key (stored in localStorage only)
-3. Key is tested via `/api/provider-check`
-4. All subsequent AI calls use the selected provider + key
-5. Mock mode requires no key — app works fully without AI
+### `session_records`
 
-### Key Files
+Stage-level answers and feedback, including scenario, event type, provider, model, and response mode.
 
-| File | Purpose |
-|------|---------|
-| [`services/ai-service.ts`](services/ai-service.ts) | AI service orchestration |
-| [`lib/provider-registry.ts`](lib/provider-registry.ts) | Provider metadata and lookup |
-| [`lib/ai-provider.ts`](lib/ai-provider.ts) | Provider interface |
-| [`app/components/ApiKeyManager.tsx`](app/components/ApiKeyManager.tsx) | UI for key management |
-| [`app/api/provider-check/route.ts`](app/api/provider-check/route.ts) | Key validation endpoint |
+The checked-in source of truth for schema changes is `supabase/migrations/`. Generated Supabase types are compared with the maintained application type in `types/supabase.ts` during release audits.
 
-## Bilingual System (RU/EN)
+## Storage and authorization
 
-### How It Works
+Authenticated student data is persisted in Supabase through protected server routes. Browser storage is not an authority for another user's data.
 
-1. Language is detected from `localStorage` → cookie → URL param → browser preference
-2. [`lib/app-i18n.ts`](lib/app-i18n.ts) provides `normalizeAppLang()` and `withLang()` helper
-3. Each page/component defines a `ui` object with all text in both languages
-4. [`app/components/LanguageToggle.tsx`](app/components/LanguageToggle.tsx) switches language and preserves current page
+- Student writes require ownership of `children.user_id`.
+- Teacher reads require `children.teacher_id` to equal the teacher profile ID.
+- Teacher access to linked sessions and records is read-only.
+- Teacher dashboard removal clears only the teacher/student link.
+- Service-role database access is used only after the route has established the user and the relevant ownership or link.
 
-### Pattern
+RLS gives authenticated users only the direct reads needed for their own or linked data. Application writes to children, sessions, and records go through guarded server routes.
 
-```typescript
-const lang = normalizeAppLang();
-const ui = {
-  title: lang === "ru" ? "Привет" : "Hello",
-  description: lang === "ru" ? "Описание" : "Description",
-};
-```
+The teacher personal session is intentionally browser-only, namespaced to that authenticated account, and excluded from student dashboards and teacher analytics.
 
-## Routing
+## Self-regulation engine
 
-### Next.js 16 App Router
+The five stages are fixed in domain code. Scenario A/B selection is computed before the provider call. The provider formats stage feedback in the selected session language but does not control the process.
 
-- All pages in `app/` directory with `page.tsx` convention
-- **Next.js 16 uses `proxy.ts` instead of `middleware.ts`** — they cannot coexist
-- [`proxy.ts`](proxy.ts) handles auth checks, language detection, and route protection
+Supported interaction events include normal answer, clarification request, back, and skip where allowed. Restart creates a clean attempt; language changes preserve the active attempt.
 
-### Route Map
+## AI providers and keys
 
-| Route | Purpose | Auth Required |
-|-------|---------|---------------|
-| `/` | Landing page | No |
-| `/role-selection` | Choose teacher/student | No |
-| `/auth/login` | Login | No |
-| `/auth/register` | Register | No |
-| `/adolescent` | Self-regulation session | No |
-| `/teacher` | Teacher dashboard (working) | No |
-| `/teacher/dashboard` | Teacher dashboard (redirect) | No |
-| `/teacher/dashboard/child` | Child detail view | No |
-| `/student/dashboard` | Student dashboard | No |
-| `/settings` | Settings | No |
+- **Mock** — deterministic release fallback, no key.
+- **GitHub Models** — recommended live BYOK provider.
+- **OpenRouter** — advanced live option after key/model verification.
+- **GigaChat** — visible as in development and disabled for live sessions.
+- **Vercel AI Gateway** — hidden from the release UI.
 
-## Testing Infrastructure
+User keys are stored in `sessionStorage` by default. Persistent `localStorage` is an explicit opt-in. A key is sent only for the provider check or model request and is never written to PostgreSQL, logs, traces, screenshots, or source control.
 
-### Unit Tests (Jest)
+## Internationalisation
 
-- **Config**: [`jest.config.ts`](jest.config.ts) — `ts-jest` preset, `tsconfig.test.json`
-- **Location**: `__tests__/unit/`
-- **Run**: `npm run test:unit`
-- **Coverage**: `npm run test:coverage`
+The UI supports Russian and English through the `lang` query parameter and shared language helpers. The selected language is sent with each AI request and saved on the session. New feedback and teacher-facing session content must remain in that language.
 
-### E2E Tests (Playwright)
+## Verification boundary
 
-- **Config**: [`playwright.config.ts`](playwright.config.ts) — Chromium, `http://localhost:3000`
-- **Location**: `__tests__/e2e/`
-- **Run**: `npm run test:e2e`
+The release gate is:
 
-### CI Pipeline
-
-- **Config**: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
-- **Triggers**: Push to `main`, Pull Request to `main`
-- **Jobs**:
-  1. `lint-and-typecheck` — `tsc --noEmit` + `eslint .`
-  2. `unit-tests` — `jest __tests__/unit`
-  3. `build` — `next build` (depends on 1 + 2)
-
-## CSS Architecture
-
-### Approach
-
-- Pure CSS, no Tailwind or external UI libraries
-- Custom CSS variables in `:root` for theming
-- Mobile-first responsive design
-
-### Breakpoints
-
-| Breakpoint | Width | Target |
-|------------|-------|--------|
-| Desktop | > 1024px | Full layout |
-| Tablet | ≤ 1024px | Stacked layout, 1-column grids |
-| Mobile | ≤ 768px | Vertical stacking, full-width elements |
-
-### Key Layout Classes
-
-| Class | Purpose |
-|-------|---------|
-| `.shell` | Page container, `max-width: 1180px`, centered |
-| `.topbar` | Page header with title + actions |
-| `.dashboard-layout` | Sidebar + main content flex layout |
-| `.dashboard-sidebar` | Fixed-width sidebar (288px) |
-| `.prototype-layout` | Two-column grid for session page |
-| `.analytics-grid` | 2-column analytics grid |
-| `.stat-grid-3col` | 3-column stat cards |
-| `.modal-overlay` / `.modal-content` | Modal dialog pattern |
-
-## Development Workflow
-
-```
-1. Code locally
-2. npm run check:full (tsc --noEmit && eslint . && next build)
-3. Git commit
-4. Push to GitHub
-5. Vercel auto-deploys
-6. Apply SQL migrations to Supabase (if schema changed)
+```powershell
+npm.cmd run typecheck
+npm.cmd run lint
+npm.cmd run test:unit -- --runInBand
+npm.cmd run test:e2e
+npm.cmd run build
 ```
 
-### Build Check
-
-Always run before committing:
-```bash
-npm run check:full
-```
-
-This runs: `tsc --noEmit` → `eslint .` → `next build`
-
-## Key Design Decisions
-
-1. **BYOK over server-side keys** — Users bring their own API keys, stored only in localStorage. No server-side key management needed.
-2. **localStorage as default** — App works immediately without any backend setup. Supabase is optional.
-3. **No external UI libraries** — Pure CSS keeps bundle size small and avoids dependency churn.
-4. **Bilingual from day one** — All components support RU/EN, not retrofitted.
-5. **State machine for flow** — Deterministic flow control prevents invalid state transitions.
-6. **Error boundaries on all pages** — Prevents full app crashes from component errors.
-7. **`queueMicrotask` pattern** — Used for `setState` in `useEffect` to comply with ESLint `react-hooks/set-state-in-effect` rule.
+Production acceptance additionally checks the published commit, student and teacher accounts, Supabase RLS/integrity, and Vercel runtime logs.

@@ -32,6 +32,7 @@ The public release is available at [selfreg-ai.vercel.app](https://selfreg-ai.ve
 
 - Next.js 16, TypeScript, App Router.
 - Supabase Auth plus PostgreSQL for authenticated profiles, sessions, records, feedback, and teacher links.
+- New email/password registrations require at least eight password characters, matching production Supabase Auth.
 - Server routes enforce ownership for student writes. Linked teachers may read authorised student data but cannot modify sessions or feedback.
 - GitHub Actions run lint, typecheck, unit tests, and production build.
 

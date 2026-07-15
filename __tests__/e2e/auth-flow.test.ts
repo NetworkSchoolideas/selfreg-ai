@@ -57,6 +57,8 @@ async function loginViaForm(page: Page, role: "teacher" | "student", email: stri
   await expect(page.getByPlaceholder("you@example.com")).toBeVisible();
   await expect(page.locator('button[type="submit"]')).toBeVisible();
   const passwordInput = page.locator(".password-input-row input");
+  await expect(passwordInput).not.toHaveAttribute("minlength");
+  await expect(passwordInput).toHaveAttribute("placeholder", "Введите пароль");
   const passwordToggle = page.locator(".password-toggle");
   await expect(passwordToggle).toBeVisible();
   await passwordToggle.click();
