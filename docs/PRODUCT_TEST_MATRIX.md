@@ -23,7 +23,7 @@ This matrix records an observed local baseline before a bounded product fix. It 
 | P2-03 | P2 | Russian completion copy has the grammatical error “от цель к действию”. | Fixed locally and verified | A unit contract protects the correct phrase “от цели к действию”. |
 | P2-04 | P2 | Teacher dashboard leads with database/technical framing rather than an observation-to-conversation workflow. | Fixed locally and targeted-verified | The student, their sessions, and a neutral conversation prompt now precede aggregate analytics; preserve the read-only boundary in future checks. |
 | P3-05 | P3 | Teacher language transition can briefly show the previous language before client state settles. | Not reproduced in production build | RU↔EN navigation was clean on desktop and 375px mobile; do not add a loading boundary without new evidence. |
-| P3-06 | P3 | Generic context presets can look like retained personal data on a fresh route. | Needs design check | Distinguish a preset from saved context in a future onboarding task. |
+| P3-06 | P3 | Generic context presets can look like retained personal data on a fresh route. | Fixed locally and verified | The initial value is explicitly labelled as a replaceable starting example, not saved personal context. |
 
 ## Automated counterpart
 
@@ -37,4 +37,4 @@ P1-01 is complete. Its done criteria were:
 2. **Clear and retry** remains the only action that removes the draft.
 3. A focused Playwright regression test passes, followed by the standard release gate.
 
-The next candidate is P3-06 design check: distinguish fresh-route context presets from saved personal context without adding persistence or changing the five-stage flow.
+The next candidate is the Phase 4 discovery pass: rank the smallest durable-value improvement from a completed student session or teacher review.
