@@ -13,6 +13,7 @@ import { supabase } from "@/lib/supabase-auth";
 import {
   getEffectiveSessionStatus,
   getLatestCompletedSessionNextAction,
+  getLatestResumableStudentSession,
   getStudentDashboardMetrics,
   getStudentDashboardStatus,
   isSessionArchivedForStudent,
@@ -86,6 +87,8 @@ function StudentDashboardContent() {
       latestNextActionTitle: "Следующий шаг, который вы выбрали",
       latestNextActionContext: "Контекст",
       latestNextActionDate: "Завершено",
+      resumeLatestSession: "Продолжить последнюю сессию",
+      resumeLatestSessionActivity: "Последняя активность",
       nextStepReady: "Запустить новую сессию и пройти цикл до конца.",
       nextStepInProgress: "Вернуться к текущей работе и завершить начатую сессию.",
       nextStepCompleted: "Когда появится новый запрос или ситуация, начните следующий цикл.",
@@ -152,6 +155,8 @@ function StudentDashboardContent() {
       latestNextActionTitle: "The next step you chose",
       latestNextActionContext: "Context",
       latestNextActionDate: "Completed",
+      resumeLatestSession: "Continue your latest session",
+      resumeLatestSessionActivity: "Last activity",
       nextStepReady: "Start a new session and complete the cycle.",
       nextStepInProgress: "Return to the current work and finish the active session.",
       nextStepCompleted: "When a new situation appears, start the next cycle.",
@@ -242,6 +247,10 @@ function StudentDashboardContent() {
   const metrics = useMemo(() => (profile ? getStudentDashboardMetrics(profile) : null), [profile]);
   const latestCompletedSessionNextAction = useMemo(
     () => (profile ? getLatestCompletedSessionNextAction(profile, lang) : null),
+    [lang, profile],
+  );
+  const latestResumableSession = useMemo(
+    () => (profile ? getLatestResumableStudentSession(profile, lang) : null),
     [lang, profile],
   );
   const status = useMemo(() => {
@@ -361,6 +370,9 @@ function StudentDashboardContent() {
   );
   const showSelectedSessionContent = selectedSessionMatchesLanguage || showOriginalSessionText;
   const newSessionHref = `/adolescent?childId=${effectiveChildId}&mode=new&lang=${lang}`;
+  const latestResumableSessionHref = latestResumableSession?.sessionId
+    ? `/adolescent?childId=${effectiveChildId}&resumeSessionId=${latestResumableSession.sessionId}&lang=${lang}`
+    : newSessionHref;
   const missingInsightText = lang === "en"
     ? "No recommendation is available for this session."
     : "Для этой сессии пока нет рекомендации.";
@@ -558,6 +570,20 @@ function StudentDashboardContent() {
                     <div className="fs-13 c-muted mb-4">{t.nextStep}</div>
                     <div className="fs-15 fw-500">{nextStepText}</div>
                   </div>
+                  {latestResumableSession && (
+                    <div className="profile-field" style={{ background: "rgba(255,255,255,0.72)" }}>
+                      <div className="fs-13 c-muted mb-4">{t.resumeLatestSession}</div>
+                      <div className="fs-15 fw-500 mb-4">
+                        {latestResumableSession.context || t.sessionLabel}
+                      </div>
+                      <div className="fs-12 c-muted mb-12">
+                        {t.resumeLatestSessionActivity}: {new Date(latestResumableSession.updatedAt).toLocaleString(lang === "en" ? "en-US" : "ru-RU")}
+                      </div>
+                      <Link href={latestResumableSessionHref} className="button no-underline" style={{ padding: "8px 12px", display: "inline-block" }}>
+                        {t.continueSession}
+                      </Link>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

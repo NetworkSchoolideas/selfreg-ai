@@ -160,9 +160,6 @@ export function AdolescentPrototype() {
           resumeSessionId || "none",
         ].join(":");
         const shouldInitializeSessionRoute = initializedSessionRouteRef.current !== sessionRouteKey;
-        if (shouldInitializeSessionRoute) {
-          initializedSessionRouteRef.current = sessionRouteKey;
-        }
 
         const startIndependentSession = () => {
           if (!active) return;
@@ -179,6 +176,7 @@ export function AdolescentPrototype() {
               const savedSession = sessionManager.loadLocalSession(localSessionKey);
               if (savedSession) restoreSession(savedSession);
             }
+            initializedSessionRouteRef.current = sessionRouteKey;
           }
           setCurrentChildName(null);
           setCurrentChildId(null);
@@ -229,6 +227,7 @@ export function AdolescentPrototype() {
             resetSession();
             setShowHistory(false);
           }
+          initializedSessionRouteRef.current = sessionRouteKey;
         }
 
         setCurrentChildName(payload.child.name);

@@ -1,6 +1,7 @@
 import {
   getEffectiveSessionStatus,
   getLatestCompletedSessionNextAction,
+  getLatestResumableStudentSession,
   getStudentDashboardMetrics,
   getStudentDashboardStatus,
 } from "@/lib/student-dashboard";
@@ -156,6 +157,42 @@ describe("student dashboard helpers", () => {
       session: { sessionId: "newer-ru" },
       action: "Повторить одну тему вечером.",
     });
+  });
+
+  it("selects the newest resumable session in the dashboard language", () => {
+    const profile = createProfile({
+      sessions: [
+        {
+          sessionId: "older-en",
+          context: "Essay outline",
+          records: [{ stageId: "1", stageTitle: "Goal", scenario: "A", eventType: "answer", answer: "Outline", feedback: "OK", question: "Q", timestamp: "2026-07-14T09:00:00.000Z" }],
+          finalNote: "",
+          status: "in_progress",
+          lang: "en",
+          updatedAt: "2026-07-14T10:00:00.000Z",
+        },
+        {
+          sessionId: "newer-ru",
+          context: "Подготовка к выступлению",
+          records: [{ stageId: "1", stageTitle: "Цель", scenario: "A", eventType: "answer", answer: "Начать", feedback: "Хорошо", question: "Вопрос", timestamp: "2026-07-15T09:00:00.000Z" }],
+          finalNote: "",
+          status: "in_progress",
+          lang: "ru",
+          updatedAt: "2026-07-15T10:00:00.000Z",
+        },
+        {
+          context: "Legacy without an id",
+          records: [{ stageId: "1", stageTitle: "Goal", scenario: "A", eventType: "answer", answer: "Start", feedback: "OK", question: "Q", timestamp: "2026-07-16T09:00:00.000Z" }],
+          finalNote: "",
+          status: "in_progress",
+          lang: "en",
+          updatedAt: "2026-07-16T10:00:00.000Z",
+        },
+      ],
+    });
+
+    expect(getLatestResumableStudentSession(profile, "en")?.sessionId).toBe("older-en");
+    expect(getLatestResumableStudentSession(profile, "ru")?.sessionId).toBe("newer-ru");
   });
 
   it("treats old unfinished sessions as abandoned", () => {

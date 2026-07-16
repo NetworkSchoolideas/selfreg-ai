@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { randomUUID } from "node:crypto";
 
 const e2eSecret = process.env.SELFREG_E2E_SECRET || "local-e2e-secret";
 
@@ -95,6 +96,8 @@ async function openRegisteredAdolescentSession(page: Page, request: APIRequestCo
   await expect(page.getByPlaceholder("e.g.: exam, project")).toBeVisible();
   await expect(page.getByText("“Study project” is a starting example, not saved personal context. Replace it with your own situation.")).toBeVisible();
   await page.getByPlaceholder("e.g.: exam, project").fill("math exam preparation");
+
+  return childId;
 }
 
 test.describe("Adolescent prototype flows", () => {
@@ -172,6 +175,47 @@ test.describe("Adolescent prototype flows", () => {
     await expect(page.getByPlaceholder("Напиши 1-3 предложения")).toHaveValue(draft);
     await expect(page.getByPlaceholder("например: экзамен, проект")).toHaveValue("math exam preparation");
     await expect(page.locator(".provider-box select")).toHaveValue("mock");
+
+    expectHealthyClient(tracker);
+  });
+
+  test("resumes the newest unfinished session from the dashboard", async ({ page, request }) => {
+    const tracker = collectClientErrors(page);
+    const childId = await openRegisteredAdolescentSession(page, request);
+    const resumeSessionId = randomUUID();
+    const updatedAt = new Date().toISOString();
+
+    const sessionResponse = await page.request.post("/api/session-sync", {
+      data: {
+        childId,
+        sessionId: resumeSessionId,
+        status: "in_progress",
+        context: "math exam preparation",
+        finalNote: "",
+        updatedAt,
+        lang: "en",
+        records: [{
+          stageId: "1",
+          stageTitle: "Goal",
+          scenario: "A",
+          eventType: "answer",
+          answer: "I will prepare one clear first step for the math exam today.",
+          feedback: "Choose one realistic first step.",
+          question: "What do you want to improve?",
+          timestamp: updatedAt,
+        }],
+      },
+    });
+    expect(sessionResponse.ok(), await sessionResponse.text()).toBe(true);
+
+    await page.goto("/student/dashboard?lang=en", { waitUntil: "networkidle" });
+    const resumeCard = page.getByText("Continue your latest session", { exact: true }).locator("..");
+    await expect(resumeCard).toContainText("math exam preparation");
+    await resumeCard.getByRole("link", { name: "Continue" }).click();
+
+    await expect(page).toHaveURL(/resumeSessionId=/);
+    await expect(page.locator(".stage-pill")).toContainText("Step 2 of 5", { timeout: 15_000 });
+    await expect(page.getByPlaceholder("Write 1-3 sentences")).toHaveValue("");
 
     expectHealthyClient(tracker);
   });
