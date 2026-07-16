@@ -93,6 +93,7 @@ async function openRegisteredAdolescentSession(page: Page, request: APIRequestCo
   await expect(providerSelect).toHaveValue("mock");
   await expect(page.getByText("Mock mode: no external key needed")).toBeVisible();
   await expect(page.getByPlaceholder("e.g.: exam, project")).toBeVisible();
+  await expect(page.getByText("“Study project” is a starting example, not saved personal context. Replace it with your own situation.")).toBeVisible();
   await page.getByPlaceholder("e.g.: exam, project").fill("math exam preparation");
 }
 

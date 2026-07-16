@@ -605,7 +605,15 @@ export function AdolescentPrototype() {
             <>
               <label className="field">
                 <span>{ui.context}</span>
-                <input value={context} onChange={(e) => setContext(e.target.value)} placeholder={ui.contextPlaceholder} />
+                <input
+                  value={context}
+                  onChange={(e) => setContext(e.target.value)}
+                  placeholder={ui.contextPlaceholder}
+                  aria-describedby="session-context-hint"
+                />
+                <span id="session-context-hint" className="muted fs-13">
+                  {ui.contextHint}
+                </span>
               </label>
 
               <div
@@ -712,6 +720,7 @@ function useUiText(lang: "ru" | "en") {
     keyPlaceholder: lang === "en" ? "Not needed for mock" : "Для mock не нужен",
     context: lang === "en" ? "Context" : "Контекст",
     contextPlaceholder: lang === "en" ? "e.g.: exam, project" : "например: экзамен, проект",
+    contextHint: lang === "en" ? "“Study project” is a starting example, not saved personal context. Replace it with your own situation." : "«Учебный проект» — стартовый пример, а не сохранённый личный контекст. Замените его своей ситуацией.",
     answerLabel: lang === "en" ? "Your answer" : "Твой ответ",
     answerPlaceholder: lang === "en" ? "Write 1-3 sentences" : "Напиши 1-3 предложения",
     submit: lang === "en" ? "Continue" : "Продолжить",
