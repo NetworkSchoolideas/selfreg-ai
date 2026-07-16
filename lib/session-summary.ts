@@ -6,13 +6,14 @@ export function buildSessionSummary(context: string, records: RecordItem[], lang
   const skippedCount = records.filter((item) => item.scenario === "skipped").length;
   const bCount = records.filter((item) => item.scenario === "B").length;
   const firstStage = records[0]?.stageTitle?.toLowerCase() || (lang === "en" ? "goal" : "цели");
+  const firstStageForRussianSummary = "цели";
   const lastStage = records[records.length - 1]?.stageTitle?.toLowerCase() || (lang === "en" ? "the next step" : "следующего шага");
   const contextLabel = context.trim() || (lang === "en" ? "selected situation" : "выбранной ситуации");
 
   if (clarifyCount > 0 || skippedCount > 0) {
     return lang === "en"
       ? `The session on "${contextLabel}" showed that the adolescent needed clearer wording or an additional attempt at one of the steps. The useful line of support is to keep questions concrete, move from ${firstStage} to action, and finish with one understandable next step.`
-      : `Сессия по теме «${contextLabel}» показала, что подростку понадобилась более понятная формулировка или дополнительная попытка на одном из шагов. Полезная линия поддержки — сохранять вопросы конкретными, помогать перейти от ${firstStage} к действию и завершать разговор одним понятным следующим шагом.`;
+      : `Сессия по теме «${contextLabel}» показала, что подростку понадобилась более понятная формулировка или дополнительная попытка на одном из шагов. Полезная линия поддержки — сохранять вопросы конкретными, помогать перейти от ${firstStageForRussianSummary} к действию и завершать разговор одним понятным следующим шагом.`;
   }
 
   if (bCount > 0) {
@@ -23,7 +24,7 @@ export function buildSessionSummary(context: string, records: RecordItem[], lang
 
   return lang === "en"
     ? `The session on "${contextLabel}" was completed without major breakdowns: the adolescent moved from ${firstStage} to the "${lastStage}" stage. The next step is to fix one manageable follow-up action and check whether the same logic works in a real situation.`
-    : `Сессия по теме «${contextLabel}» пройдена без резких сбоев: подросток смог пройти путь от ${firstStage} к этапу «${lastStage}». Дальше стоит закрепить один посильный следующий шаг и проверить, сохраняется ли эта логика в реальной ситуации.`;
+    : `Сессия по теме «${contextLabel}» пройдена без резких сбоев: подросток смог пройти путь от ${firstStageForRussianSummary} к этапу «${lastStage}». Дальше стоит закрепить один посильный следующий шаг и проверить, сохраняется ли эта логика в реальной ситуации.`;
 }
 
 export function buildHistoryInsightPrompt(
