@@ -1,5 +1,6 @@
 import {
   getEffectiveSessionStatus,
+  getLatestCompletedSessionNextAction,
   getStudentDashboardMetrics,
   getStudentDashboardStatus,
 } from "@/lib/student-dashboard";
@@ -105,6 +106,56 @@ describe("student dashboard helpers", () => {
 
     expect(metrics.totalSessions).toBe(1);
     expect(metrics.completedSessions.map((session) => session.sessionId)).toEqual(["visible"]);
+  });
+
+  it("surfaces the latest completed adjustment without exposing another language", () => {
+    const profile = createProfile({
+      sessions: [
+        {
+          sessionId: "older-en",
+          context: "Exam preparation",
+          records: [
+            { stageId: "5", stageTitle: "Adjustment", scenario: "A", eventType: "answer", answer: "Plan one focused review block.", feedback: "OK", question: "Q", timestamp: "2026-06-10T09:00:00.000Z" },
+          ],
+          finalNote: "Finished",
+          status: "completed",
+          lang: "en",
+          updatedAt: "2026-06-10T10:00:00.000Z",
+        },
+        {
+          sessionId: "newer-ru",
+          context: "Подготовка к контрольной",
+          records: [
+            { stageId: "5", stageTitle: "Корректировка", scenario: "A", eventType: "answer", answer: "Повторить одну тему вечером.", feedback: "Хорошо", question: "Вопрос", timestamp: "2026-06-12T09:00:00.000Z" },
+          ],
+          finalNote: "Готово",
+          status: "completed",
+          lang: "ru",
+          updatedAt: "2026-06-12T10:00:00.000Z",
+        },
+        {
+          sessionId: "hidden-en",
+          context: "Hidden",
+          records: [
+            { stageId: "5", stageTitle: "Adjustment", scenario: "A", eventType: "answer", answer: "Do not show this.", feedback: "OK", question: "Q", timestamp: "2026-06-13T09:00:00.000Z" },
+          ],
+          finalNote: "Finished",
+          status: "completed",
+          lang: "en",
+          updatedAt: "2026-06-13T10:00:00.000Z",
+          studentArchivedAt: "2026-06-13T10:01:00.000Z",
+        },
+      ],
+    });
+
+    expect(getLatestCompletedSessionNextAction(profile, "en")).toMatchObject({
+      session: { sessionId: "older-en" },
+      action: "Plan one focused review block.",
+    });
+    expect(getLatestCompletedSessionNextAction(profile, "ru")).toMatchObject({
+      session: { sessionId: "newer-ru" },
+      action: "Повторить одну тему вечером.",
+    });
   });
 
   it("treats old unfinished sessions as abandoned", () => {

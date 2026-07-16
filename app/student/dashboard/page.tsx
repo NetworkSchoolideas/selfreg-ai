@@ -12,6 +12,7 @@ import { DataService } from "@/lib/data-service";
 import { supabase } from "@/lib/supabase-auth";
 import {
   getEffectiveSessionStatus,
+  getLatestCompletedSessionNextAction,
   getStudentDashboardMetrics,
   getStudentDashboardStatus,
   isSessionArchivedForStudent,
@@ -81,6 +82,10 @@ function StudentDashboardContent() {
       currentStatus: "Текущий статус",
       latestActivity: "Последняя активность",
       nextStep: "Следующий шаг",
+      latestNextActionEyebrow: "Из последней завершённой сессии",
+      latestNextActionTitle: "Следующий шаг, который вы выбрали",
+      latestNextActionContext: "Контекст",
+      latestNextActionDate: "Завершено",
       nextStepReady: "Запустить новую сессию и пройти цикл до конца.",
       nextStepInProgress: "Вернуться к текущей работе и завершить начатую сессию.",
       nextStepCompleted: "Когда появится новый запрос или ситуация, начните следующий цикл.",
@@ -143,6 +148,10 @@ function StudentDashboardContent() {
       currentStatus: "Current status",
       latestActivity: "Latest activity",
       nextStep: "Next step",
+      latestNextActionEyebrow: "From your latest completed session",
+      latestNextActionTitle: "The next step you chose",
+      latestNextActionContext: "Context",
+      latestNextActionDate: "Completed",
       nextStepReady: "Start a new session and complete the cycle.",
       nextStepInProgress: "Return to the current work and finish the active session.",
       nextStepCompleted: "When a new situation appears, start the next cycle.",
@@ -231,6 +240,10 @@ function StudentDashboardContent() {
   }, [childId, missingChildIdError, t.errorConnection, t.errorNotFound]);
 
   const metrics = useMemo(() => (profile ? getStudentDashboardMetrics(profile) : null), [profile]);
+  const latestCompletedSessionNextAction = useMemo(
+    () => (profile ? getLatestCompletedSessionNextAction(profile, lang) : null),
+    [lang, profile],
+  );
   const status = useMemo(() => {
     if (!profile || !metrics) {
       return null;
@@ -456,6 +469,44 @@ function StudentDashboardContent() {
             {t.home}
           </Link>
         </div>
+
+        {latestCompletedSessionNextAction && (
+          <section
+            className="bg-white br-12 p-24 mb-24"
+            aria-labelledby="latest-next-action-title"
+            style={{
+              boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+              border: "1px solid #bbf7d0",
+              background: "#f0fdf4",
+            }}
+          >
+            <div className="flex-row justify-between items-start" style={{ gap: 16, flexWrap: "wrap" }}>
+              <div style={{ maxWidth: 680 }}>
+                <div className="fs-14 fw-600 mb-8" style={{ color: "#047857" }}>
+                  {t.latestNextActionEyebrow}
+                </div>
+                <h2 id="latest-next-action-title" className="fs-22 mb-12">
+                  {t.latestNextActionTitle}
+                </h2>
+                <p className="fs-16" style={{ margin: 0, lineHeight: 1.6 }}>
+                  {latestCompletedSessionNextAction.action}
+                </p>
+              </div>
+              <div style={{ minWidth: 220, display: "grid", gap: 12 }}>
+                <div className="profile-field" style={{ background: "rgba(255,255,255,0.72)" }}>
+                  <div className="fs-13 c-muted mb-4">{t.latestNextActionContext}</div>
+                  <div className="fs-15 fw-500">{latestCompletedSessionNextAction.session.context || t.sessionLabel}</div>
+                </div>
+                <div className="profile-field" style={{ background: "rgba(255,255,255,0.72)" }}>
+                  <div className="fs-13 c-muted mb-4">{t.latestNextActionDate}</div>
+                  <div className="fs-15 fw-500">
+                    {new Date(latestCompletedSessionNextAction.session.updatedAt).toLocaleDateString(lang === "en" ? "en-US" : "ru-RU")}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
 
         <div className="stat-grid-3col">
           <div className="stat-card" style={{ padding: 24, borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>

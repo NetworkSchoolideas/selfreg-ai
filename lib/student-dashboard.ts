@@ -1,4 +1,5 @@
 import type { AppLang } from "@/lib/app-i18n";
+import { isAnswerRecord } from "@/lib/session-helpers";
 import type { ChildProfile, Session, SessionStatus } from "@/types/session";
 
 const ABANDONED_AFTER_DAYS = 7;
@@ -14,6 +15,11 @@ export interface StudentDashboardStatus {
   tone: "neutral" | "progress" | "active";
   title: string;
   description: string;
+}
+
+export interface LatestCompletedSessionNextAction {
+  session: Session;
+  action: string;
 }
 
 export function isSessionArchivedForStudent(session: Session): boolean {
@@ -66,6 +72,39 @@ export function getStudentDashboardMetrics(profile: ChildProfile, now = new Date
     totalSessions: visibleSessions.length,
     latestSession,
   };
+}
+
+/**
+ * Returns the learner's own adjustment from their newest completed session.
+ *
+ * The dashboard does not generate or reinterpret an action here: it only
+ * surfaces the saved answer from stage 5 (adjustment), and keeps content from
+ * another dashboard language out of the current view.
+ */
+export function getLatestCompletedSessionNextAction(
+  profile: ChildProfile,
+  lang: AppLang,
+): LatestCompletedSessionNextAction | null {
+  const completedSessions = profile.sessions
+    .filter((session) => !isSessionArchivedForStudent(session))
+    .filter((session) => getEffectiveSessionStatus(session) === "completed")
+    .filter((session) => !session.lang || session.lang === lang)
+    .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime());
+
+  for (const session of completedSessions) {
+    const adjustment = [...session.records]
+      .reverse()
+      .find((record) => record.stageId === "5" && isAnswerRecord(record) && record.answer.trim());
+
+    if (adjustment) {
+      return {
+        session,
+        action: adjustment.answer.trim(),
+      };
+    }
+  }
+
+  return null;
 }
 
 export function getStudentDashboardStatus(profile: ChildProfile, metrics: StudentDashboardMetrics, lang: AppLang): StudentDashboardStatus {
