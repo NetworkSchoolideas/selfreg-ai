@@ -211,7 +211,8 @@ test.describe("Adolescent prototype flows", () => {
     await page.goto("/student/dashboard?lang=en", { waitUntil: "networkidle" });
     const resumeCard = page.getByText("Continue your latest session", { exact: true }).locator("..");
     await expect(resumeCard).toContainText("math exam preparation");
-    await resumeCard.getByRole("link", { name: "Continue" }).click();
+    const dashboardActions = page.locator(".action-bar");
+    await dashboardActions.getByRole("link", { name: "Continue" }).click();
 
     await expect(page).toHaveURL(/resumeSessionId=/);
     await expect(page.locator(".stage-pill")).toContainText("Step 2 of 5", { timeout: 15_000 });

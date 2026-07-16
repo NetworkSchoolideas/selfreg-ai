@@ -455,13 +455,27 @@ function StudentDashboardContent() {
           </p>
         )}
 
-        <div className="action-bar">
+        <div className="action-bar" style={{ flexWrap: "wrap" }}>
+          {latestResumableSession && (
+            <Link
+              href={latestResumableSessionHref}
+              className="no-underline fw-500"
+              style={{
+                padding: "12px 24px",
+                background: "#4f46e5",
+                color: "white",
+                borderRadius: 8,
+              }}
+            >
+              {t.continueSession}
+            </Link>
+          )}
           <Link
             href={newSessionHref}
             className="no-underline fw-500"
             style={{
               padding: "12px 24px",
-              background: "#4f46e5",
+              background: latestResumableSession ? "#6b7280" : "#4f46e5",
               color: "white",
               borderRadius: 8,
             }}

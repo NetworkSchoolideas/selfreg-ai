@@ -60,3 +60,9 @@ Selected next hypothesis: when an eligible active student session exists, make t
 The dashboard now surfaces the newest visible, language-compatible active session in the status area with its context, last activity, and one **Continue** action. Only sessions with a saved id are eligible, so the action always targets an existing resumable route; legacy records without an id remain in history only.
 
 The implementation also corrected a route-initialisation race: a saved session is now marked as initialized only after its profile fetch has completed and its restore/reset action has run. This keeps a direct resume link from opening a blank fresh session when effects are restarted during initial loading. A targeted Playwright regression seeds an active student-owned session, follows the dashboard action, and confirms the restored second stage. Signed-in local Browser QA passed on desktop and at 360px, including direct restoration of an existing active session and no horizontal overflow or console diagnostics.
+
+## Phase 4 return-action hierarchy result
+
+Reviewing the combined dashboard revealed that the direct resume path was still visually secondary to **New session**. When unfinished work exists, the dashboard now makes **Continue** the primary top action, keeps **New session** available as a secondary action, and preserves Home. The status card continues to explain which saved session will open; no session is opened automatically and no student or teacher data is changed.
+
+The action bar wraps at narrow widths. A targeted Playwright regression follows the top-level resume action and confirms that it restores the saved second stage. Local signed-in Browser QA confirmed the three-action hierarchy at desktop and 360px, direct restoration of the existing session, no horizontal overflow, and no console diagnostics.
