@@ -12,8 +12,6 @@ import { OnboardingModal } from "@/app/components/OnboardingModal";
 import { useAdolescentSession } from "./useAdolescentSession";
 import { withLang, type AppLang } from "@/lib/app-i18n";
 import {
-  DEFAULT_LIVE_MODEL,
-  DEFAULT_LIVE_PROVIDER,
   getProviderMeta,
   getReleaseProviders,
   isProviderEnabledInRelease,
@@ -67,8 +65,8 @@ export function AdolescentPrototype() {
   } = session;
 
   // Provider and model state
-  const [provider, setProvider] = useState<ProviderId>(DEFAULT_LIVE_PROVIDER);
-  const [model, setModel] = useState(DEFAULT_LIVE_MODEL);
+  const [provider, setProvider] = useState<ProviderId>("mock");
+  const [model, setModel] = useState(() => getProviderMeta("mock").defaultModel);
   const [userApiKey, setUserApiKey] = useState("");
 
   // Key verification status from ApiKeyManager
@@ -265,7 +263,7 @@ export function AdolescentPrototype() {
   });
 
   // Submit hook
-  const [providerStatus, setProviderStatus] = useState("");
+  const [providerStatus, setProviderStatus] = useState(ui.mockStatus);
   const {
     isSending,
     answerQualityWarning,

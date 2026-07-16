@@ -90,7 +90,6 @@ async function openRegisteredAdolescentSession(page: Page, request: APIRequestCo
   await expect(page.getByRole("link", { name: "Dashboard", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Teacher dashboard", exact: true })).toHaveCount(0);
   await expect(page.getByText("github-models: ready", { exact: true })).toHaveCount(0);
-  await providerSelect.selectOption("mock");
   await expect(providerSelect).toHaveValue("mock");
   await expect(page.getByText("Mock mode: no external key needed")).toBeVisible();
   await expect(page.getByPlaceholder("e.g.: exam, project")).toBeVisible();
