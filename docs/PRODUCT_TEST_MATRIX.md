@@ -37,4 +37,8 @@ P1-01 is complete. Its done criteria were:
 2. **Clear and retry** remains the only action that removes the draft.
 3. A focused Playwright regression test passes, followed by the standard release gate.
 
-The next candidate is the Phase 4 discovery pass: rank the smallest durable-value improvement from a completed student session or teacher review.
+## Phase 4 discovery selection
+
+The walkthrough found that a completed session already stores a concise summary and a proposed adjustment, but the student dashboard makes the learner select a session before reaching that value. Its visible next-step card is necessarily generic. The selected hypothesis is: **surface the latest completed session's own manageable next action before aggregate counts and history selection.**
+
+Primary signal: a returning student can identify what they chose to do next from the latest completed session within seconds. Guardrails: use only the student's existing saved session content, state the session date/context, and add no diagnosis, scoring, persistence, or AI-generated interpretation.
