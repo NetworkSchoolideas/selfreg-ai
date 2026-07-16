@@ -20,7 +20,7 @@ This matrix records an observed local baseline before a bounded product fix. It 
 | --- | --- | --- | --- | --- |
 | P1-01 | P1 | Requesting clarification clears the current typed answer automatically, although the UI has a separate **Clear and retry** action. | Fixed locally and verified | Monitor in the next baseline; the explicit clear action remains covered. |
 | P1-02 | P1 | The first student screen selects GitHub Models while no key is present, making a usable no-key flow look unavailable. | Fixed locally and verified | Mock is now the initial no-key mode; keep live providers available as an explicit choice. |
-| P2-03 | P2 | Russian completion copy has the grammatical error “от цель к действию”. | Confirmed locally | Fix as an isolated copy task. |
+| P2-03 | P2 | Russian completion copy has the grammatical error “от цель к действию”. | Fixed locally and verified | A unit contract protects the correct phrase “от цели к действию”. |
 | P2-04 | P2 | Teacher dashboard leads with database/technical framing rather than an observation-to-conversation workflow. | Product observation | Define the teacher decision hierarchy before UI changes. |
 | P3-05 | P3 | Teacher language transition can briefly show the previous language before client state settles. | Needs reproduction | Check production-build navigation and decide whether a loading boundary is warranted. |
 | P3-06 | P3 | Generic context presets can look like retained personal data on a fresh route. | Needs design check | Distinguish a preset from saved context in a future onboarding task. |
@@ -37,4 +37,4 @@ P1-01 is complete. Its done criteria were:
 2. **Clear and retry** remains the only action that removes the draft.
 3. A focused Playwright regression test passes, followed by the standard release gate.
 
-The next candidate is P2-03: correct the isolated Russian completion-copy error without altering the fixed five-stage learning logic.
+The next candidate is P2-04: define the teacher dashboard's observation-to-conversation hierarchy before changing its UI.
