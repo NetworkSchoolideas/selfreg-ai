@@ -48,3 +48,9 @@ Primary signal: a returning student can identify what they chose to do next from
 The student dashboard now places a **The next step you chose** card before aggregate counts and history selection. It reads only the newest visible completed session in the current dashboard language and displays the learner's saved stage-5 adjustment together with that session's context and completion date. It does not create a recommendation, write data, alter teacher access, or reveal a session saved in another language.
 
 Automated coverage proves that archived sessions and another-language sessions are skipped and that the newest eligible saved adjustment is selected. Local signed-in student browser QA confirmed the card on desktop and at 360px without horizontal overflow or console diagnostics.
+
+## Phase 4 follow-up discovery
+
+The new card makes the completed-session value immediate. In the same returning-student view, however, the status reports multiple unfinished sessions while the only direct action near the top is **New session**; continuing requires scanning the history and choosing one of several repeated **Continue** controls. The paired teacher review already leads to a selected session and a neutral conversation prompt, so this is a student return-path issue rather than a teacher-dashboard change.
+
+Selected next hypothesis: when an eligible active student session exists, make the newest one directly resumable from the status area and identify it by its saved context and last activity. The learner remains in control: the action opens the existing session but does not auto-resume, change the draft, create data, or affect teacher access. The primary signal is that a returning learner with unfinished work reaches the correct active session in one clear decision rather than searching the history.
