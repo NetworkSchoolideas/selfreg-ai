@@ -1,5 +1,7 @@
 # Testing
 
+The current product-like baseline journeys and issue ledger are in [docs/PRODUCT_TEST_MATRIX.md](docs/PRODUCT_TEST_MATRIX.md).
+
 ## Release gate
 
 Run on Windows with `npm.cmd`:
