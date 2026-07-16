@@ -78,3 +78,9 @@ The same mobile review exposed a clipped dashboard header: the signed-in identit
 The completion screen already had optional feedback intended for a linked teacher, but its save path inferred a target from session recency. With more than one session, that could place feedback on a different session than the completed one the learner had just reviewed. The form now sends the current completed session id; local storage and the protected server route both update that exact completed record. Legacy requests without an id retain the existing latest-completed fallback for history insights.
 
 The form is now shown only when a student is linked to a teacher, and its copy names only the actual teacher role. This prevents a standalone student from being told that an unavailable recipient will receive their feedback. Focused storage and route tests cover the selected-session update; local Browser QA completed a linked student Mock session and confirmed the corrected form on the completion screen.
+
+## Phase 4 completed-feedback return result
+
+A completed session can be reopened through its existing saved session route. Previously, the optional teacher-feedback form always started in an empty state after that return, even when the session already held submitted feedback. The restored route now recognises the saved feedback and shows the existing **Feedback saved** confirmation instead of offering a second submission. Starting a new session clears this UI-only flag as before.
+
+A targeted Playwright regression seeds a completed, linked student session with feedback and confirms that reopening it shows the completion screen and saved state without a second send action. A local in-app Browser check also confirmed that the signed-in student dashboard remains usable without console diagnostics. The direct return assertion is automated; the Browser dashboard check did not submit or alter feedback.

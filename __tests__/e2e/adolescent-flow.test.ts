@@ -221,6 +221,49 @@ test.describe("Adolescent prototype flows", () => {
     expectHealthyClient(tracker);
   });
 
+  test("keeps submitted teacher feedback closed when reopening a completed session", async ({ page, request }) => {
+    const tracker = collectClientErrors(page);
+    const childId = await openRegisteredAdolescentSession(page, request);
+    const sessionId = randomUUID();
+    const updatedAt = new Date().toISOString();
+    const records = ["1", "2", "3", "4", "5"].map((stageId) => ({
+      stageId,
+      stageTitle: `Stage ${stageId}`,
+      scenario: "A",
+      eventType: "answer",
+      answer: `Completed answer for stage ${stageId}.`,
+      feedback: "Keep this next step specific.",
+      question: "What is your next step?",
+      timestamp: updatedAt,
+    }));
+
+    const sessionResponse = await page.request.post("/api/session-sync", {
+      data: {
+        childId,
+        sessionId,
+        status: "completed",
+        context: "science project preparation",
+        finalNote: "I will prepare the first project section today.",
+        updatedAt,
+        lang: "en",
+        adolescentFeedback: {
+          rating: 5,
+          comment: "The route was clear.",
+          timestamp: updatedAt,
+        },
+        records,
+      },
+    });
+    expect(sessionResponse.ok(), await sessionResponse.text()).toBe(true);
+
+    await page.goto(`/adolescent?childId=${encodeURIComponent(childId)}&resumeSessionId=${sessionId}&lang=en`, { waitUntil: "networkidle" });
+    await expect(page.getByText("Session completed")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("Feedback saved.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Send feedback to teacher" })).toHaveCount(0);
+
+    expectHealthyClient(tracker);
+  });
+
   test("lets a teacher run a private self-regulation session without accessing student data", async ({ page, request }) => {
     const tracker = collectClientErrors(page);
     await createAndLoginTeacher(page, request);

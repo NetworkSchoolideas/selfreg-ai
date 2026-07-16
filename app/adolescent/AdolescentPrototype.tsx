@@ -172,9 +172,13 @@ export function AdolescentPrototype() {
             if (sessionMode === "new" || resumeSessionId) {
               sessionManager.clearLocalSession(localSessionKey);
               resetSession();
+              setFeedbackSubmitted(false);
             } else {
               const savedSession = sessionManager.loadLocalSession(localSessionKey);
-              if (savedSession) restoreSession(savedSession);
+              if (savedSession) {
+                restoreSession(savedSession);
+                setFeedbackSubmitted(Boolean(savedSession.adolescentFeedback));
+              }
             }
             initializedSessionRouteRef.current = sessionRouteKey;
           }
@@ -222,9 +226,11 @@ export function AdolescentPrototype() {
             : null;
           if (resumeSession) {
             restoreSession(resumeSession);
+            setFeedbackSubmitted(Boolean(resumeSession.adolescentFeedback));
             setShowHistory(false);
           } else if (sessionMode === "new") {
             resetSession();
+            setFeedbackSubmitted(false);
             setShowHistory(false);
           }
           initializedSessionRouteRef.current = sessionRouteKey;
