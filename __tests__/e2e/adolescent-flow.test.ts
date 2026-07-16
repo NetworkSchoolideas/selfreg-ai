@@ -256,7 +256,9 @@ test.describe("Adolescent prototype flows", () => {
     });
     expect(sessionResponse.ok(), await sessionResponse.text()).toBe(true);
 
-    await page.goto(`/adolescent?childId=${encodeURIComponent(childId)}&resumeSessionId=${sessionId}&lang=en`, { waitUntil: "networkidle" });
+    await page.goto("/student/dashboard?lang=en", { waitUntil: "networkidle" });
+    await page.getByRole("link", { name: "Review completion" }).click();
+    await expect(page).toHaveURL(new RegExp(`resumeSessionId=${sessionId}`));
     await expect(page.getByText("Session completed")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText("Feedback saved.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Send feedback to teacher" })).toHaveCount(0);

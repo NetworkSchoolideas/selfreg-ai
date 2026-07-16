@@ -50,6 +50,8 @@ function StudentDashboardContent() {
       newSession: "Новая сессия",
       continueSession: "Продолжить",
       openSession: "Открыть",
+      openSessionDetails: "Открыть детали",
+      reviewCompletion: "Вернуться к итогу",
       closeDetails: "Закрыть",
       sessionDetails: "Детали сессии",
       answers: "Ответы",
@@ -119,6 +121,8 @@ function StudentDashboardContent() {
       newSession: "New session",
       continueSession: "Continue",
       openSession: "Open",
+      openSessionDetails: "Open details",
+      reviewCompletion: "Review completion",
       closeDetails: "Close",
       sessionDetails: "Session details",
       answers: "Answers",
@@ -767,8 +771,17 @@ function StudentDashboardContent() {
                           }}
                           style={{ padding: "8px 12px" }}
                         >
-                          {t.openSession}
+                          {isCompleted ? t.openSessionDetails : t.openSession}
                         </button>
+                        {isCompleted && session.sessionId && (
+                          <Link
+                            href={continueHref}
+                            className="button no-underline"
+                            style={{ padding: "8px 12px" }}
+                          >
+                            {t.reviewCompletion}
+                          </Link>
+                        )}
                         {isInProgress && (
                           <Link
                             href={continueHref}

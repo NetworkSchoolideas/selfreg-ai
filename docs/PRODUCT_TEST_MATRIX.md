@@ -84,3 +84,7 @@ The form is now shown only when a student is linked to a teacher, and its copy n
 A completed session can be reopened through its existing saved session route. Previously, the optional teacher-feedback form always started in an empty state after that return, even when the session already held submitted feedback. The restored route now recognises the saved feedback and shows the existing **Feedback saved** confirmation instead of offering a second submission. Starting a new session clears this UI-only flag as before.
 
 A targeted Playwright regression seeds a completed, linked student session with feedback and confirms that reopening it shows the completion screen and saved state without a second send action. A local in-app Browser check also confirmed that the signed-in student dashboard remains usable without console diagnostics. The direct return assertion is automated; the Browser dashboard check did not submit or alter feedback.
+
+## Phase 4 completed-session return discoverability
+
+Completed sessions already had a safe, read-only return route, but it was only reachable by constructing a saved-session URL. The session history now distinguishes **Open details** from **Review completion**. The latter reuses the existing saved-session route and makes no write, AI call, permission change, or change to the completed exercise; it simply lets a learner review their own final screen and its already-saved feedback state.
