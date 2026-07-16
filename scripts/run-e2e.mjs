@@ -3,8 +3,11 @@ import { pathToFileURL } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
 
 const baseUrl = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
+const baseUrlDetails = new URL(baseUrl);
+const devHost = baseUrlDetails.hostname || "localhost";
+const devPort = baseUrlDetails.port || "3000";
 const devCommand = process.platform === "win32" ? "npm.cmd" : "npm";
-const devArgs = ["run", "dev", "--", "--hostname", "localhost", "--port", "3000"];
+const devArgs = ["run", "dev", "--", "--hostname", devHost, "--port", devPort];
 const playwrightCommand = process.platform === "win32" ? "npx.cmd" : "npx";
 const playwrightArgs = ["playwright", "test", ...process.argv.slice(2)];
 
@@ -124,6 +127,7 @@ async function main() {
         env: {
           ...process.env,
           BROWSER: "none",
+          SELFREG_NEXT_DIST_DIR: process.env.SELFREG_NEXT_DIST_DIR || ".next-e2e",
           SELFREG_E2E_TEACHER_ACCESS_BYPASS: "1",
           SELFREG_E2E_ENABLED: process.env.SELFREG_E2E_ENABLED || "1",
           SELFREG_E2E_SECRET: process.env.SELFREG_E2E_SECRET || "local-e2e-secret",
