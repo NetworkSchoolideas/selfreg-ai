@@ -105,18 +105,23 @@ describe("ChildrenStorage", () => {
     expect(latest?.historyInsight).toBe("Keep going");
   });
 
-  it("saves adolescent feedback on the latest session", () => {
+  it("saves adolescent feedback on the completed session that requested it", () => {
     const child = ChildrenStorage.addChild("Test Student");
     const feedback: AdolescentFeedback = {
       rating: 5,
       comment: "Useful",
       timestamp: "2026-01-01T00:00:00.000Z",
     };
-    ChildrenStorage.saveSessionForChild(child.id, makeSession("2026-01-01T00:00:00.000Z", "done"));
+    const completed = { ...makeSession("2026-01-01T00:00:00.000Z", "done"), status: "completed" as const };
+    const active = { ...makeSession("2026-01-02T00:00:00.000Z"), status: "in_progress" as const };
+    ChildrenStorage.saveSessionForChild(child.id, completed);
+    ChildrenStorage.saveSessionForChild(child.id, active);
 
-    expect(ChildrenStorage.saveAdolescentFeedback(child.id, feedback)).toBe(true);
+    expect(ChildrenStorage.saveAdolescentFeedback(child.id, feedback, completed.sessionId)).toBe(true);
 
-    expect(ChildrenStorage.getLatestSessionForChild(child.id)?.adolescentFeedback).toEqual(feedback);
+    const sessions = ChildrenStorage.getSessionsForChild(child.id);
+    expect(sessions.find((session) => session.sessionId === completed.sessionId)?.adolescentFeedback).toEqual(feedback);
+    expect(sessions.find((session) => session.sessionId === active.sessionId)?.adolescentFeedback).toBeUndefined();
   });
 
   it("persists feedback through the API before updating a server-backed child", async () => {
@@ -136,13 +141,14 @@ describe("ChildrenStorage", () => {
     };
     ChildrenStorage.upsertLocalChild(child);
 
-    await expect(ChildrenStorage.saveAdolescentFeedbackAsync(child.id, feedback)).resolves.toBe(true);
+    const sessionId = child.sessions[0].sessionId;
+    await expect(ChildrenStorage.saveAdolescentFeedbackAsync(child.id, feedback, sessionId)).resolves.toBe(true);
 
     expect(global.fetch).toHaveBeenCalledWith(
       "/api/session-feedback",
       expect.objectContaining({
         method: "POST",
-        body: JSON.stringify({ childId: child.id, adolescentFeedback: feedback }),
+        body: JSON.stringify({ childId: child.id, adolescentFeedback: feedback, sessionId }),
       }),
     );
     expect(ChildrenStorage.getLatestSessionForChild(child.id)?.adolescentFeedback).toEqual(feedback);

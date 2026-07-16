@@ -7,6 +7,7 @@ interface AdolescentFeedbackFormProps {
   lang: "ru" | "en";
   childIdFromUrl: string | null;
   currentChildId: string | null;
+  sessionId: string;
   onSubmitted: () => void;
 }
 
@@ -14,6 +15,7 @@ export function AdolescentFeedbackForm({
   lang,
   childIdFromUrl,
   currentChildId,
+  sessionId,
   onSubmitted,
 }: AdolescentFeedbackFormProps) {
   const [rating, setRating] = useState<number | null>(null);
@@ -35,7 +37,7 @@ export function AdolescentFeedbackForm({
     setIsSubmitting(true);
     setSubmitError(null);
     try {
-      const saved = await ChildrenStorage.saveAdolescentFeedbackAsync(effectiveChildId, fb);
+      const saved = await ChildrenStorage.saveAdolescentFeedbackAsync(effectiveChildId, fb, sessionId);
       if (!saved) {
         throw new Error("Feedback session is unavailable");
       }
@@ -56,7 +58,7 @@ export function AdolescentFeedbackForm({
   return (
     <div style={{ marginTop: 18, padding: 12, background: 'var(--soft)', border: '1px solid var(--line)', borderRadius: 6 }}>
       <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
-        {lang === "en" ? "Feedback for your teacher / psychologist (optional)" : "Обратная связь для педагога / психолога (необязательно)"}
+        {lang === "en" ? "Feedback for your teacher (optional)" : "Обратная связь для педагога (необязательно)"}
       </div>
 
       <div style={{ marginBottom: 8 }}>

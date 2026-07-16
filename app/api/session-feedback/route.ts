@@ -7,6 +7,7 @@ import type { Database } from "@/types/supabase";
 
 const SessionFeedbackPayload = z.object({
   childId: z.string().min(1),
+  sessionId: z.string().min(1).optional(),
   adolescentFeedback: z
     .object({
       rating: z.number().optional(),
@@ -31,14 +32,19 @@ export async function POST(request: Request) {
 
     const supabaseAdmin: any = getSupabaseAdmin();
 
-    const { data: latestSession, error: sessionError } = await supabaseAdmin
+    let sessionQuery = supabaseAdmin
       .from("sessions")
       .select("*")
       .eq("child_id", payload.childId)
-      .eq("status", "completed")
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .eq("status", "completed");
+
+    if (payload.sessionId) {
+      sessionQuery = sessionQuery.eq("id", payload.sessionId);
+    } else {
+      sessionQuery = sessionQuery.order("updated_at", { ascending: false }).limit(1);
+    }
+
+    const { data: latestSession, error: sessionError } = await sessionQuery.maybeSingle();
 
     if (sessionError) {
       return serverError(sessionError.message, "SUPABASE_SESSION_LOOKUP_ERROR");

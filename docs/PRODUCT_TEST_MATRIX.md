@@ -72,3 +72,9 @@ The action bar wraps at narrow widths. A targeted Playwright regression follows 
 The new primary action was initially just **Continue**, immediately above the completed-session card. That wording could suggest returning to the completed session rather than the separate unfinished one. The action now says **Continue latest active session** (and its Russian equivalent), while the status card retains the selected context and last activity. The route and selection logic are unchanged.
 
 The same mobile review exposed a clipped dashboard header: the signed-in identity, logout control, and language switcher stayed on one horizontal row. The header now wraps deliberately at narrow widths, so those controls remain visible. Local Browser QA confirmed the updated English and Russian wording, a readable 360px layout, no horizontal overflow, and no console diagnostics.
+
+## Phase 4 feedback ownership result
+
+The completion screen already had optional feedback intended for a linked teacher, but its save path inferred a target from session recency. With more than one session, that could place feedback on a different session than the completed one the learner had just reviewed. The form now sends the current completed session id; local storage and the protected server route both update that exact completed record. Legacy requests without an id retain the existing latest-completed fallback for history insights.
+
+The form is now shown only when a student is linked to a teacher, and its copy names only the actual teacher role. This prevents a standalone student from being told that an unavailable recipient will receive their feedback. Focused storage and route tests cover the selected-session update; local Browser QA completed a linked student Mock session and confirmed the corrected form on the completion screen.

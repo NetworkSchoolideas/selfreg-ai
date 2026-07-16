@@ -38,11 +38,10 @@ describe("session feedback route", () => {
     expect(getSupabaseAdminMock).not.toHaveBeenCalled();
   });
 
-  it("updates feedback only after owner access succeeds", async () => {
+  it("updates feedback for the completed session selected by its owner", async () => {
     const maybeSingle = jest.fn().mockResolvedValue({ data: { id: "session-1" }, error: null });
-    const limit = jest.fn().mockReturnValue({ maybeSingle });
-    const order = jest.fn().mockReturnValue({ limit });
-    const statusEq = jest.fn().mockReturnValue({ order });
+    const sessionEq = jest.fn().mockReturnValue({ maybeSingle });
+    const statusEq = jest.fn().mockReturnValue({ eq: sessionEq });
     const childEq = jest.fn().mockReturnValue({ eq: statusEq });
     const select = jest.fn().mockReturnValue({ eq: childEq });
     const updateEq = jest.fn().mockResolvedValue({ error: null });
@@ -63,6 +62,7 @@ describe("session feedback route", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           childId: "child-1",
+          sessionId: "session-1",
           adolescentFeedback: { rating: 5, comment: "Useful", timestamp: "2026-01-01T10:00:00.000Z" },
         }),
       }),
@@ -73,6 +73,7 @@ describe("session feedback route", () => {
     expect(requireChildOwnerMock).toHaveBeenCalledWith("child-1");
     expect(childEq).toHaveBeenCalledWith("child_id", "child-1");
     expect(statusEq).toHaveBeenCalledWith("status", "completed");
+    expect(sessionEq).toHaveBeenCalledWith("id", "session-1");
     expect(update).toHaveBeenCalledWith({
       adolescent_feedback: { rating: 5, comment: "Useful", timestamp: "2026-01-01T10:00:00.000Z" },
     });

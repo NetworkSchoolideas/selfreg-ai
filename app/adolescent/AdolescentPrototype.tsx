@@ -641,6 +641,7 @@ export function AdolescentPrototype() {
                   onRestart={handleRestart}
                   lang={lang}
                   currentChildId={currentChildId}
+                  sessionId={sessionId}
                   isLinkedToTeacher={isLinkedToTeacher}
                   isIndependentSession={isIndependentSession}
                   personalDoneText={personalCopy.doneText}
@@ -859,13 +860,14 @@ function HistoryReviewPanel({
 }
 
 function CompletionView({
-  ui, finalNote, onRestart, lang, currentChildId, isLinkedToTeacher, isIndependentSession, personalDoneText, feedbackSubmitted, onFeedbackSubmitted
+  ui, finalNote, onRestart, lang, currentChildId, sessionId, isLinkedToTeacher, isIndependentSession, personalDoneText, feedbackSubmitted, onFeedbackSubmitted
 }: {
   ui: ReturnType<typeof useUiText>;
   finalNote: string;
   onRestart: () => void;
   lang: AppLang;
   currentChildId: string | null;
+  sessionId: string;
   isLinkedToTeacher: boolean;
   isIndependentSession: boolean;
   personalDoneText: string;
@@ -898,7 +900,15 @@ function CompletionView({
       ) : (
         <p className="muted fs-13 mt-12">{lang === "en" ? "You can start over anytime." : "Можно начать заново в любое время."}</p>
       )}
-      {!feedbackSubmitted && effectiveChildId && <AdolescentFeedbackForm lang={lang} childIdFromUrl={null} currentChildId={currentChildId} onSubmitted={onFeedbackSubmitted} />}
+      {!feedbackSubmitted && effectiveChildId && isLinkedToTeacher && (
+        <AdolescentFeedbackForm
+          lang={lang}
+          childIdFromUrl={null}
+          currentChildId={currentChildId}
+          sessionId={sessionId}
+          onSubmitted={onFeedbackSubmitted}
+        />
+      )}
       {feedbackSubmitted && <p className="fs-13 c-accent mt-8">{lang === "en" ? "Feedback saved." : "Обратная связь сохранена."}</p>}
     </div>
   );

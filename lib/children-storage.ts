@@ -55,6 +55,10 @@ function shouldSyncChild(child: Child | undefined): boolean {
   );
 }
 
+function isCompletedSession(session: Session): boolean {
+  return session.status === "completed" || Boolean(session.finalNote?.trim());
+}
+
 /**
  * Проверяет, доступен ли Supabase admin client (серверная сторона).
  * Используется для fire-and-forget синхронизации.
@@ -329,7 +333,7 @@ export const ChildrenStorage = {
     return this.attachHistoryInsight(childId, insight);
   },
 
-  saveAdolescentFeedback(childId: string, feedback: AdolescentFeedback): boolean {
+  saveAdolescentFeedback(childId: string, feedback: AdolescentFeedback, sessionId?: string): boolean {
     const children = readChildren();
     const index = children.findIndex((child) => child.id === childId);
     if (index === -1 || children[index].sessions.length === 0) return false;
@@ -337,11 +341,14 @@ export const ChildrenStorage = {
     const sorted = [...children[index].sessions].sort(
       (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
     );
-    const latest = sorted[0];
-    const updated = { ...latest, adolescentFeedback: feedback, updatedAt: new Date().toISOString() };
-    const rest = children[index].sessions.filter((session) => session.updatedAt !== latest.updatedAt);
+    const target = sessionId
+      ? children[index].sessions.find((session) => session.sessionId === sessionId && isCompletedSession(session))
+      : sorted.find(isCompletedSession);
+    if (!target) return false;
 
-    children[index].sessions = [updated, ...rest];
+    const updated = { ...target, adolescentFeedback: feedback, updatedAt: new Date().toISOString() };
+
+    children[index].sessions = children[index].sessions.map((session) => (session === target ? updated : session));
     children[index].updatedAt = new Date().toISOString();
     writeChildren(children);
 
@@ -351,17 +358,21 @@ export const ChildrenStorage = {
   /**
    * Асинхронная версия saveAdolescentFeedback.
    */
-  async saveAdolescentFeedbackAsync(childId: string, feedback: AdolescentFeedback): Promise<boolean> {
+  async saveAdolescentFeedbackAsync(childId: string, feedback: AdolescentFeedback, sessionId?: string): Promise<boolean> {
     const child = this.getChild(childId);
     if (!child || child.sessions.length === 0) {
       return false;
     }
 
     if (shouldSyncChild(child)) {
-      await syncToApi("/api/session-feedback", { childId, adolescentFeedback: feedback });
+      await syncToApi("/api/session-feedback", {
+        childId,
+        adolescentFeedback: feedback,
+        ...(sessionId ? { sessionId } : {}),
+      });
     }
 
-    return this.saveAdolescentFeedback(childId, feedback);
+    return this.saveAdolescentFeedback(childId, feedback, sessionId);
   },
 
   getLatestSessionForChild(childId: string): Session | null {
