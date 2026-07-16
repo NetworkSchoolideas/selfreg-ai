@@ -66,3 +66,9 @@ The implementation also corrected a route-initialisation race: a saved session i
 Reviewing the combined dashboard revealed that the direct resume path was still visually secondary to **New session**. When unfinished work exists, the dashboard now makes **Continue** the primary top action, keeps **New session** available as a secondary action, and preserves Home. The status card continues to explain which saved session will open; no session is opened automatically and no student or teacher data is changed.
 
 The action bar wraps at narrow widths. A targeted Playwright regression follows the top-level resume action and confirms that it restores the saved second stage. Local signed-in Browser QA confirmed the three-action hierarchy at desktop and 360px, direct restoration of the existing session, no horizontal overflow, and no console diagnostics.
+
+## Phase 4 active-session action clarity result
+
+The new primary action was initially just **Continue**, immediately above the completed-session card. That wording could suggest returning to the completed session rather than the separate unfinished one. The action now says **Continue latest active session** (and its Russian equivalent), while the status card retains the selected context and last activity. The route and selection logic are unchanged.
+
+The same mobile review exposed a clipped dashboard header: the signed-in identity, logout control, and language switcher stayed on one horizontal row. The header now wraps deliberately at narrow widths, so those controls remain visible. Local Browser QA confirmed the updated English and Russian wording, a readable 360px layout, no horizontal overflow, and no console diagnostics.

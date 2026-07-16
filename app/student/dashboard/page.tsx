@@ -88,6 +88,7 @@ function StudentDashboardContent() {
       latestNextActionContext: "Контекст",
       latestNextActionDate: "Завершено",
       resumeLatestSession: "Продолжить последнюю сессию",
+      resumeLatestActiveSession: "Продолжить последнюю активную сессию",
       resumeLatestSessionActivity: "Последняя активность",
       nextStepReady: "Запустить новую сессию и пройти цикл до конца.",
       nextStepInProgress: "Вернуться к текущей работе и завершить начатую сессию.",
@@ -156,6 +157,7 @@ function StudentDashboardContent() {
       latestNextActionContext: "Context",
       latestNextActionDate: "Completed",
       resumeLatestSession: "Continue your latest session",
+      resumeLatestActiveSession: "Continue latest active session",
       resumeLatestSessionActivity: "Last activity",
       nextStepReady: "Start a new session and complete the cycle.",
       nextStepInProgress: "Return to the current work and finish the active session.",
@@ -435,7 +437,7 @@ function StudentDashboardContent() {
       />
       <div className="content-container-wide">
         <header className="section-header">
-          <div className="flex-row justify-between items-start">
+          <div className="flex-row flex-wrap justify-between items-start" style={{ gap: 16 }}>
             <div>
               <h1 className="fs-28 mb-8">{t.title}</h1>
               <p className="c-muted">
@@ -467,7 +469,7 @@ function StudentDashboardContent() {
                 borderRadius: 8,
               }}
             >
-              {t.continueSession}
+              {t.resumeLatestActiveSession}
             </Link>
           )}
           <Link
