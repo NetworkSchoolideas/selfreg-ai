@@ -44,7 +44,7 @@ test.describe("Responsive layout smoke", () => {
     await page.setViewportSize({ width: 768, height: 1024 });
     await page.goto("/teacher?lang=en");
 
-    await expect(page.locator("h1")).toContainText(/overview/i);
+    await expect(page.locator("h1")).toContainText("Prepare a conversation with a student");
     await expectNoHorizontalOverflow(page);
     expectHealthyClient(tracker);
   });

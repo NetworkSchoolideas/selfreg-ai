@@ -32,7 +32,7 @@ test.describe("Production account smoke", () => {
     await login(page, "teacher", teacherEmail!, teacherPassword!);
 
     await expect(page).toHaveURL(/\/teacher(?:\?.*)?$/, { timeout: 20_000 });
-    await expect(page.getByRole("heading", { name: "Обзор учеников + инфографика" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Подготовка разговора с учеником" })).toBeVisible();
     await expect(page.getByText("Код педагога")).toBeVisible();
   });
 });

@@ -218,7 +218,8 @@ test.describe("Public smoke flows", () => {
 
     await expect(page).toHaveURL(/\/teacher\?lang=ru$/);
     await expect(page.getByText("Дашборд педагога")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Обзор учеников + инфографика" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Подготовка разговора с учеником" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Начните с того, что произошло" })).toBeVisible();
     await expect(page.getByRole("button", { name: "CSV Экспорт" })).toBeVisible();
     await expect(page.locator('a[href*="/adolescent?childId="]')).toHaveCount(0);
     await expect(page.getByTitle("Скопировать ссылку").first()).toBeVisible();

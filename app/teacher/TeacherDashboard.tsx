@@ -40,15 +40,20 @@ export function TeacherDashboard() {
   const ui = useMemo(
     () => ({
       eyebrow: lang === "en" ? "Teacher dashboard" : "Дашборд педагога",
-      title: lang === "en" ? "Students overview + infographics" : "Обзор учеников + инфографика",
+      title: lang === "en" ? "Prepare a conversation with a student" : "Подготовка разговора с учеником",
       intro:
         lang === "en"
-          ? "Database of children with visual analytics of self-regulation support patterns across sessions."
-          : "База детей с визуальной аналитикой паттернов поддержки саморегуляции по сессиям.",
+          ? "Start with a recent session, notice what happened, and use it as context for a respectful next conversation."
+          : "Начните с недавней сессии, посмотрите, что в ней произошло, и используйте это как контекст для уважительного следующего разговора.",
       introSubtitle:
         lang === "en"
-          ? "This tool is designed for educators and psychologists working with adolescents."
-          : "Этот инструмент предназначен для педагогов и психологов, работающих с подростками.",
+          ? "The student owns their sessions. This workspace is read-only and does not diagnose or rate the student."
+          : "Сессии принадлежат ученику. Кабинет доступен только для просмотра и не ставит ученику оценок или диагнозов.",
+      conversationLeadTitle: lang === "en" ? "Start with what happened" : "Начните с того, что произошло",
+      conversationLead:
+        lang === "en"
+          ? "Choose a session below. Clarifications, returns, retries, and skipped steps are process signals that can help frame a calm question."
+          : "Выберите сессию ниже. Уточнения, возвраты, повторные попытки и пропуски — это сигналы процесса, которые могут помочь сформулировать спокойный вопрос.",
       home: lang === "en" ? "Home" : "Главная",
       prototype: lang === "en" ? "Open session app" : "Открыть сессию",
       teacherCode: lang === "en" ? "Teacher code" : "Код педагога",
@@ -372,6 +377,22 @@ export function TeacherDashboard() {
               />
 
               <div className="panel mb-16">
+                <h3 className="fs-15 analytics-section-title">{ui.conversationLeadTitle}</h3>
+                <p className="muted mb-0">{ui.conversationLead}</p>
+              </div>
+
+              <TeacherSessionsPanel
+                ui={ui}
+                locale={locale}
+                sortedSessions={sortedSessions}
+                selectedSessionIdx={selectedSessionIdx}
+                highlightedSessionUpdatedAt={highlightedSessionUpdatedAt}
+                onSelectSession={selectSession}
+              />
+
+              <TeacherSessionDetail currentSession={currentSession} locale={locale} ui={ui} />
+
+              <div className="panel mb-16">
                 <h3 className="fs-15 analytics-section-title">{ui.analyticsTitle}</h3>
 
                 <div className="analytics-inner-grid">
@@ -474,16 +495,6 @@ export function TeacherDashboard() {
                 </div>
               )}
 
-              <TeacherSessionsPanel
-                ui={ui}
-                locale={locale}
-                sortedSessions={sortedSessions}
-                selectedSessionIdx={selectedSessionIdx}
-                highlightedSessionUpdatedAt={highlightedSessionUpdatedAt}
-                onSelectSession={selectSession}
-              />
-
-              <TeacherSessionDetail currentSession={currentSession} locale={locale} ui={ui} />
             </>
           )}
         </div>
