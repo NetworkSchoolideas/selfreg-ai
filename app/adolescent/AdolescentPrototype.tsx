@@ -348,10 +348,10 @@ export function AdolescentPrototype() {
   const handleNeedClarification = useCallback(() => {
     if (lastClarificationFeedback) return;
     const result = addClarificationRequest(currentQuestion, stage.title);
-    saveSessionSnapshot(result.nextRecords, "");
+    saveSessionSnapshot(result.nextRecords, answer);
     setAnswerQualityWarning(null);
     setSuppressClarifyForNextStage(false);
-  }, [lastClarificationFeedback, addClarificationRequest, currentQuestion, stage.title, saveSessionSnapshot, setAnswerQualityWarning, setSuppressClarifyForNextStage]);
+  }, [lastClarificationFeedback, addClarificationRequest, answer, currentQuestion, stage.title, saveSessionSnapshot, setAnswerQualityWarning, setSuppressClarifyForNextStage]);
 
   const handleClearClarificationAndRetry = useCallback(() => {
     if (clarifyResetTimeoutRef.current) {

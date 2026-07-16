@@ -98,7 +98,6 @@ export function useAdolescentSession({ initialContext, lang }: UseAdolescentSess
 
     const nextRecords = [...records, record];
     setRecords(nextRecords);
-    setAnswer("");
     setLastClarificationFeedback(
       lang === "en"
         ? "Say it in your own words: what situation are we talking about, and what makes it difficult right now?"

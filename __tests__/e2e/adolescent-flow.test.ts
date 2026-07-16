@@ -213,12 +213,15 @@ test.describe("Adolescent prototype flows", () => {
     const tracker = collectClientErrors(page);
     await openRegisteredAdolescentSession(page, request);
 
+    const answer = "I want to prepare for the math exam by solving five practice tasks calmly today.";
+    const answerField = page.getByPlaceholder("Write 1-3 sentences");
+    await answerField.fill(answer);
     await page.getByRole("button", { name: /Need clarification/ }).click();
     await expect(page.locator(".clarification-box")).toContainText(/Suggestion to answer better|AI recommendation/);
+    await expect(answerField).toHaveValue(answer);
     await page.getByRole("button", { name: "Clear and retry" }).click();
-    await page.getByPlaceholder("Write 1-3 sentences").fill(
-      "I want to prepare for the math exam by solving five practice tasks calmly today.",
-    );
+    await expect(answerField).toHaveValue("");
+    await answerField.fill(answer);
     await page.getByRole("button", { name: "Continue" }).click();
 
     await expect(page.locator(".stage-pill")).toContainText("Step 2 of 5", { timeout: 15000 });
