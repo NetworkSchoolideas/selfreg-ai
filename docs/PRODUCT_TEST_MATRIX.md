@@ -42,3 +42,9 @@ P1-01 is complete. Its done criteria were:
 The walkthrough found that a completed session already stores a concise summary and a proposed adjustment, but the student dashboard makes the learner select a session before reaching that value. Its visible next-step card is necessarily generic. The selected hypothesis is: **surface the latest completed session's own manageable next action before aggregate counts and history selection.**
 
 Primary signal: a returning student can identify what they chose to do next from the latest completed session within seconds. Guardrails: use only the student's existing saved session content, state the session date/context, and add no diagnosis, scoring, persistence, or AI-generated interpretation.
+
+## Phase 4 implementation result
+
+The student dashboard now places a **The next step you chose** card before aggregate counts and history selection. It reads only the newest visible completed session in the current dashboard language and displays the learner's saved stage-5 adjustment together with that session's context and completion date. It does not create a recommendation, write data, alter teacher access, or reveal a session saved in another language.
+
+Automated coverage proves that archived sessions and another-language sessions are skipped and that the newest eligible saved adjustment is selected. Local signed-in student browser QA confirmed the card on desktop and at 360px without horizontal overflow or console diagnostics.
