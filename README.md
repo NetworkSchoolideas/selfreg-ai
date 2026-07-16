@@ -94,6 +94,7 @@ The E2E setup creates synthetic test users only. Do not use production participa
 ## Documentation
 
 - [Architecture](ARCHITECTURE.md)
+- [Product development plan](DELIVERY_PLAN.md)
 - [Testing guide](TESTING.md)
 - [Deployment guide](DEPLOYMENT.md)
 - [Supabase setup](supabase/SETUP.md)
