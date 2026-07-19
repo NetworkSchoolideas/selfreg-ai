@@ -316,6 +316,32 @@ test.describe("Adolescent prototype flows", () => {
     expectHealthyClient(tracker);
   });
 
+  test("preserves the prior answer on Back and clears the attempt on Start over", async ({ page, request }) => {
+    const tracker = collectClientErrors(page);
+    await openRegisteredAdolescentSession(page, request);
+
+    const firstAnswer = "I will choose one realistic goal for my math exam preparation today.";
+    const answerField = page.getByPlaceholder("Write 1-3 sentences");
+    await answerField.fill(firstAnswer);
+    await page.getByRole("button", { name: "Continue" }).click();
+    await expect(page.locator(".stage-pill")).toContainText("Step 2 of 5", { timeout: 15_000 });
+    await expect(page.locator(".record")).toHaveCount(1);
+
+    await page.getByRole("button", { name: "Go back" }).click();
+    await expect(page.locator(".stage-pill")).toContainText("Step 1 of 5");
+    await expect(answerField).toHaveValue(firstAnswer);
+    await expect(page.locator(".record")).toHaveCount(2);
+
+    await page.getByRole("button", { name: "Start over" }).click();
+    await expect(page.locator(".stage-pill")).toContainText("Step 1 of 5");
+    await expect(answerField).toHaveValue("");
+    await expect(page.getByText("No answers yet.")).toBeVisible();
+    await expect(page.locator(".record")).toHaveCount(0);
+    await expect(page.getByPlaceholder("e.g.: exam, project")).toHaveValue("study project");
+
+    expectHealthyClient(tracker);
+  });
+
   test("stops the exercise for a safety-risk answer without saving progress", async ({ page, request }) => {
     const tracker = collectClientErrors(page);
     await openRegisteredAdolescentSession(page, request);
