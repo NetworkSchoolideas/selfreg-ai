@@ -326,6 +326,30 @@ test.describe("Adolescent prototype flows", () => {
     expectHealthyClient(tracker);
   });
 
+  test("restores the revised step after refreshing a saved Back action", async ({ page, request }) => {
+    const tracker = collectClientErrors(page);
+    await openRegisteredAdolescentSession(page, request);
+    const firstAnswer = "I will list the assignment requirements before I choose the first task.";
+
+    await page.getByPlaceholder("Write 1-3 sentences").fill(firstAnswer);
+    await page.getByRole("button", { name: "Continue" }).click();
+    await expect(page.locator(".stage-pill")).toContainText("Step 2 of 5", { timeout: 15_000 });
+
+    const savedBack = page.waitForResponse((response) => (
+      response.url().includes("/api/session-sync") && response.request().method() === "POST" && response.ok()
+    ));
+    await page.getByRole("button", { name: "Back" }).click();
+    await expect(page.locator(".stage-pill")).toContainText("Step 1 of 5");
+    await expect(page.getByPlaceholder("Write 1-3 sentences")).toHaveValue(firstAnswer);
+    await savedBack;
+
+    await page.reload({ waitUntil: "networkidle" });
+
+    await expect(page.locator(".stage-pill")).toContainText("Step 1 of 5", { timeout: 15_000 });
+    await expect(page.getByPlaceholder("Write 1-3 sentences")).toHaveValue(firstAnswer);
+    expectHealthyClient(tracker);
+  });
+
   test("resumes the newest unfinished session from the dashboard", async ({ page, request }) => {
     const tracker = collectClientErrors(page);
     const childId = await openRegisteredAdolescentSession(page, request);

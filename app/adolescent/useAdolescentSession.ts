@@ -188,6 +188,7 @@ export function useAdolescentSession({ initialContext, lang }: UseAdolescentSess
     const savedRecords = savedSession.records ?? [];
     const progressRecords = savedRecords.filter(isProgressRecord);
     const lastProgressRecord = progressRecords.at(-1);
+    const lastRecord = savedRecords.at(-1);
 
     setSessionId(savedSession.sessionId || createChildId());
     setContext(savedSession.context || initialContext);
@@ -198,6 +199,18 @@ export function useAdolescentSession({ initialContext, lang }: UseAdolescentSess
     setPendingHistoryInsight(savedSession.historyInsight || null);
     setSuppressClarifyForNextStage(false);
     setQuestionOverride(null);
+
+    if (lastRecord?.eventType === "back") {
+      const revisedRecord = savedRecords
+        .slice(0, -1)
+        .reverse()
+        .find((record) => isProgressRecord(record) && record.stageId === lastRecord.stageId);
+
+      setStageId(lastRecord.stageId as StageId);
+      setQuestionOverride(revisedRecord?.question ?? lastRecord.question ?? null);
+      setAnswer(revisedRecord?.answer ?? "");
+      return;
+    }
 
     if (!lastProgressRecord || savedSession.finalNote?.trim()) {
       setStageId("1");
