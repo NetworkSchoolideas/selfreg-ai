@@ -457,6 +457,86 @@ test.describe("Adolescent prototype flows", () => {
     expectHealthyClient(tracker);
   });
 
+  test("preserves records from concurrent session snapshots", async ({ page, request }) => {
+    const tracker = collectClientErrors(page);
+    const childId = await openRegisteredAdolescentSession(page, request);
+    const sessionId = randomUUID();
+    const firstTimestamp = "2026-07-19T10:00:00.000Z";
+    const initialRecord = {
+      stageId: "1",
+      stageTitle: "Name the situation",
+      scenario: "A",
+      eventType: "answer",
+      answer: "I need to organize the project outline.",
+      feedback: "Start with one small, visible step.",
+      question: "What needs attention?",
+      timestamp: firstTimestamp,
+    };
+
+    const initialResponse = await page.request.post("/api/session-sync", {
+      data: {
+        childId,
+        sessionId,
+        status: "in_progress",
+        context: "project outline",
+        finalNote: "",
+        updatedAt: firstTimestamp,
+        lang: "en",
+        records: [initialRecord],
+      },
+    });
+    expect(initialResponse.ok(), await initialResponse.text()).toBe(true);
+
+    const backRecord = {
+      stageId: "1",
+      stageTitle: "Name the situation",
+      scenario: "clarify",
+      eventType: "back",
+      answer: "Returned to revise the previous answer.",
+      feedback: "The learner returned to the previous question.",
+      question: "What needs attention?",
+      timestamp: "2026-07-19T10:01:00.000Z",
+    };
+    const secondStageRecord = {
+      stageId: "2",
+      stageTitle: "Set a goal",
+      scenario: "A",
+      eventType: "answer",
+      answer: "Write the first three outline headings.",
+      feedback: "Keep the next step concrete.",
+      question: "What is the next step?",
+      timestamp: "2026-07-19T10:02:00.000Z",
+    };
+
+    const [backResponse, nextStageResponse] = await Promise.all([
+      page.request.post("/api/session-sync", {
+        data: {
+          childId, sessionId, status: "in_progress", context: "project outline", finalNote: "",
+          updatedAt: "2026-07-19T10:01:01.000Z", lang: "en", records: [initialRecord, backRecord],
+        },
+      }),
+      page.request.post("/api/session-sync", {
+        data: {
+          childId, sessionId, status: "in_progress", context: "project outline", finalNote: "",
+          updatedAt: "2026-07-19T10:02:01.000Z", lang: "en", records: [initialRecord, secondStageRecord],
+        },
+      }),
+    ]);
+    expect(backResponse.ok(), await backResponse.text()).toBe(true);
+    expect(nextStageResponse.ok(), await nextStageResponse.text()).toBe(true);
+
+    const childResponse = await page.request.get(`/api/children?childId=${encodeURIComponent(childId)}`);
+    expect(childResponse.ok(), await childResponse.text()).toBe(true);
+    const childPayload = await childResponse.json();
+    const syncedSession = childPayload.child.sessions.find((session: { sessionId?: string }) => session.sessionId === sessionId);
+    expect(syncedSession.records).toHaveLength(3);
+    expect(syncedSession.records.map((record: { eventType?: string }) => record.eventType)).toEqual([
+      "answer", "back", "answer",
+    ]);
+
+    expectHealthyClient(tracker);
+  });
+
   test("lets a teacher run a private self-regulation session without accessing student data", async ({ page, request }) => {
     const tracker = collectClientErrors(page);
     await createAndLoginTeacher(page, request);

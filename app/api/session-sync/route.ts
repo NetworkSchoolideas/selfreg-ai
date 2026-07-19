@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import { getSupabaseAdmin, isSupabaseAdminAvailable } from "@/lib/supabase";
 import { clientError, serverError } from "@/lib/api-errors";
 import { requireChildOwner } from "@/lib/server-user-access";
-import { mergeSessionSyncRecords, type SessionSyncRecordPayload } from "@/lib/session-sync";
+import {
+  getSessionSyncRecordIdentity,
+  mergeSessionSyncRecords,
+  type SessionSyncRecordPayload,
+} from "@/lib/session-sync";
 import type { Database } from "@/types/supabase";
 
 const SessionSyncUpsertPayload = z.object({
@@ -51,6 +56,15 @@ const SessionSyncDeletePayload = z
   .refine((payload) => Boolean(payload.sessionId || payload.sessionUpdatedAt), {
     message: "sessionId or sessionUpdatedAt is required",
   });
+
+function getSessionRecordId(sessionId: string, record: SessionSyncRecordPayload) {
+  const hash = createHash("sha256")
+    .update(`${sessionId}\u0000${getSessionSyncRecordIdentity(record)}`)
+    .digest("hex");
+  const variant = ((Number.parseInt(hash[16], 16) & 0x3) | 0x8).toString(16);
+
+  return `${hash.slice(0, 8)}-${hash.slice(8, 12)}-5${hash.slice(13, 16)}-${variant}${hash.slice(17, 20)}-${hash.slice(20, 32)}`;
+}
 
 const SESSION_RECORDS_SELECT = `
   stage_id,
@@ -238,14 +252,6 @@ export async function POST(request: Request) {
         return serverError(updateError.message, "SUPABASE_SESSION_UPDATE_ERROR");
       }
 
-      const { error: deleteRecordsError } = await supabaseAdmin
-        .from("session_records")
-        .delete()
-        .eq("session_id", sessionId);
-
-      if (deleteRecordsError) {
-        return serverError(deleteRecordsError.message, "SUPABASE_RECORDS_DELETE_ERROR");
-      }
     } else {
       const sessionPatch: Database["public"]["Tables"]["sessions"]["Update"] = {
         context: payload.context,
@@ -319,24 +325,21 @@ export async function POST(request: Request) {
           return serverError(updateError.message, "SUPABASE_SESSION_UPDATE_ERROR");
         }
 
-        const { error: deleteRecordsError } = await supabaseAdmin
-          .from("session_records")
-          .delete()
-          .eq("session_id", sessionId);
-
-        if (deleteRecordsError) {
-          return serverError(deleteRecordsError.message, "SUPABASE_RECORDS_DELETE_ERROR");
-        }
       } else {
         sessionId = insertedSession.id;
       }
     }
 
     const recordsToPersist = mergeSessionSyncRecords(storedRecords, payload.records);
+    const storedRecordIds = new Set(storedRecords.map(getSessionSyncRecordIdentity));
+    const recordsToInsert = recordsToPersist.filter(
+      (record) => !storedRecordIds.has(getSessionSyncRecordIdentity(record)),
+    );
 
-    if (recordsToPersist.length > 0) {
+    if (recordsToInsert.length > 0) {
       const sessionRecords: Database["public"]["Tables"]["session_records"]["Insert"][] =
-        recordsToPersist.map((record) => ({
+        recordsToInsert.map((record) => ({
+          id: getSessionRecordId(sessionId!, record),
           session_id: sessionId!,
           stage_id: Number(record.stageId),
           stage_title: record.stageTitle,
@@ -352,6 +355,7 @@ export async function POST(request: Request) {
         }));
 
       const metadataSafeRecords = sessionRecords.map((record) => ({
+        id: record.id,
         session_id: record.session_id,
         stage_id: record.stage_id,
         stage_title: record.stage_title,
@@ -364,6 +368,7 @@ export async function POST(request: Request) {
       }));
 
       const legacyRecords = metadataSafeRecords.map((record) => ({
+        id: record.id,
         session_id: record.session_id,
         stage_id: record.stage_id,
         stage_title: record.stage_title,
@@ -374,11 +379,17 @@ export async function POST(request: Request) {
         created_at: record.created_at,
       }));
 
-      const fullInsert = await supabaseAdmin.from("session_records").insert(sessionRecords);
+      const fullInsert = await supabaseAdmin
+        .from("session_records")
+        .upsert(sessionRecords, { onConflict: "id", ignoreDuplicates: true });
       if (fullInsert.error) {
-        const metadataSafeInsert = await supabaseAdmin.from("session_records").insert(metadataSafeRecords);
+        const metadataSafeInsert = await supabaseAdmin
+          .from("session_records")
+          .upsert(metadataSafeRecords, { onConflict: "id", ignoreDuplicates: true });
         if (metadataSafeInsert.error) {
-          const legacyInsert = await supabaseAdmin.from("session_records").insert(legacyRecords);
+          const legacyInsert = await supabaseAdmin
+            .from("session_records")
+            .upsert(legacyRecords, { onConflict: "id", ignoreDuplicates: true });
           if (legacyInsert.error) {
             return serverError(legacyInsert.error.message, "SUPABASE_RECORDS_INSERT_ERROR");
           }

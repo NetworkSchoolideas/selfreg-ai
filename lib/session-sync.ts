@@ -14,7 +14,7 @@ export interface SessionSyncRecordPayload {
   timestamp: string;
 }
 
-function recordIdentity(record: SessionSyncRecordPayload) {
+export function getSessionSyncRecordIdentity(record: SessionSyncRecordPayload) {
   return [
     record.timestamp,
     record.eventType || "",
@@ -39,11 +39,11 @@ export function mergeSessionSyncRecords(
   const merged = new Map<string, SessionSyncRecordPayload>();
 
   for (const record of storedRecords) {
-    merged.set(recordIdentity(record), record);
+    merged.set(getSessionSyncRecordIdentity(record), record);
   }
 
   for (const record of incomingRecords) {
-    merged.set(recordIdentity(record), record);
+    merged.set(getSessionSyncRecordIdentity(record), record);
   }
 
   return Array.from(merged.values()).sort((left, right) => {
