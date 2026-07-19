@@ -14,6 +14,48 @@ export interface SessionSyncRecordPayload {
   timestamp: string;
 }
 
+function recordIdentity(record: SessionSyncRecordPayload) {
+  return [
+    record.timestamp,
+    record.eventType || "",
+    record.stageId,
+    record.stageTitle,
+    record.scenario,
+    record.answer,
+    record.feedback,
+    record.question,
+  ].join("\u0001");
+}
+
+/**
+ * Session records are append-only process history. A second browser tab can
+ * submit an older local snapshot, so preserve records already stored by the
+ * server instead of allowing that snapshot to erase them.
+ */
+export function mergeSessionSyncRecords(
+  storedRecords: SessionSyncRecordPayload[],
+  incomingRecords: SessionSyncRecordPayload[],
+) {
+  const merged = new Map<string, SessionSyncRecordPayload>();
+
+  for (const record of storedRecords) {
+    merged.set(recordIdentity(record), record);
+  }
+
+  for (const record of incomingRecords) {
+    merged.set(recordIdentity(record), record);
+  }
+
+  return Array.from(merged.values()).sort((left, right) => {
+    const timeDelta = new Date(left.timestamp).getTime() - new Date(right.timestamp).getTime();
+    if (Number.isFinite(timeDelta) && timeDelta !== 0) {
+      return timeDelta;
+    }
+
+    return Number(left.stageId) - Number(right.stageId);
+  });
+}
+
 export interface SessionSyncUpsertPayload {
   action: "upsert";
   sessionId?: string;

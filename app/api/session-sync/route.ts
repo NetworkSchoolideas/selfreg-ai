@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getSupabaseAdmin, isSupabaseAdminAvailable } from "@/lib/supabase";
 import { clientError, serverError } from "@/lib/api-errors";
 import { requireChildOwner } from "@/lib/server-user-access";
+import { mergeSessionSyncRecords, type SessionSyncRecordPayload } from "@/lib/session-sync";
 import type { Database } from "@/types/supabase";
 
 const SessionSyncUpsertPayload = z.object({
@@ -50,6 +51,72 @@ const SessionSyncDeletePayload = z
   .refine((payload) => Boolean(payload.sessionId || payload.sessionUpdatedAt), {
     message: "sessionId or sessionUpdatedAt is required",
   });
+
+const SESSION_RECORDS_SELECT = `
+  stage_id,
+  stage_title,
+  scenario,
+  event_type,
+  provider,
+  model,
+  response_mode,
+  feedback,
+  question,
+  answer,
+  created_at
+`;
+
+const SESSION_RECORDS_LEGACY_SELECT = `
+  stage_id,
+  stage_title,
+  scenario,
+  feedback,
+  question,
+  answer,
+  created_at
+`;
+
+function mapStoredSessionRecord(record: Record<string, unknown>): SessionSyncRecordPayload {
+  return {
+    stageId: String(record.stage_id),
+    stageTitle: String(record.stage_title || ""),
+    scenario: String(record.scenario || ""),
+    eventType: typeof record.event_type === "string"
+      ? record.event_type as SessionSyncRecordPayload["eventType"]
+      : undefined,
+    provider: typeof record.provider === "string" ? record.provider : undefined,
+    model: typeof record.model === "string" ? record.model : undefined,
+    responseMode: typeof record.response_mode === "string"
+      ? record.response_mode as SessionSyncRecordPayload["responseMode"]
+      : undefined,
+    feedback: String(record.feedback || ""),
+    question: typeof record.question === "string" ? record.question : "",
+    answer: typeof record.answer === "string" ? record.answer : "",
+    timestamp: String(record.created_at),
+  };
+}
+
+async function loadStoredSessionRecords(supabaseAdmin: any, sessionId: string) {
+  const fullResult = await supabaseAdmin
+    .from("session_records")
+    .select(SESSION_RECORDS_SELECT)
+    .eq("session_id", sessionId);
+
+  if (!fullResult.error) {
+    return { records: (fullResult.data || []).map(mapStoredSessionRecord) };
+  }
+
+  const legacyResult = await supabaseAdmin
+    .from("session_records")
+    .select(SESSION_RECORDS_LEGACY_SELECT)
+    .eq("session_id", sessionId);
+
+  if (legacyResult.error) {
+    return { error: legacyResult.error };
+  }
+
+  return { records: (legacyResult.data || []).map(mapStoredSessionRecord) };
+}
 
 export async function POST(request: Request) {
   try {
@@ -139,10 +206,17 @@ export async function POST(request: Request) {
     }
 
     let sessionId = existingSession?.id;
+    let storedRecords: SessionSyncRecordPayload[] = [];
     const sessionStatus = payload.status || (payload.finalNote.trim() ? "completed" : "in_progress");
     const isCompleted = sessionStatus === "completed";
 
     if (sessionId) {
+      const storedRecordsResult = await loadStoredSessionRecords(supabaseAdmin, sessionId);
+      if (storedRecordsResult.error) {
+        return serverError(storedRecordsResult.error.message, "SUPABASE_RECORDS_LOOKUP_ERROR");
+      }
+      storedRecords = storedRecordsResult.records;
+
       const sessionPatch: Database["public"]["Tables"]["sessions"]["Update"] = {
         context: payload.context,
         final_note: payload.finalNote,
@@ -230,6 +304,12 @@ export async function POST(request: Request) {
 
         sessionId = racedSession.id;
 
+        const storedRecordsResult = await loadStoredSessionRecords(supabaseAdmin, sessionId);
+        if (storedRecordsResult.error) {
+          return serverError(storedRecordsResult.error.message, "SUPABASE_RECORDS_LOOKUP_ERROR");
+        }
+        storedRecords = storedRecordsResult.records;
+
         const { error: updateError } = await supabaseAdmin
           .from("sessions")
           .update(sessionPatch)
@@ -252,9 +332,11 @@ export async function POST(request: Request) {
       }
     }
 
-    if (payload.records.length > 0) {
+    const recordsToPersist = mergeSessionSyncRecords(storedRecords, payload.records);
+
+    if (recordsToPersist.length > 0) {
       const sessionRecords: Database["public"]["Tables"]["session_records"]["Insert"][] =
-        payload.records.map((record) => ({
+        recordsToPersist.map((record) => ({
           session_id: sessionId!,
           stage_id: Number(record.stageId),
           stage_title: record.stageTitle,
@@ -316,7 +398,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: true,
       sessionId,
-      records: payload.records.length,
+      records: recordsToPersist.length,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

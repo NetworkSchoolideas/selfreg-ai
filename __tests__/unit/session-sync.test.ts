@@ -1,5 +1,5 @@
 import type { Session } from "@/types/session";
-import { toSessionSyncUpsertPayload } from "@/lib/session-sync";
+import { mergeSessionSyncRecords, toSessionSyncUpsertPayload } from "@/lib/session-sync";
 
 describe("session sync payload helper", () => {
   it("flattens session state into the API payload shape", () => {
@@ -62,5 +62,43 @@ describe("session sync payload helper", () => {
         },
       ],
     });
+  });
+
+  it("keeps records saved by another tab when an older snapshot is synced", () => {
+    const initialRecord = {
+      stageId: "1",
+      stageTitle: "Goal",
+      scenario: "A",
+      eventType: "answer" as const,
+      answer: "Finish the outline",
+      feedback: "Good start",
+      question: "What is the goal?",
+      timestamp: "2026-01-01T09:00:00.000Z",
+    };
+    const backRecord = {
+      stageId: "1",
+      stageTitle: "Goal",
+      scenario: "A",
+      eventType: "back" as const,
+      answer: "",
+      feedback: "",
+      question: "",
+      timestamp: "2026-01-01T09:01:00.000Z",
+    };
+    const secondStageRecord = {
+      stageId: "2",
+      stageTitle: "Plan",
+      scenario: "A",
+      eventType: "answer" as const,
+      answer: "Start with sources",
+      feedback: "Specific next step",
+      question: "What comes next?",
+      timestamp: "2026-01-01T09:02:00.000Z",
+    };
+
+    expect(mergeSessionSyncRecords(
+      [initialRecord, backRecord],
+      [initialRecord, secondStageRecord],
+    )).toEqual([initialRecord, backRecord, secondStageRecord]);
   });
 });
