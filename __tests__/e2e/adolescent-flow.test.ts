@@ -200,6 +200,54 @@ test.describe("Adolescent prototype flows", () => {
     expect(tracker.pageErrors, `Unexpected page errors: ${tracker.pageErrors.join(" | ")}`).toEqual([]);
   });
 
+  test("restores the clarification state when skipping cannot be saved", async ({ page, request }) => {
+    const tracker = collectClientErrors(page);
+    await openRegisteredAdolescentSession(page, request);
+    await page.getByRole("button", { name: "Need clarification" }).click();
+    await expect(page.getByRole("button", { name: "Skip this step" })).toBeVisible();
+
+    await page.route("**/api/session-sync", async (route) => {
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "The server could not save changes" }),
+      });
+    });
+    await page.getByRole("button", { name: "Skip this step" }).click();
+
+    await expect(page.locator(".stage-pill")).toContainText("Step 1 of 5");
+    await expect(page.locator(".record")).toHaveCount(1);
+    await expect(page.getByRole("button", { name: "Skip this step" })).toBeVisible();
+    await expect(page.getByText("The server could not save changes").first()).toBeVisible();
+
+    expect(tracker.pageErrors, `Unexpected page errors: ${tracker.pageErrors.join(" | ")}`).toEqual([]);
+  });
+
+  test("restores the current step when going back cannot be saved", async ({ page, request }) => {
+    const tracker = collectClientErrors(page);
+    await openRegisteredAdolescentSession(page, request);
+    await page.getByPlaceholder("Write 1-3 sentences").fill(
+      "I will outline the assignment and complete the first small section now.",
+    );
+    await page.getByRole("button", { name: "Continue" }).click();
+    await expect(page.locator(".stage-pill")).toContainText("Step 2 of 5");
+
+    await page.route("**/api/session-sync", async (route) => {
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "The server could not save changes" }),
+      });
+    });
+    await page.getByRole("button", { name: "Back" }).click();
+
+    await expect(page.locator(".stage-pill")).toContainText("Step 2 of 5");
+    await expect(page.locator(".record")).toHaveCount(1);
+    await expect(page.getByText("The server could not save changes").first()).toBeVisible();
+
+    expect(tracker.pageErrors, `Unexpected page errors: ${tracker.pageErrors.join(" | ")}`).toEqual([]);
+  });
+
   test("preserves the active attempt when switching languages", async ({ page, request }) => {
     const tracker = collectClientErrors(page);
     await openRegisteredAdolescentSession(page, request);

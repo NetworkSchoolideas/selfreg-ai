@@ -18,7 +18,7 @@ import {
   type ProviderId,
 } from "@/lib/provider-registry";
 import { ChildrenStorage } from "@/lib/children-storage";
-import type { RecordItem, CompletedSession } from "@/types/session";
+import type { RecordItem, CompletedSession, Session } from "@/types/session";
 import { useSessionSubmit } from "@/hooks/useSessionSubmit";
 import { useSessionHistory } from "@/hooks/useSessionHistory";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
@@ -351,15 +351,45 @@ export function AdolescentPrototype() {
     setProviderStatus(nextProvider === "mock" ? ui.mockStatus : "");
   }, [setProviderStatus, ui.mockStatus]);
 
+  const restoreAfterSaveFailure = useCallback(() => {
+    const previousSession: Session = {
+      sessionId,
+      status: finalNote ? "completed" : "in_progress",
+      context,
+      records,
+      finalNote,
+      updatedAt: new Date().toISOString(),
+      lang,
+    };
+    restoreSession(previousSession);
+    updateAnswer(answer);
+    setLastClarificationFeedback(lastClarificationFeedback);
+  }, [sessionId, finalNote, context, records, lang, restoreSession, updateAnswer, answer, setLastClarificationFeedback, lastClarificationFeedback]);
+
   // Skip clarification handler
   const handleSkipClarification = useCallback(async () => {
     if (!lastClarificationFeedback) return;
     const adv = skipClarification(answer, currentQuestion, stage.title);
-    if (adv?.completed && !finalNote) {
-      const note = buildSessionSummary(context, adv.nextRecords, lang);
-      session.setFinalNote(note);
+    if (!adv) return;
+    const note = adv.completed && !finalNote
+      ? buildSessionSummary(context, adv.nextRecords, lang)
+      : finalNote;
+    try {
+      await saveSessionSnapshot(adv.nextRecords, note);
+      if (adv.completed && !finalNote) {
+        session.setFinalNote(note);
+      }
+    } catch (error) {
+      restoreAfterSaveFailure();
+      const message = error instanceof Error
+        ? error.message
+        : lang === "en"
+          ? "Unable to save this step"
+          : "Не удалось сохранить этот шаг";
+      setAnswerQualityWarning(message);
+      setProviderStatus(message);
     }
-  }, [lastClarificationFeedback, skipClarification, answer, currentQuestion, stage.title, finalNote, context, lang, session]);
+  }, [lastClarificationFeedback, skipClarification, answer, currentQuestion, stage.title, finalNote, context, lang, session, saveSessionSnapshot, restoreAfterSaveFailure, setAnswerQualityWarning, setProviderStatus]);
 
   const handleNeedClarification = useCallback(async () => {
     if (lastClarificationFeedback) return;
@@ -404,14 +434,26 @@ export function AdolescentPrototype() {
     };
   }, []);
 
-  const handleGoBack = useCallback(() => {
+  const handleGoBack = useCallback(async () => {
     const result = goBackOneStep();
     if (result) {
-      saveSessionSnapshot(result.nextRecords, "");
+      try {
+        await saveSessionSnapshot(result.nextRecords, "");
+      } catch (error) {
+        restoreAfterSaveFailure();
+        const message = error instanceof Error
+          ? error.message
+          : lang === "en"
+            ? "Unable to save this change"
+            : "Не удалось сохранить это изменение";
+        setAnswerQualityWarning(message);
+        setProviderStatus(message);
+        return;
+      }
     }
     setAnswerQualityWarning(null);
     setSuppressClarifyForNextStage(false);
-  }, [goBackOneStep, saveSessionSnapshot, setAnswerQualityWarning, setSuppressClarifyForNextStage]);
+  }, [goBackOneStep, saveSessionSnapshot, restoreAfterSaveFailure, lang, setAnswerQualityWarning, setProviderStatus, setSuppressClarifyForNextStage]);
 
   // Start new session after history review
   const handleStartNew = useCallback(() => {
