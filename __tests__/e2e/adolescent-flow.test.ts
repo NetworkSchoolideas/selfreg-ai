@@ -179,6 +179,38 @@ test.describe("Adolescent prototype flows", () => {
     expect(tracker.pageErrors, `Unexpected page errors: ${tracker.pageErrors.join(" | ")}`).toEqual([]);
   });
 
+  test("allows the learner to retry a failed save without losing the answer", async ({ page, request }) => {
+    const tracker = collectClientErrors(page);
+    await openRegisteredAdolescentSession(page, request);
+    let saveAttempts = 0;
+    await page.route("**/api/session-sync", async (route) => {
+      saveAttempts += 1;
+      if (saveAttempts === 1) {
+        await route.fulfill({
+          status: 500,
+          contentType: "application/json",
+          body: JSON.stringify({ error: "The server could not save changes" }),
+        });
+        return;
+      }
+
+      await route.continue();
+    });
+
+    const answer = "I will start with the outline, then check one requirement before moving on.";
+    await page.getByPlaceholder("Write 1-3 sentences").fill(answer);
+    await page.getByRole("button", { name: "Continue" }).click();
+    await expect(page.locator(".stage-pill")).toContainText("Step 1 of 5");
+    await expect(page.getByPlaceholder("Write 1-3 sentences")).toHaveValue(answer);
+
+    await page.getByRole("button", { name: "Continue" }).click();
+    await expect(page.locator(".stage-pill")).toContainText("Step 2 of 5");
+    await expect(page.locator(".record")).toHaveCount(1);
+    expect(saveAttempts).toBe(2);
+
+    expect(tracker.pageErrors, `Unexpected page errors: ${tracker.pageErrors.join(" | ")}`).toEqual([]);
+  });
+
   test("does not add a clarification request when its save fails", async ({ page, request }) => {
     const tracker = collectClientErrors(page);
     await openRegisteredAdolescentSession(page, request);
