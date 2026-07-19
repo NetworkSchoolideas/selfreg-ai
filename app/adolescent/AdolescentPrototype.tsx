@@ -92,6 +92,7 @@ export function AdolescentPrototype() {
   const [accessState, setAccessState] = useState<"checking" | "ready" | "signed-out" | "wrong-role" | "consent" | "error">("checking");
   const [isAcceptingConsent, setIsAcceptingConsent] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [isPersistingSessionAction, setIsPersistingSessionAction] = useState(false);
   const clarifyResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initializedSessionRouteRef = useRef<string | null>(null);
   // Never keep an in-memory draft visible after the authenticated account has
@@ -368,9 +369,13 @@ export function AdolescentPrototype() {
 
   // Skip clarification handler
   const handleSkipClarification = useCallback(async () => {
-    if (!lastClarificationFeedback) return;
+    if (!lastClarificationFeedback || isPersistingSessionAction) return;
+    setIsPersistingSessionAction(true);
     const adv = skipClarification(answer, currentQuestion, stage.title);
-    if (!adv) return;
+    if (!adv) {
+      setIsPersistingSessionAction(false);
+      return;
+    }
     const note = adv.completed && !finalNote
       ? buildSessionSummary(context, adv.nextRecords, lang)
       : finalNote;
@@ -388,11 +393,14 @@ export function AdolescentPrototype() {
           : "Не удалось сохранить этот шаг";
       setAnswerQualityWarning(message);
       setProviderStatus(message);
+    } finally {
+      setIsPersistingSessionAction(false);
     }
-  }, [lastClarificationFeedback, skipClarification, answer, currentQuestion, stage.title, finalNote, context, lang, session, saveSessionSnapshot, restoreAfterSaveFailure, setAnswerQualityWarning, setProviderStatus]);
+  }, [lastClarificationFeedback, isPersistingSessionAction, skipClarification, answer, currentQuestion, stage.title, finalNote, context, lang, session, saveSessionSnapshot, restoreAfterSaveFailure, setAnswerQualityWarning, setProviderStatus]);
 
   const handleNeedClarification = useCallback(async () => {
-    if (lastClarificationFeedback) return;
+    if (lastClarificationFeedback || isPersistingSessionAction) return;
+    setIsPersistingSessionAction(true);
     const result = addClarificationRequest(currentQuestion, stage.title);
     try {
       await saveSessionSnapshot(result.nextRecords, answer);
@@ -408,8 +416,10 @@ export function AdolescentPrototype() {
           : "Не удалось сохранить этот запрос";
       setAnswerQualityWarning(message);
       setProviderStatus(message);
+    } finally {
+      setIsPersistingSessionAction(false);
     }
-  }, [lastClarificationFeedback, addClarificationRequest, answer, currentQuestion, stage.title, saveSessionSnapshot, setAnswerQualityWarning, setSuppressClarifyForNextStage, setRecords, records, setLastClarificationFeedback, lang, setProviderStatus]);
+  }, [lastClarificationFeedback, isPersistingSessionAction, addClarificationRequest, answer, currentQuestion, stage.title, saveSessionSnapshot, setAnswerQualityWarning, setSuppressClarifyForNextStage, setRecords, records, setLastClarificationFeedback, lang, setProviderStatus]);
 
   const handleClearClarificationAndRetry = useCallback(() => {
     if (clarifyResetTimeoutRef.current) {
@@ -435,8 +445,10 @@ export function AdolescentPrototype() {
   }, []);
 
   const handleGoBack = useCallback(async () => {
+    if (isPersistingSessionAction) return;
     const result = goBackOneStep();
     if (result) {
+      setIsPersistingSessionAction(true);
       try {
         await saveSessionSnapshot(result.nextRecords, "");
       } catch (error) {
@@ -449,11 +461,13 @@ export function AdolescentPrototype() {
         setAnswerQualityWarning(message);
         setProviderStatus(message);
         return;
+      } finally {
+        setIsPersistingSessionAction(false);
       }
     }
     setAnswerQualityWarning(null);
     setSuppressClarifyForNextStage(false);
-  }, [goBackOneStep, saveSessionSnapshot, restoreAfterSaveFailure, lang, setAnswerQualityWarning, setProviderStatus, setSuppressClarifyForNextStage]);
+  }, [isPersistingSessionAction, goBackOneStep, saveSessionSnapshot, restoreAfterSaveFailure, lang, setAnswerQualityWarning, setProviderStatus, setSuppressClarifyForNextStage]);
 
   // Start new session after history review
   const handleStartNew = useCallback(() => {
@@ -734,6 +748,7 @@ export function AdolescentPrototype() {
                   lang={lang}
                   provider={provider}
                   isSending={isSending}
+                  isPersistingSessionAction={isPersistingSessionAction}
                   answerQualityWarning={answerQualityWarning}
                   safetyNotice={safetyNotice}
                   onSafetyNoticeClear={() => {
@@ -992,7 +1007,7 @@ function CompletionView({
 
 function SessionForm({
   ui, currentQuestion, answer, updateAnswer, lastClarificationFeedback, lang, provider, isSending,
-  answerQualityWarning, safetyNotice, onSafetyNoticeClear, justClearedClarify, onClearAndRetry, onSkip, onSubmit, onRestart,
+  isPersistingSessionAction, answerQualityWarning, safetyNotice, onSafetyNoticeClear, justClearedClarify, onClearAndRetry, onSkip, onSubmit, onRestart,
   onNeedClarification, onGoBack, canGoBack
 }: {
   ui: ReturnType<typeof useUiText>;
@@ -1003,6 +1018,7 @@ function SessionForm({
   lang: AppLang;
   provider: ProviderId;
   isSending: boolean;
+  isPersistingSessionAction: boolean;
   answerQualityWarning: string | null;
   safetyNotice: import("@/types/session").SafetyResult | null;
   onSafetyNoticeClear: () => void;
@@ -1024,6 +1040,7 @@ function SessionForm({
           feedback={lastClarificationFeedback}
           provider={provider}
           lang={lang}
+          isPersisting={isPersistingSessionAction}
           onClearAndRetry={onClearAndRetry}
           onSkip={onSkip}
         />
@@ -1055,21 +1072,21 @@ function SessionForm({
       <div className="action-row">
         {/* Secondary actions on the left */}
         <div className="flex-row gap-6">
-          <button className="button secondary" type="button" onClick={onNeedClarification} disabled={isSending || Boolean(lastClarificationFeedback)}>
+          <button className="button secondary" type="button" onClick={onNeedClarification} disabled={isSending || isPersistingSessionAction || Boolean(lastClarificationFeedback)}>
             💬 {ui.clarifyBtn}
           </button>
-          <button className="button secondary" type="button" onClick={onGoBack} disabled={isSending || !canGoBack}>
+          <button className="button secondary" type="button" onClick={onGoBack} disabled={isSending || isPersistingSessionAction || !canGoBack}>
             ← {ui.backBtn}
           </button>
         </div>
         
         {/* Primary action */}
-        <button className="button" type="button" onClick={onSubmit} disabled={isSending} aria-busy={isSending} style={{ flex: 1, maxWidth: 200 }}>
+        <button className="button" type="button" onClick={onSubmit} disabled={isSending || isPersistingSessionAction} aria-busy={isSending || isPersistingSessionAction} style={{ flex: 1, maxWidth: 200 }}>
           {isSending ? ui.sending : ui.submit}
         </button>
         
         {/* Restart on the right */}
-        <button className="button secondary" type="button" onClick={onRestart}>{ui.restart}</button>
+        <button className="button secondary" type="button" onClick={onRestart} disabled={isSending || isPersistingSessionAction}>{ui.restart}</button>
       </div>
     </>
   );

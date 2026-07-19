@@ -6,6 +6,7 @@ interface ClarificationBoxProps {
   feedback: string;
   provider: ProviderId;
   lang: "ru" | "en";
+  isPersisting?: boolean;
   onClearAndRetry: () => void;
   onSkip: () => void;
 }
@@ -14,6 +15,7 @@ export function ClarificationBox({
   feedback,
   provider,
   lang,
+  isPersisting = false,
   onClearAndRetry,
   onSkip,
 }: ClarificationBoxProps) {
@@ -38,6 +40,7 @@ export function ClarificationBox({
           className="button secondary"
           type="button"
           onClick={onClearAndRetry}
+          disabled={isPersisting}
         >
           {lang === "en" ? "Clear and retry" : "Очистить и ответить заново"}
         </button>
@@ -45,6 +48,7 @@ export function ClarificationBox({
           className="button secondary"
           type="button"
           onClick={onSkip}
+          disabled={isPersisting}
         >
           {lang === "en" ? "Skip this step" : "Пропустить этот шаг"}
         </button>

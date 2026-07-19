@@ -27,7 +27,7 @@ function expectHealthyClient(tracker: { pageErrors: string[]; consoleErrors: str
 
 async function createAndLoginStudent(page: Page, request: APIRequestContext) {
   const timestamp = Date.now();
-  const email = `selfreg.playwright.adolescent.${timestamp}@selfreg.test`;
+  const email = `selfreg.playwright.adolescent.${timestamp}.${randomUUID()}@selfreg.test`;
   const password = "Test123!Student";
   const setupResponse = await request.post("/api/e2e/setup", {
     headers: { "x-e2e-secret": e2eSecret },
@@ -56,7 +56,7 @@ async function createAndLoginStudent(page: Page, request: APIRequestContext) {
 
 async function createAndLoginTeacher(page: Page, request: APIRequestContext) {
   const timestamp = Date.now();
-  const email = `selfreg.playwright.personal.${timestamp}@selfreg.test`;
+  const email = `selfreg.playwright.personal.${timestamp}.${randomUUID()}@selfreg.test`;
   const password = `SelfRegE2E!Teacher${timestamp}`;
   const setupResponse = await request.post("/api/e2e/setup", {
     headers: { "x-e2e-secret": e2eSecret },
@@ -208,6 +208,29 @@ test.describe("Adolescent prototype flows", () => {
     await expect(page.locator(".record")).toHaveCount(1);
     expect(saveAttempts).toBe(2);
 
+    expect(tracker.pageErrors, `Unexpected page errors: ${tracker.pageErrors.join(" | ")}`).toEqual([]);
+  });
+
+  test("locks session controls while a clarification save is pending", async ({ page, request }) => {
+    const tracker = collectClientErrors(page);
+    await openRegisteredAdolescentSession(page, request);
+    let releaseSave: (() => void) | undefined;
+    const savePending = new Promise<void>((resolve) => {
+      releaseSave = resolve;
+    });
+    await page.route("**/api/session-sync", async (route) => {
+      await savePending;
+      await route.continue();
+    });
+
+    await page.getByRole("button", { name: "Need clarification" }).click();
+
+    await expect(page.getByRole("button", { name: "Continue" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Back" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Start over" })).toBeDisabled();
+    releaseSave?.();
+
+    await expect(page.getByRole("button", { name: "Skip this step" })).toBeVisible();
     expect(tracker.pageErrors, `Unexpected page errors: ${tracker.pageErrors.join(" | ")}`).toEqual([]);
   });
 
