@@ -212,6 +212,14 @@ export function useAdolescentSession({ initialContext, lang }: UseAdolescentSess
       return;
     }
 
+    if (lastRecord?.eventType === "clarify_request") {
+      setStageId(lastRecord.stageId as StageId);
+      setQuestionOverride(lastRecord.question || null);
+      setAnswer(lastRecord.answer);
+      setLastClarificationFeedback(lastRecord.feedback || null);
+      return;
+    }
+
     if (!lastProgressRecord || savedSession.finalNote?.trim()) {
       setStageId("1");
       return;

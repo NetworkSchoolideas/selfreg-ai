@@ -350,6 +350,25 @@ test.describe("Adolescent prototype flows", () => {
     expectHealthyClient(tracker);
   });
 
+  test("restores a saved clarification after refresh", async ({ page, request }) => {
+    const tracker = collectClientErrors(page);
+    await openRegisteredAdolescentSession(page, request);
+
+    const savedClarification = page.waitForResponse((response) => (
+      response.url().includes("/api/session-sync") && response.request().method() === "POST" && response.ok()
+    ));
+    await page.getByRole("button", { name: "Need clarification" }).click();
+    await expect(page.getByRole("button", { name: "Skip this step" })).toBeVisible();
+    await savedClarification;
+
+    await page.reload({ waitUntil: "networkidle" });
+
+    await expect(page.locator(".stage-pill")).toContainText("Step 1 of 5", { timeout: 15_000 });
+    await expect(page.getByRole("button", { name: "Skip this step" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Clear and retry" })).toBeVisible();
+    expectHealthyClient(tracker);
+  });
+
   test("resumes the newest unfinished session from the dashboard", async ({ page, request }) => {
     const tracker = collectClientErrors(page);
     const childId = await openRegisteredAdolescentSession(page, request);

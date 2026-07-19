@@ -384,6 +384,7 @@ export function AdolescentPrototype() {
       if (adv.completed && !finalNote) {
         session.setFinalNote(note);
       }
+      replaceStudentSessionRoute(sessionId);
     } catch (error) {
       restoreAfterSaveFailure();
       const message = error instanceof Error
@@ -396,7 +397,7 @@ export function AdolescentPrototype() {
     } finally {
       setIsPersistingSessionAction(false);
     }
-  }, [lastClarificationFeedback, isPersistingSessionAction, skipClarification, answer, currentQuestion, stage.title, finalNote, context, lang, session, saveSessionSnapshot, restoreAfterSaveFailure, setAnswerQualityWarning, setProviderStatus]);
+  }, [lastClarificationFeedback, isPersistingSessionAction, skipClarification, answer, currentQuestion, stage.title, finalNote, context, lang, session, saveSessionSnapshot, replaceStudentSessionRoute, sessionId, restoreAfterSaveFailure, setAnswerQualityWarning, setProviderStatus]);
 
   const handleNeedClarification = useCallback(async () => {
     if (lastClarificationFeedback || isPersistingSessionAction) return;
@@ -406,6 +407,7 @@ export function AdolescentPrototype() {
       await saveSessionSnapshot(result.nextRecords, answer);
       setAnswerQualityWarning(null);
       setSuppressClarifyForNextStage(false);
+      replaceStudentSessionRoute(sessionId);
     } catch (error) {
       setRecords(records);
       setLastClarificationFeedback(null);
@@ -419,7 +421,7 @@ export function AdolescentPrototype() {
     } finally {
       setIsPersistingSessionAction(false);
     }
-  }, [lastClarificationFeedback, isPersistingSessionAction, addClarificationRequest, answer, currentQuestion, stage.title, saveSessionSnapshot, setAnswerQualityWarning, setSuppressClarifyForNextStage, setRecords, records, setLastClarificationFeedback, lang, setProviderStatus]);
+  }, [lastClarificationFeedback, isPersistingSessionAction, addClarificationRequest, answer, currentQuestion, stage.title, saveSessionSnapshot, replaceStudentSessionRoute, sessionId, setAnswerQualityWarning, setSuppressClarifyForNextStage, setRecords, records, setLastClarificationFeedback, lang, setProviderStatus]);
 
   const handleClearClarificationAndRetry = useCallback(() => {
     if (clarifyResetTimeoutRef.current) {
