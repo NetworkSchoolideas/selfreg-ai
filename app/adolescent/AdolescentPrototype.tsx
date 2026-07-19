@@ -55,7 +55,7 @@ export function AdolescentPrototype() {
   // Core session state via hook
   const session = useAdolescentSession({ initialContext, lang });
   const {
-    sessionId, context, setContext, stageId, stage, records, finalNote,
+    sessionId, context, setContext, stageId, stage, records, setRecords, finalNote,
     lastClarificationFeedback, setLastClarificationFeedback,
     answer, updateAnswer,
     currentQuestion, isCompleted, completedStages, stageCount,
@@ -361,13 +361,25 @@ export function AdolescentPrototype() {
     }
   }, [lastClarificationFeedback, skipClarification, answer, currentQuestion, stage.title, finalNote, context, lang, session]);
 
-  const handleNeedClarification = useCallback(() => {
+  const handleNeedClarification = useCallback(async () => {
     if (lastClarificationFeedback) return;
     const result = addClarificationRequest(currentQuestion, stage.title);
-    saveSessionSnapshot(result.nextRecords, answer);
-    setAnswerQualityWarning(null);
-    setSuppressClarifyForNextStage(false);
-  }, [lastClarificationFeedback, addClarificationRequest, answer, currentQuestion, stage.title, saveSessionSnapshot, setAnswerQualityWarning, setSuppressClarifyForNextStage]);
+    try {
+      await saveSessionSnapshot(result.nextRecords, answer);
+      setAnswerQualityWarning(null);
+      setSuppressClarifyForNextStage(false);
+    } catch (error) {
+      setRecords(records);
+      setLastClarificationFeedback(null);
+      const message = error instanceof Error
+        ? error.message
+        : lang === "en"
+          ? "Unable to save this request"
+          : "Не удалось сохранить этот запрос";
+      setAnswerQualityWarning(message);
+      setProviderStatus(message);
+    }
+  }, [lastClarificationFeedback, addClarificationRequest, answer, currentQuestion, stage.title, saveSessionSnapshot, setAnswerQualityWarning, setSuppressClarifyForNextStage, setRecords, records, setLastClarificationFeedback, lang, setProviderStatus]);
 
   const handleClearClarificationAndRetry = useCallback(() => {
     if (clarifyResetTimeoutRef.current) {

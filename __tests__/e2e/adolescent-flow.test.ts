@@ -179,6 +179,27 @@ test.describe("Adolescent prototype flows", () => {
     expect(tracker.pageErrors, `Unexpected page errors: ${tracker.pageErrors.join(" | ")}`).toEqual([]);
   });
 
+  test("does not add a clarification request when its save fails", async ({ page, request }) => {
+    const tracker = collectClientErrors(page);
+    await openRegisteredAdolescentSession(page, request);
+    await page.route("**/api/session-sync", async (route) => {
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "The server could not save changes" }),
+      });
+    });
+
+    await page.getByRole("button", { name: "Need clarification" }).click();
+
+    await expect(page.locator(".stage-pill")).toContainText("Step 1 of 5");
+    await expect(page.locator(".record")).toHaveCount(0);
+    await expect(page.getByText("The server could not save changes").first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Need clarification" })).toBeEnabled();
+
+    expect(tracker.pageErrors, `Unexpected page errors: ${tracker.pageErrors.join(" | ")}`).toEqual([]);
+  });
+
   test("preserves the active attempt when switching languages", async ({ page, request }) => {
     const tracker = collectClientErrors(page);
     await openRegisteredAdolescentSession(page, request);
