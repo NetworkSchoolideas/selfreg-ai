@@ -2,7 +2,7 @@
 
 const eslintConfig = [
   {
-    ignores: [".next-e2e/**"],
+    ignores: [".next-e2e/**", "playwright-report/**", "test-results/**"],
   },
   ...next,
 ];

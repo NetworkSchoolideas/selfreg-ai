@@ -284,11 +284,11 @@ export function useSessionSubmit(options: UseSessionSubmitOptions) {
       const adv = addRecordAndAdvance(item);
       const note = adv.completed ? (finalNote || buildFinalNote(context, adv.nextRecords)) : "";
 
+      await saveSession(adv.nextRecords, note);
+
       if (adv.completed && !finalNote) {
         setFinalNote(note);
       }
-
-      await saveSession(adv.nextRecords, note);
 
       return {
         success: true,

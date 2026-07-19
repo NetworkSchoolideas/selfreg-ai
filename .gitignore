@@ -20,6 +20,7 @@ yarn-debug.log*
 yarn-error.log*
 dev-server*.log
 debug.log
+.next-dev.log
 playwright-report/
 test-results/
 
