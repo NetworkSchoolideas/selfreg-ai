@@ -25,6 +25,25 @@ export function countProgressStages(records: RecordItem[]): number {
   ).size;
 }
 
+export function formatProgressStageCount(count: number, lang: "ru" | "en"): string {
+  if (lang === "en") {
+    return `${count} ${count === 1 ? "step" : "steps"}`;
+  }
+
+  const lastTwoDigits = count % 100;
+  const lastDigit = count % 10;
+  const label =
+    lastTwoDigits >= 11 && lastTwoDigits <= 14
+      ? "шагов"
+      : lastDigit === 1
+        ? "шаг"
+        : lastDigit >= 2 && lastDigit <= 4
+          ? "шага"
+          : "шагов";
+
+  return `${count} ${label}`;
+}
+
 export function isAnswerRecord(record: RecordItem): boolean {
   return inferRecordEventType(record) === "answer";
 }

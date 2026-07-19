@@ -1,6 +1,7 @@
 import {
   countProgressStages,
   createRecord,
+  formatProgressStageCount,
   getNextStageInfo,
   isSessionComplete,
 } from "@/lib/session-helpers";
@@ -61,6 +62,16 @@ describe("session helpers", () => {
     };
 
     expect(countProgressStages([stageOne, clarification, retry, answerRecord("2")])).toBe(2);
+  });
+
+  it("formats the stage count with a locale-aware label", () => {
+    expect(formatProgressStageCount(1, "en")).toBe("1 step");
+    expect(formatProgressStageCount(2, "en")).toBe("2 steps");
+    expect(formatProgressStageCount(1, "ru")).toBe("1 шаг");
+    expect(formatProgressStageCount(2, "ru")).toBe("2 шага");
+    expect(formatProgressStageCount(5, "ru")).toBe("5 шагов");
+    expect(formatProgressStageCount(11, "ru")).toBe("11 шагов");
+    expect(formatProgressStageCount(21, "ru")).toBe("21 шаг");
   });
 
   it("returns the next stage metadata and question", () => {

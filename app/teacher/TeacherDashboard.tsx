@@ -111,7 +111,6 @@ export function TeacherDashboard() {
       totalRecords: lang === "en" ? "Total records:" : "Всего записей:",
       stageSupportTitle: lang === "en" ? "Support need by stage" : "Нужда в поддержке по этапам",
       stage: lang === "en" ? "Stage" : "Этап",
-      stepsShort: lang === "en" ? "steps" : "шагов",
       records: lang === "en" ? "records" : "записей",
       questionLabel: lang === "en" ? "Question:" : "Вопрос:",
       answerLabel: lang === "en" ? "Adolescent answer:" : "Ответ подростка:",

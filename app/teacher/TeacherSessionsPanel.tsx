@@ -1,14 +1,13 @@
 "use client";
 
 import type { Session } from "@/lib/children-storage";
-import { countProgressStages, inferRecordEventType } from "@/lib/session-helpers";
+import { countProgressStages, formatProgressStageCount, inferRecordEventType } from "@/lib/session-helpers";
 import { getSessionSignals } from "@/lib/teacher-dashboard-analytics";
 
 interface TeacherSessionsPanelUi {
   sessionsLabel: string;
   archivedByStudent: string;
   noSessions: string;
-  stepsShort: string;
   clarification: string;
   returnToQuestion: string;
   skipped: string;
@@ -82,7 +81,7 @@ export function TeacherSessionsPanel({
                   <span className="session-card-date">{new Date(session.updatedAt).toLocaleDateString(locale)}</span>
                 </div>
                 <div className="session-card-subtitle">
-                  {stageCount} {ui.stepsShort}
+                  {formatProgressStageCount(stageCount, locale.startsWith("en") ? "en" : "ru")}
                   <span className="ml-8">{processBits}</span>
                 </div>
                 {session.studentArchivedAt && (

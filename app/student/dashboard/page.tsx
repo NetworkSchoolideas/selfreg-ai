@@ -19,7 +19,7 @@ import {
   isSessionArchivedForStudent,
 } from "@/lib/student-dashboard";
 import type { ChildProfile, Session } from "@/types/session";
-import { countProgressStages } from "@/lib/session-helpers";
+import { countProgressStages, formatProgressStageCount } from "@/lib/session-helpers";
 
 function StudentDashboardContent() {
   const searchParams = useSearchParams();
@@ -58,7 +58,6 @@ function StudentDashboardContent() {
       aiInsight: "Рекомендация ИИ",
       aiInsightMissing: "Рекомендация еще не создана. Откройте рабочий экран, подключите провайдера и получите комментарий перед новой сессией.",
       getAiInsight: "Получить рекомендацию",
-      stepsCount: "шагов",
       abandonedLabel: "Устарела",
       draftLabel: "Черновик",
       hideSession: "Скрыть из моего кабинета",
@@ -129,7 +128,6 @@ function StudentDashboardContent() {
       aiInsight: "AI recommendation",
       aiInsightMissing: "No recommendation has been created yet. Open the working screen, connect a provider, and generate a comment before the next session.",
       getAiInsight: "Get recommendation",
-      stepsCount: "steps",
       abandonedLabel: "Abandoned",
       draftLabel: "Draft",
       hideSession: "Hide from my dashboard",
@@ -747,7 +745,7 @@ function StudentDashboardContent() {
                       <div className="fs-12" style={{ color: "#9ca3af" }}>
                         {new Date(session.updatedAt).toLocaleString(lang === "en" ? "en-US" : "ru-RU")}
                         {" · "}
-                        {countProgressStages(session.records ?? [])} {t.stepsCount}
+                        {formatProgressStageCount(countProgressStages(session.records ?? []), lang)}
                       </div>
                       {session.historyInsight && sessionMatchesLanguage && (
                         <div
