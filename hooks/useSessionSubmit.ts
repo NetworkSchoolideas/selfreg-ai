@@ -7,7 +7,8 @@ import { sessionManager } from "@/lib/session-manager";
 import { buildSessionSummary } from "@/lib/session-summary";
 import { DataService } from "@/lib/data-service";
 import { decideSupportScenarioDetailed } from "@/lib/scenario-engine";
-import { makeMockFeedback } from "@/lib/selfreg-model";
+import { getStageOrder, makeMockFeedback } from "@/lib/selfreg-model";
+import { isSessionComplete } from "@/lib/session-helpers";
 import type { ProviderId } from "@/lib/provider-registry";
 import type { AppLang } from "@/lib/app-i18n";
 import type { StageId } from "@/lib/selfreg-model";
@@ -244,8 +245,9 @@ export function useSessionSubmit(options: UseSessionSubmitOptions) {
           timestamp: new Date().toISOString(),
         };
 
-        const nextRecords = addProcessRecord(clarifyRecord);
+        const nextRecords = [...records, clarifyRecord];
         await saveSession(nextRecords, "");
+        addProcessRecord(clarifyRecord);
 
         if (suppressClarifyForNextStage) {
           setSuppressClarifyForNextStage(false);
@@ -281,10 +283,13 @@ export function useSessionSubmit(options: UseSessionSubmitOptions) {
         timestamp: new Date().toISOString(),
       };
 
-      const adv = addRecordAndAdvance(item);
-      const note = adv.completed ? (finalNote || buildFinalNote(context, adv.nextRecords)) : "";
+      const nextRecords = [...records, item];
+      const completed = isSessionComplete(nextRecords, getStageOrder().length);
+      const note = completed ? (finalNote || buildFinalNote(context, nextRecords)) : "";
 
-      await saveSession(adv.nextRecords, note);
+      await saveSession(nextRecords, note);
+
+      const adv = addRecordAndAdvance(item);
 
       if (adv.completed && !finalNote) {
         setFinalNote(note);
@@ -298,6 +303,14 @@ export function useSessionSubmit(options: UseSessionSubmitOptions) {
         responseMode: apiResult.responseMode,
       };
     } catch (error) {
+      const saveErrorMessage = error instanceof Error
+        ? error.message
+        : lang === "en"
+          ? "Unable to save this step"
+          : "Не удалось сохранить этот шаг";
+      setAnswerQualityWarning(saveErrorMessage);
+      setProviderStatus(saveErrorMessage);
+
       if (controller.signal.aborted) {
         return {
           success: false,

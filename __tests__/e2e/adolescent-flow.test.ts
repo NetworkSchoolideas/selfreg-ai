@@ -154,6 +154,31 @@ test.describe("Adolescent prototype flows", () => {
     expectHealthyClient(tracker);
   });
 
+  test("keeps the learner on the current step when saving fails", async ({ page, request }) => {
+    const tracker = collectClientErrors(page);
+    await openRegisteredAdolescentSession(page, request);
+    await page.route("**/api/session-sync", async (route) => {
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "The server could not save changes" }),
+      });
+    });
+
+    await page.getByPlaceholder("Write 1-3 sentences").fill(
+      "I will open the assignment and write a short outline before checking my work.",
+    );
+    await page.getByRole("button", { name: "Continue" }).click();
+
+    await expect(page.locator(".stage-pill")).toContainText("Step 1 of 5");
+    await expect(page.getByPlaceholder("Write 1-3 sentences")).toHaveValue(
+      "I will open the assignment and write a short outline before checking my work.",
+    );
+    await expect(page.getByText("The server could not save changes").first()).toBeVisible();
+
+    expect(tracker.pageErrors, `Unexpected page errors: ${tracker.pageErrors.join(" | ")}`).toEqual([]);
+  });
+
   test("preserves the active attempt when switching languages", async ({ page, request }) => {
     const tracker = collectClientErrors(page);
     await openRegisteredAdolescentSession(page, request);
