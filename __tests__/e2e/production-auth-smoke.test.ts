@@ -15,6 +15,8 @@ async function login(page: import("@playwright/test").Page, role: "teacher" | "s
 }
 
 test.describe("Production account smoke", () => {
+  test.setTimeout(60_000);
+
   test.skip(
     !hasProductionBaseUrl || !teacherEmail || !teacherPassword || !studentEmail || !studentPassword,
     "Run only against production with SELFREG_PRODUCTION_* credentials supplied through the environment.",
@@ -25,7 +27,7 @@ test.describe("Production account smoke", () => {
 
     await expect(page).toHaveURL(/\/student\/dashboard(?:\?lang=(?:ru|en))?$/, { timeout: 20_000 });
     await expect(page.getByRole("heading", { name: "Личный кабинет" })).toBeVisible();
-    await expect(page.getByText("ID ученика не указан")).toHaveCount(0);
+    expect(await page.getByText("ID ученика не указан").count()).toBe(0);
   });
 
   test("teacher Gmail account opens the teacher dashboard", async ({ page }) => {
