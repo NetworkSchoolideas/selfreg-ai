@@ -170,27 +170,44 @@ Before introducing A/B tests:
 
 Until usage volume is sufficient, prefer moderated walkthroughs, five-user usability rounds, feedback ratings, support reports, and before/after task completion over statistically weak A/B conclusions.
 
-## 6. Prioritised next tasks
+## 6. Prioritised next iterations
 
-### Next task: product-like baseline test matrix
+The baseline, activation pass, core recovery work, and first returning-user improvements are now implemented. Continue in small reviewed iterations rather than reopening those phases broadly.
 
-Create the executable matrix for the seven Phase 1 journeys, run the first baseline round against the current local application, and produce a ranked issue ledger. Do not change product behaviour during the discovery pass unless a P0 safety or data-loss defect blocks the remaining tests.
+### Iteration 1 — production acceptance baseline
+
+After each reviewed release batch, run the public application through the student and teacher test accounts in RU and EN. Cover desktop and 375px mobile for login, role routing, new and resumed sessions, clarification, Back, restart, completion, dashboard return, completed-session review, personal teacher use, and teacher read-only review.
 
 **Done when:**
 
-- every journey has prerequisites, actions, expected outcome, evidence, and result;
-- RU/EN and desktop/mobile coverage are explicit;
-- automated coverage is mapped to manual coverage without claiming they are equivalent;
-- the first ranked issue ledger distinguishes defects, usability friction, and feature hypotheses;
-- the next implementation task is selected from evidence rather than preference.
+- GitHub `main`, the Vercel deployment, and `/api/health` identify the same revision;
+- the public matrix records an explicit result for both roles and both languages;
+- there are no unresolved P0 access-control or data-loss issues;
+- every P1 has a deterministic regression or a named manual reproduction.
 
-### Following task: first activation experiment
+### Iteration 2 — live-provider recovery
 
-Implement the highest-impact low-risk activation improvement found in the baseline. One hypothesis, one local commit, full changed-flow verification.
+Test invalid key, unauthorised model, timeout, provider outage, successful retry, and A→B clarification with a real opt-in key. Preserve the current answer and stage on every recoverable failure, and never present a fallback as a successful live response.
 
-### Following task: session recovery hardening
+**Done when:** one goal-based E2E covers failure and recovery, RU/EN error copy is accurate, and no key appears in logs, screenshots, traces, storage outside the documented session scope, or Git.
 
-Address the highest-impact clarification, Back, restart, provider-error, or resume problem found in the baseline. Add a goal-based regression that describes the user outcome rather than internal selectors.
+### Iteration 3 — returning-user comprehension
+
+Run a fresh usability pass over the combined dashboard hierarchy: saved next action, latest active session, completed-session details, completion review, and personal hiding. Change only the first reproducible ambiguity.
+
+**Done when:** a returning learner can identify what is unfinished, what is completed, and what will merely be hidden without assistance; the selected change has desktop/mobile Browser evidence and one regression.
+
+### Iteration 4 — teacher conversation workflow
+
+Validate the complete teacher route: personal code, student connection, student selection, read-only chronology, conversation prompt, personal session, and removing a student only from the teacher dashboard. Keep student-owned sessions unchanged.
+
+**Done when:** the teacher can explain the boundary between observation, personal work, and student ownership; owner/linked-teacher API tests and the public manual journey agree.
+
+### Iteration 5 — moderated product learning
+
+Conduct a small round of realistic walkthroughs with new users before adding engagement mechanics. Rank observed friction by task impact, frequency, and implementation risk; select one hypothesis for the next local commit.
+
+**Done when:** evidence from the walkthroughs selects the next change, and no reminder, streak, scoring, diagnosis, or analytics feature is added without a separate validated need.
 
 ## 7. Backlog boundaries
 
