@@ -219,6 +219,27 @@ test.describe("Adolescent prototype flows", () => {
     expectHealthyClient(tracker);
   });
 
+  test("restores an active session after a page refresh", async ({ page, request }) => {
+    const tracker = collectClientErrors(page);
+    await openRegisteredAdolescentSession(page, request);
+
+    await page.getByPlaceholder("Write 1-3 sentences").fill(
+      "I will choose one clear first step for my math exam preparation today.",
+    );
+    await page.getByRole("button", { name: "Continue" }).click();
+    await expect(page.locator(".stage-pill")).toContainText("Step 2 of 5", { timeout: 15_000 });
+    await expect(page.locator(".record")).toHaveCount(1);
+    await expect(page).toHaveURL(/resumeSessionId=/);
+
+    await page.reload({ waitUntil: "networkidle" });
+    await expect(page.locator(".stage-pill")).toContainText("Step 2 of 5", { timeout: 15_000 });
+    await expect(page.getByPlaceholder("e.g.: exam, project")).toHaveValue("math exam preparation");
+    await expect(page.locator(".record")).toHaveCount(1);
+    await expect(page.getByPlaceholder("Write 1-3 sentences")).toHaveValue("");
+
+    expectHealthyClient(tracker);
+  });
+
   test("keeps submitted teacher feedback closed when reopening a completed session", async ({ page, request }) => {
     const tracker = collectClientErrors(page);
     const childId = await openRegisteredAdolescentSession(page, request);
@@ -338,6 +359,7 @@ test.describe("Adolescent prototype flows", () => {
     await expect(page.getByText("No answers yet.")).toBeVisible();
     await expect(page.locator(".record")).toHaveCount(0);
     await expect(page.getByPlaceholder("e.g.: exam, project")).toHaveValue("study project");
+    await expect(page).toHaveURL(/mode=new/);
 
     expectHealthyClient(tracker);
   });

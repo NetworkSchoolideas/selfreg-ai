@@ -314,6 +314,18 @@ export function AdolescentPrototype() {
     }
   }, [isAcceptingConsent]);
 
+  const replaceStudentSessionRoute = useCallback((nextSessionId: string | null) => {
+    if (!currentChildId || isIndependentSession) return;
+
+    const params = new URLSearchParams({ childId: currentChildId, lang });
+    if (nextSessionId) {
+      params.set("resumeSessionId", nextSessionId);
+    } else {
+      params.set("mode", "new");
+    }
+    window.history.replaceState(null, "", `/adolescent?${params.toString()}`);
+  }, [currentChildId, isIndependentSession, lang]);
+
   // Restart handler
   const handleRestart = useCallback(() => {
     if (independentSessionStorageKey) {
@@ -324,7 +336,8 @@ export function AdolescentPrototype() {
     setFeedbackSubmitted(false);
     setSuppressClarifyForNextStage(false);
     setAnswerQualityWarning(null);
-  }, [independentSessionStorageKey, resetSession, setAnswerQualityWarning, setSuppressClarifyForNextStage]);
+    replaceStudentSessionRoute(null);
+  }, [independentSessionStorageKey, replaceStudentSessionRoute, resetSession, setAnswerQualityWarning, setSuppressClarifyForNextStage]);
 
   // Provider change handler
   const handleProviderChange = useCallback((nextProvider: ProviderId) => {
@@ -403,7 +416,10 @@ export function AdolescentPrototype() {
     if (result.clarificationNeeded && result.clarifyFeedback) {
       setLastClarificationFeedback(result.clarifyFeedback);
     }
-  }, [submitAnswer, answer, suppressClarifyForNextStage, setLastClarificationFeedback]);
+    if (result.success) {
+      replaceStudentSessionRoute(sessionId);
+    }
+  }, [submitAnswer, answer, suppressClarifyForNextStage, setLastClarificationFeedback, replaceStudentSessionRoute, sessionId]);
 
   const personalCopy = lang === "en"
     ? {
