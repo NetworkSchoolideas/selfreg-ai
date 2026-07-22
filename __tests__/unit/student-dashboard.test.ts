@@ -207,8 +207,51 @@ describe("student dashboard helpers", () => {
           status: "in_progress",
           updatedAt: "2026-06-01T10:00:00.000Z",
         },
-        new Date("2026-06-10T10:00:00.000Z")
+        new Date("2026-07-01T10:00:00.000Z")
       )
     ).toBe("abandoned");
+  });
+
+  it("keeps an unfinished session resumable until the 30-day boundary", () => {
+    const session = {
+      sessionId: "recent-draft",
+      context: "Recent work",
+      records: [{ stageId: "1", stageTitle: "Goal", scenario: "A", answer: "Draft", feedback: "OK", question: "Q", timestamp: "2026-06-01T09:00:00.000Z" }],
+      finalNote: "",
+      status: "in_progress" as const,
+      updatedAt: "2026-06-01T10:00:00.000Z",
+    };
+
+    expect(getEffectiveSessionStatus(session, new Date("2026-07-01T09:59:59.999Z"))).toBe("in_progress");
+    expect(getEffectiveSessionStatus(session, new Date("2026-07-01T10:00:00.000Z"))).toBe("abandoned");
+  });
+
+  it("hides only stale unfinished attempts from the learner dashboard", () => {
+    const profile = createProfile({
+      sessions: [
+        {
+          sessionId: "completed-history",
+          context: "Completed result",
+          records: [],
+          finalNote: "Finished",
+          status: "completed",
+          updatedAt: "2026-06-01T10:00:00.000Z",
+        },
+        {
+          sessionId: "stale-draft",
+          context: "Stale draft",
+          records: [{ stageId: "1", stageTitle: "Goal", scenario: "A", answer: "Draft", feedback: "OK", question: "Q", timestamp: "2026-06-01T09:00:00.000Z" }],
+          finalNote: "",
+          status: "in_progress",
+          updatedAt: "2026-06-01T10:00:00.000Z",
+        },
+      ],
+    });
+
+    const metrics = getStudentDashboardMetrics(profile, new Date("2026-07-01T10:00:00.000Z"));
+
+    expect(metrics.totalSessions).toBe(1);
+    expect(metrics.completedSessions.map((session) => session.sessionId)).toEqual(["completed-history"]);
+    expect(metrics.inProgressSessions).toHaveLength(0);
   });
 });

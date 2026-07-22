@@ -2,7 +2,7 @@ import type { AppLang } from "@/lib/app-i18n";
 import { isAnswerRecord } from "@/lib/session-helpers";
 import type { ChildProfile, Session, SessionStatus } from "@/types/session";
 
-const ABANDONED_AFTER_DAYS = 7;
+const ABANDONED_AFTER_DAYS = 30;
 
 export interface StudentDashboardMetrics {
   completedSessions: Session[];
@@ -24,6 +24,15 @@ export interface LatestCompletedSessionNextAction {
 
 export function isSessionArchivedForStudent(session: Session): boolean {
   return Boolean(session.studentArchivedAt);
+}
+
+/**
+ * Sessions explicitly hidden by the learner and stale unfinished attempts are
+ * both omitted from the learner's dashboard. The latter remains a derived
+ * view: it does not mutate the session, delete it, or affect teacher access.
+ */
+export function isSessionHiddenFromStudentDashboard(session: Session, now = new Date()): boolean {
+  return isSessionArchivedForStudent(session) || getEffectiveSessionStatus(session, now) === "abandoned";
 }
 
 export function isSessionAbandoned(session: Session, now = new Date()): boolean {
@@ -57,7 +66,7 @@ export function getEffectiveSessionStatus(session: Session, now = new Date()): S
 }
 
 export function getStudentDashboardMetrics(profile: ChildProfile, now = new Date()): StudentDashboardMetrics {
-  const visibleSessions = profile.sessions.filter((session) => !isSessionArchivedForStudent(session));
+  const visibleSessions = profile.sessions.filter((session) => !isSessionHiddenFromStudentDashboard(session, now));
   const completedSessions = visibleSessions.filter((session) => getEffectiveSessionStatus(session, now) === "completed");
   const inProgressSessions = visibleSessions.filter(
     (session) => getEffectiveSessionStatus(session, now) === "in_progress",
@@ -86,7 +95,7 @@ export function getLatestCompletedSessionNextAction(
   lang: AppLang,
 ): LatestCompletedSessionNextAction | null {
   const completedSessions = profile.sessions
-    .filter((session) => !isSessionArchivedForStudent(session))
+    .filter((session) => !isSessionHiddenFromStudentDashboard(session))
     .filter((session) => getEffectiveSessionStatus(session) === "completed")
     .filter((session) => !session.lang || session.lang === lang)
     .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime());
@@ -119,7 +128,7 @@ export function getLatestResumableStudentSession(
 ): Session | null {
   return profile.sessions
     .filter((session) => Boolean(session.sessionId))
-    .filter((session) => !isSessionArchivedForStudent(session))
+    .filter((session) => !isSessionHiddenFromStudentDashboard(session, now))
     .filter((session) => getEffectiveSessionStatus(session, now) === "in_progress")
     .filter((session) => !session.lang || session.lang === lang)
     .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime())[0] ?? null;

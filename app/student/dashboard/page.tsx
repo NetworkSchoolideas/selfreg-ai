@@ -16,7 +16,7 @@ import {
   getLatestResumableStudentSession,
   getStudentDashboardMetrics,
   getStudentDashboardStatus,
-  isSessionArchivedForStudent,
+  isSessionHiddenFromStudentDashboard,
 } from "@/lib/student-dashboard";
 import type { ChildProfile, Session } from "@/types/session";
 import { countProgressStages, formatProgressStageCount } from "@/lib/session-helpers";
@@ -348,7 +348,7 @@ function StudentDashboardContent() {
   const effectiveChildId = childId || profile.id;
   const sortedSessions = metrics
     ? profile.sessions
-        .filter((session) => !isSessionArchivedForStudent(session))
+        .filter((session) => !isSessionHiddenFromStudentDashboard(session))
         .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime())
     : [];
   const archiveCandidate = archiveCandidateId

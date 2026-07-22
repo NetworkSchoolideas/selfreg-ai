@@ -48,6 +48,8 @@ export interface Session {
   adolescentFeedback?: AdolescentFeedback;
   /** Сессия скрыта учеником из личного кабинета, но остаётся видимой педагогу. */
   studentArchivedAt?: string;
+  /** Служебная отметка: незавершённая сессия перешла в статус abandoned. */
+  abandonedAt?: string;
 }
 
 /** Завершенная сессия гарантированно содержит итоговую заметку. */

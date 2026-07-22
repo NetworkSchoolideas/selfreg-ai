@@ -93,6 +93,7 @@ export interface Database {
           history_insight: string | null;
           adolescent_feedback: Json | null;
           student_archived_at: string | null;
+          abandoned_at: string | null;
         };
         Insert: {
           id?: string;
@@ -107,6 +108,7 @@ export interface Database {
           history_insight?: string | null;
           adolescent_feedback?: Json | null;
           student_archived_at?: string | null;
+          abandoned_at?: string | null;
         };
         Update: {
           id?: string;
@@ -121,6 +123,7 @@ export interface Database {
           history_insight?: string | null;
           adolescent_feedback?: Json | null;
           student_archived_at?: string | null;
+          abandoned_at?: string | null;
         };
       };
       session_records: {
