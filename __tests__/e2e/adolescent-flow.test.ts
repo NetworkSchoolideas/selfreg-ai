@@ -20,9 +20,15 @@ function collectClientErrors(page: Page) {
   return { pageErrors, consoleErrors };
 }
 
-function expectHealthyClient(tracker: { pageErrors: string[]; consoleErrors: string[] }) {
+function expectHealthyClient(
+  tracker: { pageErrors: string[]; consoleErrors: string[] },
+  ignoredConsoleErrors: string[] = [],
+) {
+  const consoleErrors = tracker.consoleErrors.filter((message) =>
+    !ignoredConsoleErrors.some((ignored) => message.includes(ignored)),
+  );
   expect(tracker.pageErrors, `Unexpected page errors: ${tracker.pageErrors.join(" | ")}`).toEqual([]);
-  expect(tracker.consoleErrors, `Unexpected console errors: ${tracker.consoleErrors.join(" | ")}`).toEqual([]);
+  expect(consoleErrors, `Unexpected console errors: ${consoleErrors.join(" | ")}`).toEqual([]);
 }
 
 async function createAndLoginStudent(page: Page, request: APIRequestContext) {
@@ -152,6 +158,36 @@ test.describe("Adolescent prototype flows", () => {
     await expect(page.getByRole("button", { name: "Logout" })).toBeVisible();
 
     expectHealthyClient(tracker);
+  });
+
+  test("keeps a live-provider answer on the current step when the provider is unavailable", async ({ page, request }) => {
+    const tracker = collectClientErrors(page);
+    await openRegisteredAdolescentSession(page, request);
+    let syncCalls = 0;
+    await page.route("**/api/chat", async (route) => {
+      await route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "GitHub Models: temporarily unavailable" }),
+      });
+    });
+    await page.route("**/api/session-sync", async (route) => {
+      syncCalls += 1;
+      await route.continue();
+    });
+
+    await page.locator(".provider-box select").selectOption("github-models");
+    const answer = "I will make a short study plan and start with the first task after this session.";
+    await page.getByPlaceholder("Write 1-3 sentences").fill(answer);
+    await page.getByRole("button", { name: "Continue" }).click();
+
+    await expect(page.locator(".stage-pill")).toContainText("Step 1 of 5");
+    await expect(page.getByPlaceholder("Write 1-3 sentences")).toHaveValue(answer);
+    await expect(page.getByText("Could not get an LLM reply: GitHub Models: temporarily unavailable. Check the key, provider, or model and try again.").first()).toBeVisible();
+    await expect(page.locator(".record")).toHaveCount(0);
+    expect(syncCalls).toBe(0);
+
+    expectHealthyClient(tracker, ["server responded with a status of 503"]);
   });
 
   test("keeps the learner on the current step when saving fails", async ({ page, request }) => {
