@@ -206,13 +206,18 @@ export function HomeClient() {
     ? {
         title: "Project contact",
         text: "For project-related questions, use the contact details below.",
+        contactAction: "Email the project team",
+        contactSubject: "SelfReg AI project question",
         landing: "Project landing",
       }
     : {
         title: "\u041a\u043e\u043d\u0442\u0430\u043a\u0442 \u043f\u0440\u043e\u0435\u043a\u0442\u0430",
         text: "\u041f\u043e \u0432\u043e\u043f\u0440\u043e\u0441\u0430\u043c \u043e \u043f\u0440\u043e\u0435\u043a\u0442\u0435 \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0439\u0442\u0435 \u043a\u043e\u043d\u0442\u0430\u043a\u0442\u043d\u044b\u0435 \u0434\u0430\u043d\u043d\u044b\u0435 \u043d\u0438\u0436\u0435.",
+        contactAction: "\u041d\u0430\u043f\u0438\u0441\u0430\u0442\u044c \u043a\u043e\u043c\u0430\u043d\u0434\u0435 \u043f\u0440\u043e\u0435\u043a\u0442\u0430",
+        contactSubject: "\u0412\u043e\u043f\u0440\u043e\u0441 \u043f\u043e \u043f\u0440\u043e\u0435\u043a\u0442\u0443 SelfReg AI",
         landing: "\u041b\u0435\u043d\u0434\u0438\u043d\u0433 \u043f\u0440\u043e\u0435\u043a\u0442\u0430",
       };
+  const contactHref = `mailto:${activeContact.email}?subject=${encodeURIComponent(support.contactSubject)}`;
 
   return (
     <main className="shell app-home">
@@ -308,11 +313,12 @@ export function HomeClient() {
           <p className="eyebrow">SelfReg AI</p>
           <h2 id="home-contact-title">{support.title}</h2>
           <p>{support.text}</p>
+          <a className="button secondary home-contact-action" href={contactHref}>{support.contactAction}</a>
         </div>
         <address className="home-contact-person">
           <strong>{activeContact.name}</strong>
           <span>{activeContact.institution}</span>
-          <span className="home-contact-email">{activeContact.email}</span>
+          <a className="home-contact-email" href={contactHref}>{activeContact.email}</a>
         </address>
       </section>
 
