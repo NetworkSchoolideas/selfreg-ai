@@ -87,11 +87,10 @@ async function createAndLoginTeacher(page: Page, request: APIRequestContext) {
 async function openRegisteredAdolescentSession(page: Page, request: APIRequestContext) {
   const childId = await createAndLoginStudent(page, request);
 
-  await page.goto(`/adolescent?lang=en&childId=${encodeURIComponent(childId)}&mode=new`, { waitUntil: "networkidle" });
+  await page.goto(`/adolescent?lang=en&childId=${encodeURIComponent(childId)}&mode=new`, { waitUntil: "commit" });
   const consentButton = page.getByRole("button", { name: "I agree and continue" });
-  if (await consentButton.isVisible().catch(() => false)) {
-    await consentButton.click();
-  }
+  await expect(consentButton).toBeVisible({ timeout: 15_000 });
+  await consentButton.click();
   const providerSelect = page.locator(".provider-box select");
   await expect(providerSelect).toBeVisible();
   await expect(page.getByRole("link", { name: "Dashboard", exact: true })).toBeVisible();
@@ -120,8 +119,43 @@ test.describe("Adolescent prototype flows", () => {
     await expect(dialog).toContainText("Do not enter passwords");
     await page.getByRole("button", { name: "Got it, let's start!" }).press("Enter");
     await expect(dialog).toBeHidden();
+    await expect(page.getByText("Sign in to add and check an API key. The mock mode remains available without a key.")).toBeVisible();
+    await expect(page.getByText("API key settings")).toHaveCount(0);
+
+    await page.setViewportSize({ width: 375, height: 812 });
+    await expect(page.getByText("Sign in to add and check an API key. The mock mode remains available without a key.")).toBeVisible();
 
     expectHealthyClient(tracker);
+  });
+
+  test("keeps a saved session key and shows the provider check reason", async ({ page, request }) => {
+    await openRegisteredAdolescentSession(page, request);
+    await page.route("**/api/provider-check", async (route) => {
+      await route.fulfill({
+        status: 401,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "GitHub Models: unauthorized" }),
+      });
+    });
+
+    await page.locator(".provider-box select").selectOption("github-models");
+    await page.getByRole("button", { name: "🔑 not set" }).click();
+    const keyInput = page.getByPlaceholder("Paste your API key");
+    await keyInput.fill("test-invalid-key");
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+
+    const savedKeyButton = page.getByRole("button", { name: "🔑 Saved in this tab" });
+    await expect(savedKeyButton).toBeVisible();
+    await savedKeyButton.click();
+    await expect(keyInput).toHaveValue("test-invalid-key");
+    await page.getByRole("button", { name: "Test key", exact: true }).click();
+    await expect(page.getByText("Invalid key: GitHub Models: unauthorized")).toBeVisible();
+    await expect(keyInput).toHaveValue("test-invalid-key");
+
+    await page.getByRole("button", { name: "Cancel", exact: true }).click();
+    await page.reload({ waitUntil: "networkidle" });
+    await expect(page.locator(".provider-box select")).toHaveValue("github-models");
+    await expect(page.getByRole("button", { name: "🔑 Saved in this tab" })).toBeVisible();
   });
 
   test("completes the full five-stage mock cycle", async ({ page, request }) => {

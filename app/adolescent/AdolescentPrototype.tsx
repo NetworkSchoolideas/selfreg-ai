@@ -27,6 +27,9 @@ import { sessionManager } from "@/lib/session-manager";
 import { resolveTeacherLinkContext } from "@/lib/teacher-link";
 import { supabase } from "@/lib/supabase-auth";
 
+const SESSION_PROVIDER_KEY = "selfreg_selected_provider";
+const SESSION_MODEL_KEY = "selfreg_selected_model";
+
 /**
  * Главный компонент прототипа для подростка.
  *
@@ -69,8 +72,21 @@ export function AdolescentPrototype() {
   const [model, setModel] = useState(() => getProviderMeta("mock").defaultModel);
   const [userApiKey, setUserApiKey] = useState("");
 
+  // The API key is already stored per provider. Keep the selected provider and
+  // model for this browser tab as well, otherwise a reload misleadingly shows
+  // mock mode and makes a saved live-provider key appear to have disappeared.
+  useEffect(() => {
+    queueMicrotask(() => {
+      const storedProvider = sessionStorage.getItem(SESSION_PROVIDER_KEY) as ProviderId | null;
+      if (!storedProvider || !isProviderEnabledInRelease(storedProvider)) return;
+
+      setProvider(storedProvider);
+      setModel(sessionStorage.getItem(SESSION_MODEL_KEY) || getProviderMeta(storedProvider).defaultModel);
+    });
+  }, []);
+
   // Key verification status from ApiKeyManager
-  const [keyStatus, setKeyStatus] = useState<KeyStatus>({ isValid: null, isTesting: false, hasSavedKey: false });
+  const [keyStatus, setKeyStatus] = useState<KeyStatus>({ isValid: null, isTesting: false, hasSavedKey: false, storage: "session" });
   const handleKeyStatusChange = useCallback((status: KeyStatus) => {
     setKeyStatus(status);
   }, []);
@@ -346,11 +362,19 @@ export function AdolescentPrototype() {
       return;
     }
     setProvider(nextProvider);
-    setKeyStatus({ isValid: null, isTesting: false, hasSavedKey: false });
-    setModel(getProviderMeta(nextProvider).defaultModel);
+    setKeyStatus({ isValid: null, isTesting: false, hasSavedKey: false, storage: "session" });
+    const nextModel = getProviderMeta(nextProvider).defaultModel;
+    setModel(nextModel);
+    sessionStorage.setItem(SESSION_PROVIDER_KEY, nextProvider);
+    sessionStorage.setItem(SESSION_MODEL_KEY, nextModel);
     
     setProviderStatus(nextProvider === "mock" ? ui.mockStatus : "");
   }, [setProviderStatus, ui.mockStatus]);
+
+  const handleModelChange = useCallback((nextModel: string) => {
+    setModel(nextModel);
+    sessionStorage.setItem(SESSION_MODEL_KEY, nextModel);
+  }, []);
 
   const restoreAfterSaveFailure = useCallback(() => {
     const previousSession: Session = {
@@ -576,18 +600,27 @@ export function AdolescentPrototype() {
               </label>
               <label className="field compact">
                 <span>{ui.model}</span>
-                <input value={model} onChange={(e) => setModel(e.target.value)} placeholder="openai/gpt-4o-mini" />
+                <input value={model} onChange={(e) => handleModelChange(e.target.value)} placeholder="openai/gpt-4o-mini" />
               </label>
             </div>
 
-            {/* API Key Manager - session-only by default, persistent browser storage is opt-in. */}
-            <ApiKeyManager
-              lang={lang}
-              provider={provider}
-              model={model}
-              onKeyChange={setUserApiKey}
-              onStatusChange={handleKeyStatusChange}
-            />
+            {/* A live provider check is authenticated server work. Do not expose a
+                key form to a signed-out visitor when the check cannot run. */}
+            {authUserId ? (
+              <ApiKeyManager
+                lang={lang}
+                provider={provider}
+                model={model}
+                onKeyChange={setUserApiKey}
+                onStatusChange={handleKeyStatusChange}
+              />
+            ) : (
+              <p className="muted small-text" role="status" style={{ marginTop: 12 }}>
+                {lang === "en"
+                  ? "Sign in to add and check an API key. The mock mode remains available without a key."
+                  : "Войдите в аккаунт, чтобы добавить и проверить API-ключ. Режим без внешнего ИИ доступен без ключа."}
+              </p>
+            )}
 
             <div className="flex-row gap-6 items-center flex-wrap mt-8">
               {keyStatus.isTesting ? (

@@ -7,6 +7,7 @@ export interface KeyStatus {
   isValid: boolean | null;
   isTesting: boolean;
   hasSavedKey: boolean;
+  storage: KeyStorage;
 }
 
 interface ApiKeyManagerProps {
@@ -73,6 +74,8 @@ export function ApiKeyManager({ lang, provider, model, onKeyChange, onStatusChan
       cancel: lang === "en" ? "Cancel" : "Отмена",
       test: lang === "en" ? "Test key" : "Проверить ключ",
       saved: lang === "en" ? "Saved" : "Сохранено",
+      savedInTab: lang === "en" ? "Saved in this tab" : "Сохранено в этой вкладке",
+      savedInBrowser: lang === "en" ? "Saved in this browser" : "Сохранено в браузере",
       notSet: lang === "en" ? "not set" : "не задан",
       invalid: lang === "en" ? "invalid" : "ошибка",
       testing: lang === "en" ? "Testing..." : "Проверяем...",
@@ -108,14 +111,15 @@ export function ApiKeyManager({ lang, provider, model, onKeyChange, onStatusChan
           : "По умолчанию выключено. Если не включать, ключ удалится при закрытии вкладки.",
       notTested: lang === "en" ? "not tested" : "не проверен",
       testFailed: lang === "en" ? "Test failed" : "Ошибка проверки",
+      networkError: lang === "en" ? "Network error" : "Сетевая ошибка",
     }),
     [lang, provider],
   );
 
   // Notify parent of key status changes
   useEffect(() => {
-    onStatusChange?.({ isValid, isTesting, hasSavedKey: isSaved });
-  }, [isValid, isTesting, isSaved, onStatusChange]);
+    onStatusChange?.({ isValid, isTesting, hasSavedKey: isSaved, storage });
+  }, [isValid, isTesting, isSaved, onStatusChange, storage]);
 
   function syncFromStorage() {
     const next = readSavedKey(provider);
@@ -182,12 +186,12 @@ export function ApiKeyManager({ lang, provider, model, onKeyChange, onStatusChan
     onKeyChange("");
   }
 
-  const performKeyTest = useCallback(async (keyToTest: string): Promise<boolean> => {
+  const performKeyTest = useCallback(async (keyToTest: string): Promise<{ ok: boolean; error?: string }> => {
     try {
       if (provider === "gigachat") {
-        if (!validateGigaChatKey(keyToTest)) return false;
+        if (!validateGigaChatKey(keyToTest)) return { ok: false, error: ui.invalidFormat };
         await getGigaChatAccessToken(keyToTest);
-        return true;
+        return { ok: true };
       }
 
       const response = await fetch("/api/provider-check", {
@@ -200,12 +204,18 @@ export function ApiKeyManager({ lang, provider, model, onKeyChange, onStatusChan
           lang,
         }),
       });
-      const data = await response.json();
-      return response.ok && data.ok;
+      const data: unknown = await response.json().catch(() => null);
+      const error =
+        data && typeof data === "object" && "error" in data && typeof data.error === "string"
+          ? data.error
+          : `HTTP ${response.status}`;
+      return response.ok && data && typeof data === "object" && "ok" in data && data.ok === true
+        ? { ok: true }
+        : { ok: false, error };
     } catch {
-      return false;
+      return { ok: false, error: ui.networkError };
     }
-  }, [lang, model, provider]);
+  }, [lang, model, provider, ui.invalidFormat, ui.networkError]);
 
   async function handleTestKey() {
     const trimmedKey = key.trim();
@@ -221,9 +231,9 @@ export function ApiKeyManager({ lang, provider, model, onKeyChange, onStatusChan
     setIsTesting(true);
 
     try {
-      const ok = await performKeyTest(trimmedKey);
-      setIsValid(ok);
-      setTestStatus(ok ? ui.validKey : `${ui.invalidKey}: ${ui.testFailed}`);
+      const result = await performKeyTest(trimmedKey);
+      setIsValid(result.ok);
+      setTestStatus(result.ok ? ui.validKey : `${ui.invalidKey}: ${result.error || ui.testFailed}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : ui.invalidKey;
       setTestStatus(`${ui.invalidKey}: ${message}`);
@@ -252,7 +262,7 @@ export function ApiKeyManager({ lang, provider, model, onKeyChange, onStatusChan
                 ? `🔑 ${ui.saved} ✓`
                 : isValid === false
                   ? `🔑 ${ui.invalid}`
-                  : `🔑 ${ui.saved}`
+                  : `🔑 ${storage === "local" ? ui.savedInBrowser : ui.savedInTab}`
               : `🔑 ${ui.notSet}`}
           </button>
           {isSaved && isValid === null && !isTesting && (
