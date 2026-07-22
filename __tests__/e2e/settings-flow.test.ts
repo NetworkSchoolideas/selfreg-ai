@@ -102,6 +102,32 @@ test.describe("Settings flow", () => {
     expectHealthyClient(tracker, ["server responded with a status of 401"]);
   });
 
+  test("keeps live-provider configuration after an unavailable-provider error", async ({ page }) => {
+    const tracker = collectClientErrors(page);
+    const testKey = "test-temporary-key";
+
+    await loginAsSettingsUser(page);
+    await page.goto("/settings?lang=en", { waitUntil: "networkidle" });
+    await page.route("**/api/provider-check", async (route) => {
+      await route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "GitHub Models: temporarily unavailable" }),
+      });
+    });
+
+    await page.getByLabel("Provider").selectOption("github-models");
+    await page.getByLabel("API key").fill(testKey);
+    await page.getByRole("button", { name: "Check" }).click();
+
+    await expect(page.getByText("Error: GitHub Models: temporarily unavailable")).toBeVisible();
+    await expect(page.getByLabel("Provider")).toHaveValue("github-models");
+    await expect(page.getByLabel("API key")).toHaveValue(testKey);
+    await expect(page.getByText(/Connection works\./)).toHaveCount(0);
+
+    expectHealthyClient(tracker, ["server responded with a status of 503"]);
+  });
+
   test("switches settings language through URL-preserving links", async ({ page }) => {
     const tracker = collectClientErrors(page);
 
