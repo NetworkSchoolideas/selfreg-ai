@@ -203,9 +203,9 @@ Run a fresh usability pass over the combined dashboard hierarchy: saved next act
 
 Current product fact: **Hide session** already archives a session only from the student's dashboard through `studentArchivedAt`; it does not delete the session or remove it from the teacher. This is the right immediate control for clutter and remains the only student-facing action in this iteration.
 
-Current implementation state: incomplete sessions remain resumable for 30 days and are then derived as abandoned and hidden from the student dashboard. The remaining gap is to persist that status and run the agreed 90-day physical cleanup on a scheduler.
+Current implementation state: incomplete sessions remain resumable for 30 days and are then abandoned and hidden from the student dashboard. A daily server-side job persists that abandonment, and a second daily job physically deletes only qualifying incomplete sessions after 90 days. Completed sessions are never deletion candidates.
 
-Policy to validate before implementation:
+Applied retention policy:
 
 1. Completed sessions remain stored and may only be hidden from the student's dashboard. They are retained for the learner's review and linked teacher's read-only discussion context.
 2. Incomplete or draft sessions remain resumable for 30 days after their last update. After that, they become abandoned and are hidden from the student dashboard by default.
@@ -214,11 +214,11 @@ Policy to validate before implementation:
 
 **Primary signal:** a returning student can find an active session or a useful completed result without being distracted by stale partial attempts.
 
-**Guardrails:** no automatic deletion in a client browser; no teacher-driven deletion; no deletion of completed sessions; no production cleanup job or migration without separate approval and an owner-scoped regression suite.
+**Guardrails:** no automatic deletion in a client browser; no teacher-driven deletion; no deletion of completed sessions; retention jobs act only on incomplete sessions with no final note and remain covered by owner/teacher-boundary regressions.
 
-**Scheduler decision gate:** `pg_cron` is installed in the current Supabase project and currently has no jobs. Supabase Cron is the preferred server-side option for the separately approved physical-deletion task. A Free project can pause after a week of inactivity, so it cannot be the sole guarantee of calendar-based cleanup. Until an always-on scheduler is deliberately chosen, use only timestamp-based dashboard hiding and defer the 90-day physical-deletion job.
+**Scheduler state:** `pg_cron` is active with two named daily jobs: one marks stale incomplete sessions and one purges eligible abandoned sessions. On the Free plan this is best-effort while the project is active: a paused project cannot promise a calendar-exact run. The immediate product guarantee remains timestamp-based dashboard hiding; the scheduled job provides eventual retention cleanup.
 
-**Done when:** a manual student dashboard test verifies Hide remains non-destructive; a deterministic test classifies the 30-day and 90-day boundaries; the cleanup design identifies its scheduler, audit output, rollback approach, and Supabase-free-plan compatibility before any infrastructure change.
+**Done when:** a manual student dashboard test verifies Hide remains non-destructive; deterministic tests classify the 30-day and 90-day boundaries; both Cron jobs have a successful `cron.job_run_details` entry; and the audit, rollback, and Free-plan limitation are documented.
 
 ### Iteration 4 — teacher conversation workflow
 
