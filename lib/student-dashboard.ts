@@ -112,11 +112,15 @@ export function getLatestCompletedSessionNextAction(
  * dashboard language. A session without an id cannot be resumed safely, so it
  * remains available in history without becoming the top-level resume action.
  */
-export function getLatestResumableStudentSession(profile: ChildProfile, lang: AppLang): Session | null {
+export function getLatestResumableStudentSession(
+  profile: ChildProfile,
+  lang: AppLang,
+  now = new Date(),
+): Session | null {
   return profile.sessions
     .filter((session) => Boolean(session.sessionId))
     .filter((session) => !isSessionArchivedForStudent(session))
-    .filter((session) => getEffectiveSessionStatus(session) === "in_progress")
+    .filter((session) => getEffectiveSessionStatus(session, now) === "in_progress")
     .filter((session) => !session.lang || session.lang === lang)
     .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime())[0] ?? null;
 }

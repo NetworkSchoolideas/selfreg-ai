@@ -191,8 +191,9 @@ describe("student dashboard helpers", () => {
       ],
     });
 
-    expect(getLatestResumableStudentSession(profile, "en")?.sessionId).toBe("older-en");
-    expect(getLatestResumableStudentSession(profile, "ru")?.sessionId).toBe("newer-ru");
+    const currentDate = new Date("2026-07-16T10:00:00.000Z");
+    expect(getLatestResumableStudentSession(profile, "en", currentDate)?.sessionId).toBe("older-en");
+    expect(getLatestResumableStudentSession(profile, "ru", currentDate)?.sessionId).toBe("newer-ru");
   });
 
   it("treats old unfinished sessions as abandoned", () => {

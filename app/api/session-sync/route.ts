@@ -66,6 +66,15 @@ function getSessionRecordId(sessionId: string, record: SessionSyncRecordPayload)
   return `${hash.slice(0, 8)}-${hash.slice(8, 12)}-5${hash.slice(13, 16)}-${variant}${hash.slice(17, 20)}-${hash.slice(20, 32)}`;
 }
 
+function isIncomingSessionUpdateCurrent(existingUpdatedAt: string | null | undefined, incomingUpdatedAt: string) {
+  const existingTimestamp = Date.parse(existingUpdatedAt || "");
+  const incomingTimestamp = Date.parse(incomingUpdatedAt);
+
+  return !Number.isFinite(existingTimestamp)
+    || !Number.isFinite(incomingTimestamp)
+    || incomingTimestamp >= existingTimestamp;
+}
+
 const SESSION_RECORDS_SELECT = `
   stage_id,
   stage_title,
@@ -243,13 +252,15 @@ export async function POST(request: Request) {
         student_archived_at: payload.studentArchivedAt || null,
       };
 
-      const { error: updateError } = await supabaseAdmin
-        .from("sessions")
-        .update(sessionPatch)
-        .eq("id", sessionId);
+      if (isIncomingSessionUpdateCurrent(existingSession.updated_at, payload.updatedAt)) {
+        const { error: updateError } = await supabaseAdmin
+          .from("sessions")
+          .update(sessionPatch)
+          .eq("id", sessionId);
 
-      if (updateError) {
-        return serverError(updateError.message, "SUPABASE_SESSION_UPDATE_ERROR");
+        if (updateError) {
+          return serverError(updateError.message, "SUPABASE_SESSION_UPDATE_ERROR");
+        }
       }
 
     } else {
@@ -316,13 +327,15 @@ export async function POST(request: Request) {
         }
         storedRecords = storedRecordsResult.records;
 
-        const { error: updateError } = await supabaseAdmin
-          .from("sessions")
-          .update(sessionPatch)
-          .eq("id", sessionId);
+        if (isIncomingSessionUpdateCurrent(racedSession.updated_at, payload.updatedAt)) {
+          const { error: updateError } = await supabaseAdmin
+            .from("sessions")
+            .update(sessionPatch)
+            .eq("id", sessionId);
 
-        if (updateError) {
-          return serverError(updateError.message, "SUPABASE_SESSION_UPDATE_ERROR");
+          if (updateError) {
+            return serverError(updateError.message, "SUPABASE_SESSION_UPDATE_ERROR");
+          }
         }
 
       } else {

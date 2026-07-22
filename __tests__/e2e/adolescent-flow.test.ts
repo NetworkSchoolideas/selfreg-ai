@@ -604,6 +604,49 @@ test.describe("Adolescent prototype flows", () => {
     expectHealthyClient(tracker);
   });
 
+  test("does not let a stale session update reopen a completed session", async ({ page, request }) => {
+    const tracker = collectClientErrors(page);
+    const childId = await openRegisteredAdolescentSession(page, request);
+    const sessionId = randomUUID();
+    const completedAt = "2026-07-22T10:02:00.000Z";
+    const completedRecords = ["1", "2", "3", "4", "5"].map((stageId) => ({
+      stageId,
+      stageTitle: `Stage ${stageId}`,
+      scenario: "A",
+      eventType: "answer",
+      answer: `Completed response for stage ${stageId}.`,
+      feedback: "Keep the next step specific.",
+      question: "What is the next step?",
+      timestamp: `2026-07-22T10:0${Number(stageId) - 1}:00.000Z`,
+    }));
+
+    const completedResponse = await page.request.post("/api/session-sync", {
+      data: {
+        childId, sessionId, status: "completed", context: "project outline",
+        finalNote: "I completed the outline plan.", updatedAt: completedAt, lang: "en", records: completedRecords,
+      },
+    });
+    expect(completedResponse.ok(), await completedResponse.text()).toBe(true);
+
+    const staleResponse = await page.request.post("/api/session-sync", {
+      data: {
+        childId, sessionId, status: "in_progress", context: "older outline draft",
+        finalNote: "", updatedAt: "2026-07-22T10:01:30.000Z", lang: "en", records: completedRecords.slice(0, 2),
+      },
+    });
+    expect(staleResponse.ok(), await staleResponse.text()).toBe(true);
+
+    const childResponse = await page.request.get(`/api/children?childId=${encodeURIComponent(childId)}`);
+    expect(childResponse.ok(), await childResponse.text()).toBe(true);
+    const childPayload = await childResponse.json();
+    const syncedSession = childPayload.child.sessions.find((session: { sessionId?: string }) => session.sessionId === sessionId);
+    expect(syncedSession.status).toBe("completed");
+    expect(syncedSession.finalNote).toBe("I completed the outline plan.");
+    expect(syncedSession.context).toBe("project outline");
+
+    expectHealthyClient(tracker);
+  });
+
   test("lets a teacher run a private self-regulation session without accessing student data", async ({ page, request }) => {
     const tracker = collectClientErrors(page);
     await createAndLoginTeacher(page, request);
