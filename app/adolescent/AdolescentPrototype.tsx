@@ -242,6 +242,12 @@ export function AdolescentPrototype() {
             ? payload.child.sessions?.find((item: import("@/types/session").Session) => item.sessionId === resumeSessionId)
             : null;
           if (resumeSession) {
+            if (resumeSession.lang && resumeSession.lang !== lang) {
+              const params = new URLSearchParams(window.location.search);
+              params.set("lang", resumeSession.lang);
+              window.location.replace(`/adolescent?${params.toString()}`);
+              return;
+            }
             restoreSession(resumeSession);
             setFeedbackSubmitted(Boolean(resumeSession.adolescentFeedback));
             setShowHistory(false);
@@ -273,7 +279,7 @@ export function AdolescentPrototype() {
     return () => {
       active = false;
     };
-  }, [authUserId, childIdFromUrl, teacherCode, linkChildToTeacherByCode, resetSession, restoreSession, resumeSessionId, sessionMode]);
+  }, [authUserId, childIdFromUrl, teacherCode, lang, linkChildToTeacherByCode, resetSession, restoreSession, resumeSessionId, sessionMode]);
 
   // History is read-only in the release contour. AI summary over past sessions is deferred.
   const { pastSessions } = useSessionHistory({

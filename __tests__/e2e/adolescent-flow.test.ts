@@ -505,6 +505,40 @@ test.describe("Adolescent prototype flows", () => {
     expectHealthyClient(tracker);
   });
 
+  test("resumes a saved session in its original language", async ({ page, request }) => {
+    const childId = await openRegisteredAdolescentSession(page, request);
+    const resumeSessionId = randomUUID();
+    const updatedAt = new Date().toISOString();
+
+    const sessionResponse = await page.request.post("/api/session-sync", {
+      data: {
+        childId,
+        sessionId: resumeSessionId,
+        status: "in_progress",
+        context: "учебный проект",
+        finalNote: "",
+        updatedAt,
+        lang: "ru",
+        records: [{
+          stageId: "1",
+          stageTitle: "Цель",
+          scenario: "A",
+          eventType: "answer",
+          answer: "Я начну с одного небольшого шага.",
+          feedback: "Выберите один понятный первый шаг.",
+          question: "Что вы хотите улучшить?",
+          timestamp: updatedAt,
+        }],
+      },
+    });
+    expect(sessionResponse.ok(), await sessionResponse.text()).toBe(true);
+
+    await page.goto(`/adolescent?childId=${childId}&resumeSessionId=${resumeSessionId}&lang=en`);
+
+    await expect(page).toHaveURL(new RegExp(`resumeSessionId=${resumeSessionId}.*lang=ru`));
+    await expect(page.locator(".stage-pill")).toContainText("Шаг 2 из 5", { timeout: 15_000 });
+  });
+
   test("restores an active session after a page refresh", async ({ page, request }) => {
     const tracker = collectClientErrors(page);
     await openRegisteredAdolescentSession(page, request);

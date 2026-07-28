@@ -718,8 +718,9 @@ function StudentDashboardContent() {
                           : { background: "#e0f2fe", color: "#075985" };
                   const sessionKey = getSessionKey(session);
                   const sessionMatchesLanguage = !session.lang || session.lang === lang;
+                  const sessionLang = session.lang || lang;
                   const continueHref = session.sessionId
-                    ? `/adolescent?childId=${effectiveChildId}&resumeSessionId=${session.sessionId}&lang=${lang}`
+                    ? `/adolescent?childId=${effectiveChildId}&resumeSessionId=${session.sessionId}&lang=${sessionLang}`
                     : newSessionHref;
 
                   return (
