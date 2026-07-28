@@ -2632,7 +2632,6 @@ td {
 .home-contact .eyebrow { color: #78d3bd; }
 .home-contact h2 { max-width: 610px; margin: 0 0 10px; font-size: clamp(27px, 3.5vw, 42px); line-height: 1.02; letter-spacing: -0.045em; }
 .home-contact p { max-width: 610px; margin: 0; color: #d9e5ef; line-height: 1.55; }
-.home-contact-action { margin-top: 22px; }
 .home-contact-person { display: grid; gap: 8px; padding: 22px; border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 14px; color: #d9e5ef; font-size: 14px; font-style: normal; line-height: 1.45; }
 .home-contact-person strong { color: white; font-size: 17px; }
 .home-contact-email { color: #8ce2cf; font-weight: 750; overflow-wrap: anywhere; text-decoration: none; }

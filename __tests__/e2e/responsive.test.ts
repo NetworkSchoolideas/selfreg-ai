@@ -43,6 +43,19 @@ test.describe("Responsive layout smoke", () => {
     expectHealthyClient(tracker);
   });
 
+  test("home contact keeps a direct email address without a duplicate contact button", async ({ page }) => {
+    const tracker = collectClientErrors(page);
+
+    await page.goto("/?lang=en");
+
+    await expect(page.getByRole("button", { name: "Email the project team" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "adsmirnov_1@edu.hse.ru" })).toHaveAttribute(
+      "href",
+      "mailto:adsmirnov_1@edu.hse.ru",
+    );
+    expectHealthyClient(tracker);
+  });
+
   test("signed-out teacher route does not render student data on tablet", async ({ page }) => {
     const tracker = collectClientErrors(page);
 
