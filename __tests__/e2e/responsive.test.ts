@@ -43,7 +43,7 @@ test.describe("Responsive layout smoke", () => {
     expectHealthyClient(tracker);
   });
 
-  test("teacher dashboard renders without horizontal overflow on tablet", async ({ page }) => {
+  test("signed-out teacher route does not render student data on tablet", async ({ page }) => {
     const tracker = collectClientErrors(page);
 
     await page.addInitScript(() => {
@@ -53,7 +53,8 @@ test.describe("Responsive layout smoke", () => {
     await page.setViewportSize({ width: 768, height: 1024 });
     await page.goto("/teacher?lang=en");
 
-    await expect(page.locator("h1")).toContainText("Prepare a conversation with a student");
+    await expect(page.getByRole("heading", { name: "Sign in to open the teacher dashboard" })).toBeVisible();
+    await expect(page.getByText("Students", { exact: true })).toHaveCount(0);
     await expectNoHorizontalOverflow(page);
     expectHealthyClient(tracker);
   });

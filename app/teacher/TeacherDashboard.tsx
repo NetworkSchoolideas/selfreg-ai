@@ -268,6 +268,18 @@ export function TeacherDashboard() {
     }
   };
 
+  if (!isAuthLoading && !isTeacher && !teacherIdFromQuery) {
+    return (
+      <main className="shell">
+        <div className="panel text-center no-selection-panel">
+          <h1 className="mt-0">{lang === "en" ? "Sign in to open the teacher dashboard" : "Войдите, чтобы открыть кабинет педагога"}</h1>
+          <p className="muted">{lang === "en" ? "Student sessions are available only after teacher sign-in." : "Сессии учеников доступны только после входа педагога."}</p>
+          <AuthButton lang={lang} />
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="shell">
       <OnboardingModal isOpen={showOnboarding} onClose={closeOnboarding} lang={lang} type="teacher" />
