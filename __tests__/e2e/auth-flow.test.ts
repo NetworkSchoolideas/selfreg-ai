@@ -123,4 +123,20 @@ test.describe("Authentication and RBAC", () => {
 
     expectHealthyClient(tracker);
   });
+
+  test("student dashboard clears cached session data after logout", async ({ page }) => {
+    const tracker = collectClientErrors(page);
+
+    await loginViaForm(page, "student", studentUser.email, studentUser.password);
+    await expect(page).toHaveURL(/\/student\/dashboard\?lang=ru$/, { timeout: 15000 });
+    await expect(page.locator("h1")).toContainText("кабинет");
+
+    await page.getByRole("button", { name: "Выйти" }).click();
+
+    await expect(page.getByRole("heading", { name: "Ошибка" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "История сессий" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Продолжить последнюю активную сессию" })).toHaveCount(0);
+
+    expectHealthyClient(tracker);
+  });
 });

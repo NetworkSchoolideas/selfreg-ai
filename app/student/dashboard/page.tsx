@@ -7,6 +7,7 @@ import { ErrorBoundary } from "@/app/components/ErrorBoundary";
 import { LanguageToggle } from "@/app/components/LanguageToggle";
 import { AuthButton } from "@/app/components/AuthButton";
 import { ConfirmDialog } from "@/app/components/ConfirmDialog";
+import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { normalizeAppLang, withLang } from "@/lib/app-i18n";
 import { DataService } from "@/lib/data-service";
 import { supabase } from "@/lib/supabase-auth";
@@ -26,6 +27,7 @@ function StudentDashboardContent() {
   const childId = searchParams.get("childId");
   const lang = normalizeAppLang(searchParams.get("lang"));
   const missingChildIdError = lang === "en" ? "Student ID not provided" : "ID ученика не указан";
+  const { user, isLoading: isAuthLoading, isTeacher } = useSupabaseAuth();
 
   const [profile, setProfile] = useState<ChildProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -191,6 +193,21 @@ function StudentDashboardContent() {
       try {
         setLoading(true);
 
+        if (isAuthLoading) {
+          return;
+        }
+
+        if (!user || isTeacher) {
+          if (active) {
+            setProfile(null);
+            setSelectedSessionId(null);
+            setArchiveCandidateId(null);
+            setShowOriginalSessionText(false);
+            setError(missingChildIdError);
+          }
+          return;
+        }
+
         if (!childId) {
           const {
             data: { session },
@@ -246,7 +263,7 @@ function StudentDashboardContent() {
     return () => {
       active = false;
     };
-  }, [childId, missingChildIdError, t.errorConnection, t.errorNotFound]);
+  }, [childId, isAuthLoading, isTeacher, missingChildIdError, t.errorConnection, t.errorNotFound, user]);
 
   const metrics = useMemo(() => (profile ? getStudentDashboardMetrics(profile) : null), [profile]);
   const latestCompletedSessionNextAction = useMemo(
