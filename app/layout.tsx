@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
+import { DocumentLanguage } from "./components/DocumentLanguage";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -11,7 +13,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   // Full dynamic <html lang> would require middleware or root client wrapper — out of scope for this prototype.
   return (
     <html lang="ru">
-      <body>{children}</body>
+      <body>
+        <Suspense fallback={null}>
+          <DocumentLanguage />
+        </Suspense>
+        {children}
+      </body>
     </html>
   );
 }

@@ -34,6 +34,15 @@ test.describe("Responsive layout smoke", () => {
     expectHealthyClient(tracker);
   });
 
+  test("English route synchronizes the document language after hydration", async ({ page }) => {
+    const tracker = collectClientErrors(page);
+
+    await page.goto("/?lang=en");
+
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    expectHealthyClient(tracker);
+  });
+
   test("teacher dashboard renders without horizontal overflow on tablet", async ({ page }) => {
     const tracker = collectClientErrors(page);
 
