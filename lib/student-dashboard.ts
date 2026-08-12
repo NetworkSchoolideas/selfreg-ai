@@ -22,6 +22,25 @@ export interface LatestCompletedSessionNextAction {
   action: string;
 }
 
+function formatRussianUnfinishedSessions(count: number): string {
+  const modulo100 = count % 100;
+  const modulo10 = count % 10;
+
+  if (modulo100 >= 11 && modulo100 <= 14) {
+    return `${count} незавершенных сессий`;
+  }
+
+  if (modulo10 === 1) {
+    return `${count} незавершенная сессия`;
+  }
+
+  if (modulo10 >= 2 && modulo10 <= 4) {
+    return `${count} незавершенные сессии`;
+  }
+
+  return `${count} незавершенных сессий`;
+}
+
 export function isSessionArchivedForStudent(session: Session): boolean {
   return Boolean(session.studentArchivedAt);
 }
@@ -145,7 +164,7 @@ export function getStudentDashboardStatus(profile: ChildProfile, metrics: Studen
       : {
           tone: "active",
           title: "Сессия в процессе",
-          description: `У вас ${metrics.inProgressSessions.length} незавершенн${metrics.inProgressSessions.length > 1 ? "ых сессии" : "ая сессия"}. Продолжите работу, чтобы результат сохранился в истории.`,
+          description: `У вас ${formatRussianUnfinishedSessions(metrics.inProgressSessions.length)}. Продолжите работу, чтобы результат сохранился в истории.`,
         };
   }
 

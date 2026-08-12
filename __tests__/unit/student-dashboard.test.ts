@@ -67,6 +67,30 @@ describe("student dashboard helpers", () => {
 
     expect(status.tone).toBe("active");
     expect(status.title).toBe("Сессия в процессе");
+    expect(status.description).toContain("1 незавершенная сессия");
+  });
+
+  it("uses the correct Russian form for unfinished-session counts", () => {
+    for (const [count, expected] of [
+      [2, "2 незавершенные сессии"],
+      [5, "5 незавершенных сессий"],
+      [11, "11 незавершенных сессий"],
+      [21, "21 незавершенная сессия"],
+    ]) {
+      const profile = createProfile({
+        sessions: Array.from({ length: count }, (_, index) => ({
+          sessionId: `draft-${index}`,
+          context: "Current session",
+          records: [{ stageId: "1", stageTitle: "Goal", scenario: "A", answer: "Draft", feedback: "OK", question: "Q", timestamp: "2026-06-12T09:00:00.000Z" }],
+          finalNote: "",
+          status: "in_progress" as const,
+          updatedAt: "2026-06-12T10:00:00.000Z",
+        })),
+      });
+
+      const status = getStudentDashboardStatus(profile, getStudentDashboardMetrics(profile, new Date("2026-06-12T10:30:00.000Z")), "ru");
+      expect(status.description).toContain(expected);
+    }
   });
 
   it("returns a ready state for a linked student with no sessions", () => {
