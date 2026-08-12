@@ -124,6 +124,14 @@ export function TeacherDashboard() {
       signalCount: (label: string, count: number) => `${label}: ${count}`,
       eventLabel: (record: RecordItem) => getRecordEventLabel(record, lang),
       aiSourceLabel: lang === "en" ? "AI source:" : "Источник ИИ:",
+      otherLanguageSessionTitle: (sessionLang: "ru" | "en") =>
+        lang === "en"
+          ? `Session recorded in ${sessionLang === "ru" ? "Russian" : "English"}`
+          : `Сессия записана на ${sessionLang === "ru" ? "русском" : "английском"} языке`,
+      otherLanguageSessionDetails: (sessionLang: "ru" | "en") =>
+        lang === "en"
+          ? `The original context, questions, answers, recommendations, and feedback are hidden because this session was recorded in ${sessionLang === "ru" ? "Russian" : "English"}. Process signals remain available.`
+          : `Исходный контекст, вопросы, ответы, рекомендации и обратная связь скрыты, потому что эта сессия записана на ${sessionLang === "ru" ? "русском" : "английском"} языке. Сигналы процесса остаются доступны.`,
       responseModeLabel: (mode: RecordItem["responseMode"]) => getResponseModeLabel(mode, lang),
       noStageData: lang === "en" ? "No stage data yet" : "Пока нет данных по этапам",
       sessionsLabel: lang === "en" ? "Sessions" : "Сессии",
@@ -395,13 +403,14 @@ export function TeacherDashboard() {
               <TeacherSessionsPanel
                 ui={ui}
                 locale={locale}
+                lang={lang}
                 sortedSessions={sortedSessions}
                 selectedSessionIdx={selectedSessionIdx}
                 highlightedSessionUpdatedAt={highlightedSessionUpdatedAt}
                 onSelectSession={selectSession}
               />
 
-              <TeacherSessionDetail currentSession={currentSession} locale={locale} ui={ui} />
+              <TeacherSessionDetail currentSession={currentSession} locale={locale} lang={lang} ui={ui} />
 
               <div className="panel mb-16">
                 <h3 className="fs-15 analytics-section-title">{ui.analyticsTitle}</h3>

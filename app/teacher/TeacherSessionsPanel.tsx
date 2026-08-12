@@ -1,7 +1,9 @@
 "use client";
 
 import type { Session } from "@/lib/children-storage";
+import type { AppLang } from "@/lib/app-i18n";
 import { countProgressStages, formatProgressStageCount, inferRecordEventType } from "@/lib/session-helpers";
+import { hasSessionLanguageMismatch } from "@/lib/session-language";
 import { getSessionSignals } from "@/lib/teacher-dashboard-analytics";
 
 interface TeacherSessionsPanelUi {
@@ -12,11 +14,13 @@ interface TeacherSessionsPanelUi {
   returnToQuestion: string;
   skipped: string;
   retryAnswer: string;
+  otherLanguageSessionTitle: (sessionLang: AppLang) => string;
 }
 
 interface TeacherSessionsPanelProps {
   ui: TeacherSessionsPanelUi;
   locale: string;
+  lang: AppLang;
   sortedSessions: Session[];
   selectedSessionIdx: number;
   highlightedSessionUpdatedAt: string | null;
@@ -26,6 +30,7 @@ interface TeacherSessionsPanelProps {
 export function TeacherSessionsPanel({
   ui,
   locale,
+  lang,
   sortedSessions,
   selectedSessionIdx,
   highlightedSessionUpdatedAt,
@@ -55,6 +60,10 @@ export function TeacherSessionsPanel({
             const scenarioACount = answerRecords.filter((record) => record.scenario === "A").length;
             const scenarioBCount = answerRecords.filter((record) => record.scenario === "B").length;
             const flowSignals = getSessionSignals(session.records);
+            const hasDifferentLanguage = hasSessionLanguageMismatch(session, lang);
+            const sessionTitle = hasDifferentLanguage && session.lang
+              ? ui.otherLanguageSessionTitle(session.lang)
+              : session.context;
             const processBits = [
               `A:${scenarioACount}`,
               `B:${scenarioBCount}`,
@@ -74,10 +83,10 @@ export function TeacherSessionsPanel({
                   background: isSelected ? "var(--soft)" : "white",
                   boxShadow: isNew ? "0 0 0 3px #f2c94c" : undefined,
                 }}
-                title={session.context}
+                title={sessionTitle}
               >
                 <div className="session-card-title">
-                  <span>{session.context.length > 38 ? session.context.slice(0, 35) + "..." : session.context}</span>
+                  <span>{sessionTitle.length > 38 ? sessionTitle.slice(0, 35) + "..." : sessionTitle}</span>
                   <span className="session-card-date">{new Date(session.updatedAt).toLocaleDateString(locale)}</span>
                 </div>
                 <div className="session-card-subtitle">

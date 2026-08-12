@@ -1,7 +1,9 @@
 "use client";
 
 import type { RecordItem, Session } from "@/lib/children-storage";
+import type { AppLang } from "@/lib/app-i18n";
 import { inferRecordEventType } from "@/lib/session-helpers";
+import { hasSessionLanguageMismatch } from "@/lib/session-language";
 import { isRetryRecord } from "@/lib/selfreg-flow-machine";
 import { getSessionSignals } from "@/lib/teacher-dashboard-analytics";
 
@@ -29,11 +31,14 @@ interface TeacherSessionDetailUi {
   aiInsightTitle: string;
   adolescentFeedback: string;
   usefulness: (rating: number) => string;
+  otherLanguageSessionTitle: (sessionLang: AppLang) => string;
+  otherLanguageSessionDetails: (sessionLang: AppLang) => string;
 }
 
 interface TeacherSessionDetailProps {
   currentSession: Session | null;
   locale: string;
+  lang: AppLang;
   ui: TeacherSessionDetailUi;
 }
 
@@ -61,7 +66,7 @@ function getEventBadgeStyle(record: RecordItem) {
   return { background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe" };
 }
 
-export function TeacherSessionDetail({ currentSession, locale, ui }: TeacherSessionDetailProps) {
+export function TeacherSessionDetail({ currentSession, locale, lang, ui }: TeacherSessionDetailProps) {
   if (!currentSession) {
     return (
       <div className="panel">
@@ -71,12 +76,16 @@ export function TeacherSessionDetail({ currentSession, locale, ui }: TeacherSess
   }
 
   const currentSessionSignals = getSessionSignals(currentSession.records);
+  const hasDifferentLanguage = hasSessionLanguageMismatch(currentSession, lang);
+  const sessionTitle = hasDifferentLanguage && currentSession.lang
+    ? ui.otherLanguageSessionTitle(currentSession.lang)
+    : currentSession.context;
 
   return (
     <div className="panel">
       <div className="session-detail-header">
         <div>
-          <strong className="session-context-title">{currentSession.context}</strong>
+          <strong className="session-context-title">{sessionTitle}</strong>
           <span className="muted session-detail-date">
             {new Date(currentSession.updatedAt).toLocaleString(locale)}
           </span>
@@ -121,7 +130,9 @@ export function TeacherSessionDetail({ currentSession, locale, ui }: TeacherSess
             <div className="trajectory-note">{ui.trajectoryNote(currentSessionSignals)}</div>
           </div>
 
-          {currentSession.records.map((record, index) => {
+          {hasDifferentLanguage && currentSession.lang ? (
+            <div className="empty-session-placeholder">{ui.otherLanguageSessionDetails(currentSession.lang)}</div>
+          ) : currentSession.records.map((record, index) => {
             const eventType = inferRecordEventType(record);
             const isProcessOnly = eventType === "clarify_request" || eventType === "back";
 
@@ -172,21 +183,21 @@ export function TeacherSessionDetail({ currentSession, locale, ui }: TeacherSess
         </div>
       )}
 
-      {currentSession.finalNote && (
+      {!hasDifferentLanguage && currentSession.finalNote && (
         <div className="final-note-box">
           <strong>{ui.finalInterpretation}</strong>
           <p className="p-line" style={{ marginTop: 6 }}>{currentSession.finalNote}</p>
         </div>
       )}
 
-      {currentSession.historyInsight && (
+      {!hasDifferentLanguage && currentSession.historyInsight && (
         <div className="insight-box">
           <div className="insight-title">{ui.aiInsightTitle}</div>
           <p className="p-line" style={{ margin: 0 }}>{currentSession.historyInsight}</p>
         </div>
       )}
 
-      {currentSession.adolescentFeedback && (
+      {!hasDifferentLanguage && currentSession.adolescentFeedback && (
         <div className="feedback-box">
           <div className="feedback-title">
             {ui.adolescentFeedback}
