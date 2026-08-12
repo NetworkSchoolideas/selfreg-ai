@@ -293,6 +293,67 @@ test.describe("Public smoke flows", () => {
     expectHealthyClient(tracker);
   });
 
+  test("teacher dashboard hides Russian session details in the English interface", async ({ page }) => {
+    const tracker = collectClientErrors(page);
+    const child = {
+      id: "language-boundary-student",
+      name: "Language boundary student",
+      createdAt: "2026-08-12T09:00:00.000Z",
+      updatedAt: "2026-08-12T10:00:00.000Z",
+      sessions: [
+        {
+          sessionId: "language-boundary-session",
+          status: "completed",
+          context: "RU_PRIVATE_CONTEXT",
+          finalNote: "RU_PRIVATE_FINAL_NOTE",
+          updatedAt: "2026-08-12T10:00:00.000Z",
+          lang: "ru",
+          records: [
+            {
+              stageId: "1",
+              stageTitle: "RU_PRIVATE_STAGE",
+              scenario: "A",
+              eventType: "answer",
+              answer: "RU_PRIVATE_ANSWER",
+              feedback: "RU_PRIVATE_FEEDBACK",
+              question: "RU_PRIVATE_QUESTION",
+              timestamp: "2026-08-12T10:00:00.000Z",
+              provider: "mock",
+              responseMode: "mock",
+            },
+          ],
+        },
+      ],
+    };
+
+    await page.addInitScript(() => {
+      window.localStorage.clear();
+      window.localStorage.setItem("selfreg_onboarding_seen_teacher", "1");
+    });
+    await page.route("**/api/teacher-data?**", async (route) => {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ children: [child], analytics: null }),
+      });
+    });
+
+    await page.goto("/teacher?teacher=E2E_LANGUAGE_BOUNDARY&lang=en");
+
+    await expect(page.getByText("Session recorded in Russian", { exact: true })).toHaveCount(2);
+    await expect(page.getByText("The original context, questions, answers, recommendations, and feedback are hidden because this session was recorded in Russian. Process signals remain available.")).toBeVisible();
+    await expect(page.getByText("RU_PRIVATE_CONTEXT")).toHaveCount(0);
+    await expect(page.getByText("RU_PRIVATE_ANSWER")).toHaveCount(0);
+    await expect(page.getByText("RU_PRIVATE_FEEDBACK")).toHaveCount(0);
+    await expect(page.getByText("RU_PRIVATE_FINAL_NOTE")).toHaveCount(0);
+    await expect(page.getByText("What happened in this session")).toBeVisible();
+
+    await page.setViewportSize({ width: 375, height: 812 });
+    await expect(page.getByText("Session recorded in Russian", { exact: true })).toHaveCount(2);
+    await expect(page.getByText("What happened in this session")).toBeVisible();
+
+    expectHealthyClient(tracker);
+  });
+
   // Restored in P0-05 once the E2E setup can create an explicitly linked teacher/student pair.
   test.skip("teacher dashboard loads server-backed child and analytics", async ({ page, request }) => {
     const tracker = collectClientErrors(page);
