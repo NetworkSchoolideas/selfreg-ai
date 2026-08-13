@@ -390,8 +390,64 @@ test.describe("Public smoke flows", () => {
   });
 
   // Restored in P0-05 once the E2E setup can create an explicitly linked teacher/student pair.
-  test.skip("teacher dashboard loads server-backed child and analytics", async ({ page, request }) => {
+  test("teacher dashboard loads server-backed child and analytics", async ({ page, request }) => {
     const tracker = collectClientErrors(page);
+    const useLegacyMutationFlow = process.env.SELFREG_E2E_LEGACY_MUTATION_FLOW === "1";
+
+    if (!useLegacyMutationFlow) {
+      const teacherId = "E2E_ANALYTICS";
+      const child = {
+        id: "analytics-student",
+        name: "Analytics student",
+        realData: { fio: "Test student", klass: "9A" },
+        createdAt: "2026-08-13T09:00:00.000Z",
+        updatedAt: "2026-08-13T10:00:00.000Z",
+        sessions: [{
+          sessionId: "analytics-session",
+          status: "completed",
+          context: "Analytics session",
+          finalNote: "Completed for dashboard analytics.",
+          updatedAt: "2026-08-13T10:00:00.000Z",
+          lang: "en",
+          records: [{
+            stageId: "1", stageTitle: "Goal", scenario: "A", eventType: "answer",
+            answer: "Test answer", feedback: "Test feedback", question: "Test question",
+            timestamp: "2026-08-13T10:00:00.000Z", provider: "mock", responseMode: "mock",
+          }],
+        }],
+      };
+
+      await page.addInitScript(() => {
+        window.localStorage.clear();
+        window.localStorage.setItem("selfreg_onboarding_seen_teacher", "1");
+      });
+      await page.route("**/api/teacher-data?**", async (route) => {
+        await route.fulfill({
+          contentType: "application/json",
+          body: JSON.stringify({
+            children: [child],
+            analytics: {
+              classDistribution: [{ className: "9A", count: 1 }],
+              studentProgress: [{ childId: child.id, childName: child.name, totalSessions: 1, completedSessions: 1, lastActivity: child.updatedAt }],
+              totalChildren: 1,
+              totalSessions: 1,
+              totalCompletedSessions: 1,
+            },
+          }),
+        });
+      });
+
+      await page.goto(`/teacher?teacher=${teacherId}&lang=en`);
+      await expect(page.getByText("Supabase · server sync active")).toBeVisible();
+      await expect(page.locator(".child-header-panel")).toContainText("1 session");
+      await page.getByRole("button", { name: "Reveal name and class" }).click();
+      await expect(page.locator(".child-header-panel")).toContainText("Test student");
+      await expect(page.locator(".analytics-panel")).toBeVisible();
+      await expect(page.locator(".sessions-grid")).toContainText("Analytics session");
+      expectHealthyClient(tracker);
+      return;
+    }
+
     const teacherId = `E2E_TEACHER_${Date.now()}`;
     const sessionId = crypto.randomUUID();
     const consentTimestamp = new Date().toISOString();
