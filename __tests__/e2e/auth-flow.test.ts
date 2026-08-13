@@ -139,4 +139,24 @@ test.describe("Authentication and RBAC", () => {
 
     expectHealthyClient(tracker);
   });
+
+  test("teacher dashboard clears the authenticated dashboard after logout", async ({ page }) => {
+    const tracker = collectClientErrors(page);
+
+    await loginViaForm(page, "teacher", teacherUser.email, teacherUser.password);
+    await expect(page).toHaveURL(/\/teacher\?lang=ru$/, { timeout: 15000 });
+    await expect(page.locator("h1")).toBeVisible();
+
+    const onboardingClose = page.locator(".modal-overlay .modal-close");
+    if (await onboardingClose.count()) {
+      await onboardingClose.click();
+    }
+
+    await page.getByRole("button", { name: "\u0412\u044b\u0439\u0442\u0438" }).click();
+
+    await expect(page.locator(".no-selection-panel")).toBeVisible();
+    await expect(page.locator(".dashboard-grid")).toHaveCount(0);
+
+    expectHealthyClient(tracker);
+  });
 });
