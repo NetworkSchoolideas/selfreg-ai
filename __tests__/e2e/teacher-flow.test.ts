@@ -43,15 +43,11 @@ test.describe("Public smoke flows", () => {
     await expect(page.getByRole("heading", { name: "Поддержка саморегуляции в период взросления" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Начать сессию" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Кабинет педагога" })).toBeVisible();
-    const contactLinks = page.locator('a[href^="mailto:adsmirnov_1@edu.hse.ru?subject="]');
-    await expect(contactLinks).toHaveCount(2);
-    await expect(page.getByRole("link", { name: "\u041d\u0430\u043f\u0438\u0441\u0430\u0442\u044c \u043a\u043e\u043c\u0430\u043d\u0434\u0435 \u043f\u0440\u043e\u0435\u043a\u0442\u0430" })).toHaveAttribute(
-      "href",
-      /^mailto:adsmirnov_1@edu\.hse\.ru\?subject=/,
-    );
+    await expect(page.locator('a[href="mailto:adsmirnov_1@edu.hse.ru"]')).toHaveCount(1);
+    await expect(page.getByRole("link", { name: "\u041d\u0430\u043f\u0438\u0441\u0430\u0442\u044c \u043a\u043e\u043c\u0430\u043d\u0434\u0435 \u043f\u0440\u043e\u0435\u043a\u0442\u0430" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "adsmirnov_1@edu.hse.ru" })).toHaveAttribute(
       "href",
-      /^mailto:adsmirnov_1@edu\.hse\.ru\?subject=/,
+      "mailto:adsmirnov_1@edu.hse.ru",
     );
 
     const apiGuideTab = page.getByRole("tab", { name: "Ключ GitHub API" });
