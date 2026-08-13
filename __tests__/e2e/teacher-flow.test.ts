@@ -2,6 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 
 const projectLandingUrl =
   process.env.NEXT_PUBLIC_PROJECT_LANDING_URL || "https://selfreg-ai-networkschool.vercel.app";
+const isPublicProductionTarget = (process.env.PLAYWRIGHT_BASE_URL || "").includes("selfreg-ai.vercel.app");
 
 function collectClientErrors(page: Page) {
   const pageErrors: string[] = [];
@@ -181,6 +182,7 @@ test.describe("Public smoke flows", () => {
   });
 
   test("legacy teacher child route redirects into unified teacher dashboard", async ({ page }) => {
+    test.skip(isPublicProductionTarget, "requires the local E2E authentication bypass for an intercepted teacher fixture");
     const tracker = collectClientErrors(page);
     const childId = "legacy-route-student";
     const teacherId = "E2E_LEGACY_ROUTE";
@@ -207,6 +209,7 @@ test.describe("Public smoke flows", () => {
   });
 
   test("student dashboard without childId shows guided error state", async ({ page }) => {
+    test.skip(isPublicProductionTarget, "the public middleware redirects signed-out students before the local error-state fixture");
     const tracker = collectClientErrors(page);
 
     await page.goto("/student/dashboard?lang=ru");
@@ -222,6 +225,7 @@ test.describe("Public smoke flows", () => {
   });
 
   test("teacher dashboard entry renders without runtime failure", async ({ page }) => {
+    test.skip(isPublicProductionTarget, "requires the local E2E authentication bypass for an intercepted teacher fixture");
     const tracker = collectClientErrors(page);
     const teacherId = "E2E_DASHBOARD_ENTRY";
 
@@ -253,6 +257,7 @@ test.describe("Public smoke flows", () => {
   });
 
   test("teacher session list is read-only", async ({ page }) => {
+    test.skip(isPublicProductionTarget, "requires the local E2E authentication bypass for an intercepted teacher fixture");
     const tracker = collectClientErrors(page);
     const child = {
       id: "read-only-student-ru",
@@ -292,6 +297,7 @@ test.describe("Public smoke flows", () => {
   });
 
   test("teacher session list hides destructive controls in English", async ({ page }) => {
+    test.skip(isPublicProductionTarget, "requires the local E2E authentication bypass for an intercepted teacher fixture");
     const tracker = collectClientErrors(page);
     const child = {
       id: "read-only-student-en",
@@ -329,6 +335,7 @@ test.describe("Public smoke flows", () => {
   });
 
   test("teacher dashboard hides Russian session details in the English interface", async ({ page }) => {
+    test.skip(isPublicProductionTarget, "requires the local E2E authentication bypass for an intercepted teacher fixture");
     const tracker = collectClientErrors(page);
     const child = {
       id: "language-boundary-student",
@@ -391,6 +398,7 @@ test.describe("Public smoke flows", () => {
 
   // Restored in P0-05 once the E2E setup can create an explicitly linked teacher/student pair.
   test("teacher dashboard loads server-backed child and analytics", async ({ page, request }) => {
+    test.skip(isPublicProductionTarget, "requires the local E2E authentication bypass for an intercepted teacher fixture");
     const tracker = collectClientErrors(page);
     const useLegacyMutationFlow = process.env.SELFREG_E2E_LEGACY_MUTATION_FLOW === "1";
 
