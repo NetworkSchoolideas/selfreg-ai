@@ -238,20 +238,29 @@ test.describe("Public smoke flows", () => {
 
   test("teacher session list is read-only", async ({ page }) => {
     const tracker = collectClientErrors(page);
-    const childName = `Автотест ${Date.now()}`;
+    const child = {
+      id: "read-only-student-ru",
+      name: "Автотест",
+      createdAt: "2026-08-12T09:00:00.000Z",
+      updatedAt: "2026-08-12T10:00:00.000Z",
+      sessions: [],
+    };
 
     await page.addInitScript(() => {
       window.localStorage.clear();
       window.localStorage.setItem("selfreg_onboarding_seen_teacher", "1");
     });
 
-    await page.goto("/teacher?lang=ru");
+    await page.route("**/api/teacher-data?**", async (route) => {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ children: [child], analytics: null }),
+      });
+    });
 
-    await expect(page).toHaveURL(/\/teacher\?lang=ru$/);
-    await expect(page.locator('input[name="childName"]')).toBeVisible();
+    await page.goto("/teacher?teacher=E2E_READ_ONLY_RU&lang=ru");
 
-    await page.locator('input[name="childName"]').fill(childName);
-    await page.getByRole("button", { name: "+ Добавить" }).click();
+    await expect(page).toHaveURL(/\/teacher\?teacher=E2E_READ_ONLY_RU&lang=ru$/);
 
     const studentHeader = page.locator(".child-header-panel");
     await expect(studentHeader).toBeVisible();
@@ -268,17 +277,27 @@ test.describe("Public smoke flows", () => {
 
   test("teacher session list hides destructive controls in English", async ({ page }) => {
     const tracker = collectClientErrors(page);
-    const childName = `Delete flow ${Date.now()}`;
+    const child = {
+      id: "read-only-student-en",
+      name: "Read-only student",
+      createdAt: "2026-08-12T09:00:00.000Z",
+      updatedAt: "2026-08-12T10:00:00.000Z",
+      sessions: [],
+    };
 
     await page.addInitScript(() => {
       window.localStorage.clear();
       window.localStorage.setItem("selfreg_onboarding_seen_teacher", "1");
     });
 
-    await page.goto("/teacher?lang=en");
+    await page.route("**/api/teacher-data?**", async (route) => {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ children: [child], analytics: null }),
+      });
+    });
 
-    await page.locator('input[name="childName"]').fill(childName);
-    await page.getByRole("button", { name: "+ Add" }).click();
+    await page.goto("/teacher?teacher=E2E_READ_ONLY_EN&lang=en");
 
     const studentHeader = page.locator(".child-header-panel");
     await expect(studentHeader).toContainText("0 sessions");
