@@ -2,7 +2,10 @@ import { spawn } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
 
-const baseUrl = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
+// Use IPv4 loopback by default: on Windows, `localhost` can resolve to IPv6
+// while the dev server is only listening on IPv4, causing fixture setup to
+// fail before a browser scenario begins.
+const baseUrl = process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:3001";
 const baseUrlDetails = new URL(baseUrl);
 const devHost = baseUrlDetails.hostname || "localhost";
 const devPort = baseUrlDetails.port || "3000";
