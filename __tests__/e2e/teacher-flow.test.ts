@@ -182,21 +182,26 @@ test.describe("Public smoke flows", () => {
 
   test("legacy teacher child route redirects into unified teacher dashboard", async ({ page }) => {
     const tracker = collectClientErrors(page);
+    const childId = "legacy-route-student";
+    const teacherId = "E2E_LEGACY_ROUTE";
 
-    await page.goto("/");
-    await page.evaluate(() => {
+    await page.addInitScript(() => {
       window.localStorage.clear();
       window.localStorage.setItem("selfreg_onboarding_seen_teacher", "1");
     });
+    await page.route("**/api/teacher-data?**", async (route) => {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          children: [{ id: childId, name: "Legacy route student", createdAt: "2026-08-13T09:00:00.000Z", updatedAt: "2026-08-13T10:00:00.000Z", sessions: [] }],
+          analytics: null,
+        }),
+      });
+    });
 
-    await page.goto("/teacher?lang=ru");
-
-    const childId = (await page.locator(".child-header-panel .font-mono").textContent())?.trim();
-    expect(childId).toBeTruthy();
-
-    await page.goto(`/teacher/dashboard/child?childId=${childId}&lang=ru`);
-    await page.waitForURL(new RegExp(`/teacher\\?childId=${childId}&lang=ru$`), { timeout: 15000 });
-    await expect(page.locator(".child-header-panel")).toContainText(childId!);
+    await page.goto(`/teacher/dashboard/child?childId=${childId}&teacher=${teacherId}&lang=ru`);
+    await page.waitForURL(new RegExp(`/teacher\\?childId=${childId}&teacher=${teacherId}&lang=ru$`), { timeout: 15000 });
+    await expect(page.locator(".child-header-panel")).toContainText(childId);
 
     expectHealthyClient(tracker);
   });
@@ -218,10 +223,25 @@ test.describe("Public smoke flows", () => {
 
   test("teacher dashboard entry renders without runtime failure", async ({ page }) => {
     const tracker = collectClientErrors(page);
+    const teacherId = "E2E_DASHBOARD_ENTRY";
 
-    await page.goto("/teacher?lang=ru");
+    await page.addInitScript(() => {
+      window.localStorage.clear();
+      window.localStorage.setItem("selfreg_onboarding_seen_teacher", "1");
+    });
+    await page.route("**/api/teacher-data?**", async (route) => {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          children: [{ id: "dashboard-entry-student", name: "Dashboard entry student", createdAt: "2026-08-13T09:00:00.000Z", updatedAt: "2026-08-13T10:00:00.000Z", sessions: [] }],
+          analytics: null,
+        }),
+      });
+    });
 
-    await expect(page).toHaveURL(/\/teacher\?lang=ru$/);
+    await page.goto(`/teacher?teacher=${teacherId}&lang=ru`);
+
+    await expect(page).toHaveURL(new RegExp(`/teacher\\?teacher=${teacherId}&lang=ru$`));
     await expect(page.getByText("Дашборд педагога")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Подготовка разговора с учеником" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Начните с того, что произошло" })).toBeVisible();
