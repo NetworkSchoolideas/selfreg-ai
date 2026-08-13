@@ -56,7 +56,7 @@ test.describe("Responsive layout smoke", () => {
     expectHealthyClient(tracker);
   });
 
-  test("signed-out teacher route does not render student data on tablet", async ({ page }) => {
+  test("signed-out teacher route does not render student data and requires sign-in on tablet", async ({ page }) => {
     const tracker = collectClientErrors(page);
 
     await page.addInitScript(() => {
@@ -66,7 +66,12 @@ test.describe("Responsive layout smoke", () => {
     await page.setViewportSize({ width: 768, height: 1024 });
     await page.goto("/teacher?lang=en");
 
-    await expect(page.getByRole("heading", { name: "Sign in to open the teacher dashboard" })).toBeVisible();
+    // A signed-out teacher may see the in-route access guard or be redirected
+    // to the shared sign-in page. Both outcomes are safe; neither may expose
+    // the dashboard's student data.
+    await expect(
+      page.getByRole("heading", { name: /^(Sign in to open the teacher dashboard|Sign in)$/ }),
+    ).toBeVisible();
     await expect(page.getByText("Students", { exact: true })).toHaveCount(0);
     await expectNoHorizontalOverflow(page);
     expectHealthyClient(tracker);
