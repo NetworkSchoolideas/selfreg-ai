@@ -8,7 +8,7 @@ import { acquireRequestSlot } from "@/lib/request-rate-limit";
 import { clientError, serverError } from "@/lib/api-errors";
 
 const ProviderCheckRequest = z.object({
-  provider: z.enum(["mock", "gigachat", "openrouter", "github-models", "vercel-gateway"]),
+  provider: z.enum(["mock", "gigachat", "openrouter", "groq", "github-models", "vercel-gateway"]),
   model: z.string().optional(),
   userApiKey: z.string().optional(),
   lang: z.enum(["ru", "en"]).optional()
@@ -47,6 +47,15 @@ export async function POST(request: Request) {
       lang,
       history: []
     });
+
+    if (body.provider !== "mock" && result.responseMode === "llm-fallback") {
+      return serverError(
+        lang === "en"
+          ? "The provider returned no usable model response. Check the selected model and try again."
+          : "Провайдер не вернул пригодный ответ модели. Проверьте выбранную модель и повторите попытку.",
+        "PROVIDER_UNUSABLE_RESPONSE",
+      );
+    }
 
     return NextResponse.json({
       ok: true,

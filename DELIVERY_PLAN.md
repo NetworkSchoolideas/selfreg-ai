@@ -191,6 +191,32 @@ Test invalid key, unauthorised model, timeout, provider outage, successful retry
 
 **Done when:** one goal-based E2E covers failure and recovery, RU/EN error copy is accurate, and no key appears in logs, screenshots, traces, storage outside the documented session scope, or Git.
 
+#### Provider transition note (2026-08-13)
+
+GitHub Models was retired by GitHub on 30 July 2026. It is retained only as a historical record value; it is not a selectable SelfReg provider, a default, or part of user guidance.
+
+The immediate test path is OpenRouter with a user-owned key and explicit model check. `openrouter/free` is useful for opt-in prototype testing, but its free-model availability and rate limits are not a production service guarantee. A provider check succeeds only after a usable model response; a timeout, embedded routing error, or empty completion is a failed check and must preserve the learner's work.
+
+GigaChat is a supported alternative for individual freemium use. Its Authorization Key is exchanged on the server with `GIGACHAT_API_PERS` for a short-lived OAuth access token; the browser does not call OAuth and does not keep the access token. New projects use `https://api.giga.chat/v1/chat/completions`. Server requests trust only the official Russian Trusted Root CA instead of disabling TLS verification.
+
+Groq is the first supported reserve provider. It uses the OpenAI-compatible endpoint, a user-owned key, and the production open-weight model `openai/gpt-oss-20b`; its Free plan remains quota-limited. Do not describe hosted inference itself as open source: SelfReg uses open-weight models through a third-party service.
+
+Provider policy after GitHub Models retirement:
+
+| Provider | Product role | Free-use evidence | Decision |
+| --- | --- | --- | --- |
+| Mock | Guaranteed demonstration | Local and keyless | Always available; never labelled as a live model. |
+| OpenRouter | Recommended live starting point | Free model routing with account-wide limits and variable upstream capacity | Supported, but every key/model pair must pass a real completion check. |
+| GigaChat | RU-first alternative | Individual Freemium allowance, `GIGACHAT_API_PERS` | Supported with server-side OAuth and official CA trust. |
+| Groq | Open-weight reserve | Published Free plan rate limits | Supported as an advanced option. |
+| Cerebras | Excluded | Free access currently requires payment-method setup, which does not meet the project’s user-friendly free-BYOK policy | Not enabled or documented as a SelfReg provider. |
+| SambaNova | Excluded | Free-account access could not be reproduced with a newly created official SambaCloud key | Not enabled or documented as a SelfReg provider. |
+| Gemini API | Research candidate | Free tier exists, but free-tier content may be used to improve Google products | Not enabled for teen session content without a separate privacy decision. |
+| Cloudflare Workers AI | Infrastructure candidate | Daily free neuron allocation | Not a simple personal-key route; defer until a Cloudflare account/Worker architecture is justified. |
+| Hugging Face Inference Providers | Developer fallback | Very small monthly free credit | Insufficient as the default learner path. |
+
+Any additional provider must be selected from an internal endpoint allowlist. SelfReg must not accept an arbitrary OpenAI-compatible base URL from the browser because that would turn the server route into an SSRF and key-exfiltration surface.
+
 ### Iteration 3 — returning-user comprehension
 
 Run a fresh usability pass over the combined dashboard hierarchy: saved next action, latest active session, completed-session details, completion review, and personal hiding. Change only the first reproducible ambiguity.
@@ -225,6 +251,23 @@ Applied retention policy:
 Validate the complete teacher route: personal code, student connection, student selection, read-only chronology, conversation prompt, personal session, and removing a student only from the teacher dashboard. Keep student-owned sessions unchanged.
 
 **Done when:** the teacher can explain the boundary between observation, personal work, and student ownership; owner/linked-teacher API tests and the public manual journey agree.
+
+### Iteration 4a — teacher-side optional AI assistant (discovery only)
+
+**Goal:** assess whether a teacher can request a concise conversation preparation note without turning the teacher cabinet into a diagnostic tool or weakening student ownership.
+
+This is not part of the current release. Before implementation, run a privacy and usability discovery pass with these boundaries:
+
+- the teacher explicitly selects a completed session or an aggregate, factual view;
+- the teacher supplies and checks their own provider key in a separate personal setting;
+- the request is opt-in, one-shot, and never writes an AI conclusion back into the student's session;
+- the prompt contains the minimum necessary de-identified context; API keys, email addresses, and hidden student identifiers never leave the server boundary;
+- the output is framed as conversation prompts and observable facts, never diagnosis, scoring, or an automated judgement;
+- the teacher can discard the result and continue using the read-only cabinet without a provider key.
+
+**Primary signal:** a teacher can explain what the generated note is for, what it does not claim, and how to discard it.
+
+**Exit criteria:** a reviewed threat/privacy note, one teacher usability walkthrough in RU and EN, a minimal server-side allowlist design, and explicit approval before any UI or API implementation.
 
 ### Iteration 5 — moderated product learning
 

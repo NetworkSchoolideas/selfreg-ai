@@ -74,7 +74,7 @@ test.describe("Settings flow", () => {
       page.waitForResponse((response) => response.url().includes("/api/provider-check") && response.request().method() === "POST"),
       page.getByRole("button", { name: "Check" }).click(),
     ]);
-    await expect(page.getByText(/Connection works\. Mode: mock reply/)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/Live response received\. Mode: mock reply/)).toBeVisible({ timeout: 15000 });
 
     expectHealthyClient(tracker);
   });
@@ -88,16 +88,16 @@ test.describe("Settings flow", () => {
       await route.fulfill({
         status: 401,
         contentType: "application/json",
-        body: JSON.stringify({ error: "GitHub Models: unauthorized" }),
+        body: JSON.stringify({ error: "OpenRouter: unauthorized" }),
       });
     });
 
-    await page.getByLabel("Provider").selectOption("github-models");
+    await page.getByLabel("Provider").selectOption("openrouter");
     await page.getByLabel("API key").fill("test-invalid-key");
     await page.getByRole("button", { name: "Check" }).click();
 
-    await expect(page.getByText("Error: GitHub Models: unauthorized")).toBeVisible();
-    await expect(page.getByText(/Connection works\./)).toHaveCount(0);
+    await expect(page.getByText("Error: OpenRouter: unauthorized")).toBeVisible();
+    await expect(page.getByText(/Live response received\./)).toHaveCount(0);
 
     expectHealthyClient(tracker, ["server responded with a status of 401"]);
   });
@@ -112,18 +112,18 @@ test.describe("Settings flow", () => {
       await route.fulfill({
         status: 503,
         contentType: "application/json",
-        body: JSON.stringify({ error: "GitHub Models: temporarily unavailable" }),
+        body: JSON.stringify({ error: "OpenRouter: temporarily unavailable" }),
       });
     });
 
-    await page.getByLabel("Provider").selectOption("github-models");
+    await page.getByLabel("Provider").selectOption("openrouter");
     await page.getByLabel("API key").fill(testKey);
     await page.getByRole("button", { name: "Check" }).click();
 
-    await expect(page.getByText("Error: GitHub Models: temporarily unavailable")).toBeVisible();
-    await expect(page.getByLabel("Provider")).toHaveValue("github-models");
+    await expect(page.getByText("Error: OpenRouter: temporarily unavailable")).toBeVisible();
+    await expect(page.getByLabel("Provider")).toHaveValue("openrouter");
     await expect(page.getByLabel("API key")).toHaveValue(testKey);
-    await expect(page.getByText(/Connection works\./)).toHaveCount(0);
+    await expect(page.getByText(/Live response received\./)).toHaveCount(0);
 
     expectHealthyClient(tracker, ["server responded with a status of 503"]);
   });

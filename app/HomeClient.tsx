@@ -11,6 +11,18 @@ import { normalizeAppLang, withLang } from "@/lib/app-i18n";
 type GuideId = "student" | "teacher" | "api";
 type HomeAction = { href: string; label: string; secondary?: boolean };
 
+function ProviderMark({ label, tone }: { label: string; tone: "green" | "purple" }) {
+  return (
+    <span className={`home-provider-mark home-provider-mark-${tone}`} aria-hidden="true">
+      <svg viewBox="0 0 32 32" focusable="false">
+        <path d="M16 3.5c7 0 12.5 4.9 12.5 11 0 5.9-5.1 10.7-11.7 11L11 28.5l1.2-3.6C7.1 23.2 3.5 19.3 3.5 14.5c0-6.1 5.5-11 12.5-11Z" />
+        <path className="home-provider-mark-line" d="M10 14.5h12M10 18.5h8" />
+      </svg>
+      <span>{label}</span>
+    </span>
+  );
+}
+
 const projectLandingUrl =
   process.env.NEXT_PUBLIC_PROJECT_LANDING_URL || "https://selfreg-ai-networkschool.vercel.app";
 
@@ -74,7 +86,14 @@ export function HomeClient() {
         guideTabsLabel: "Choose an instruction",
         guideStep: "Step",
         openGuide: "Instruction",
-        githubDocs: "GitHub instructions",
+        providerDocs: "Compare provider options",
+        providerPolicyTitle: "Free access, with an honest provider policy",
+        providerPolicyLead: "SelfReg AI is open to changing provider conditions: we use free and freemium API access so a learner can try the practice with their own key. Limits and available models belong to each provider and can change, so the app checks a key before a live session.",
+        providerPolicyNote: "Mock mode is always available without a key. A provider can be removed from the app if its free path stops being reproducible or user-friendly.",
+        providerCards: {
+          gigachat: { title: "GigaChat", text: "Supported with an Authorization Key and an individual freemium allowance. OAuth exchange stays on the server." },
+          groq: { title: "Groq", text: "Supported as an advanced BYOK option with a free testing tier and selectable open-weight models." },
+        },
         guides: {
           student: {
             tab: "Student",
@@ -101,15 +120,15 @@ export function HomeClient() {
             ],
           },
           api: {
-            tab: "GitHub API key",
-            title: "GitHub Models: enable live AI responses",
-            lead: "The practice works in mock mode. A personal GitHub token enables live responses in the current browser session.",
+            tab: "AI API key",
+            title: "Enable live AI responses with your own key",
+            lead: "The practice works without a key in Mock mode. For live responses, choose OpenRouter, Groq, or GigaChat and test your key before starting.",
             action: "Open API settings",
             href: "/settings",
             steps: [
-              ["01", "Create a GitHub token", "In GitHub, open Settings → Developer settings → Personal access tokens → Fine-grained tokens, then select Generate new token."],
-              ["02", "Set the required permission", "Under Account permissions, set Models to Read-only. Set an expiry date, generate the token, and copy it once."],
-              ["03", "Paste and check the key", "Open API settings in SelfReg AI, select GitHub Models, paste the token, and run the check. Never put a token in a session answer."],
+              ["01", "Choose a provider", "OpenRouter is the simplest start; Groq provides open-weight models; GigaChat offers a large individual freemium allowance."],
+              ["02", "Create your own key", "For OpenRouter or Groq, create a key in the official console. For GigaChat: create an API project, open API settings, choose Get key, and copy the one-time Authorization Key."],
+              ["03", "Paste and check the key", "Open API settings, select the matching provider and model, then run the live check. Never put a key in a session answer."],
             ],
           },
         },
@@ -132,7 +151,14 @@ export function HomeClient() {
         guideTabsLabel: "Выберите инструкцию",
         guideStep: "Шаг",
         openGuide: "Инструкция",
-        githubDocs: "Инструкция GitHub",
+        providerDocs: "Сравнить варианты провайдеров",
+        providerPolicyTitle: "Бесплатный доступ и честная политика провайдеров",
+        providerPolicyLead: "SelfReg AI ориентируется на бесплатные и freemium-доступы к API, чтобы ученик мог попробовать практику со своим ключом. Лимиты и список моделей задают сами провайдеры и могут меняться, поэтому перед живой сессией приложение проверяет ключ.",
+        providerPolicyNote: "Mock-режим всегда доступен без ключа. Если бесплатный путь провайдера перестаёт быть воспроизводимым или понятным пользователю, мы убираем его из приложения.",
+        providerCards: {
+          gigachat: { title: "GigaChat", text: "Поддерживается Authorization Key и freemium-лимит для индивидуальных проектов. Обмен токена выполняется только на сервере." },
+          groq: { title: "Groq", text: "Поддерживается как расширенный BYOK-вариант с бесплатным тарифом для тестирования и выбором open-weight моделей." },
+        },
         guides: {
           student: {
             tab: "Ученику",
@@ -159,15 +185,15 @@ export function HomeClient() {
             ],
           },
           api: {
-            tab: "Ключ GitHub API",
-            title: "GitHub Models: включить живые ответы ИИ",
-            lead: "Практика работает и в mock-режиме. Личный токен GitHub включает живые ответы ИИ в текущей сессии браузера.",
+            tab: "Ключ AI API",
+            title: "Включить живые ответы ИИ со своим ключом",
+            lead: "Практика работает без ключа в Mock-режиме. Для живых ответов выберите OpenRouter, Groq или GigaChat и проверьте ключ до начала.",
             action: "Открыть настройки API",
             href: "/settings",
             steps: [
-              ["01", "Создайте токен на GitHub", "На GitHub откройте Settings → Developer settings → Personal access tokens → Fine-grained tokens и выберите Generate new token."],
-              ["02", "Выдайте нужное разрешение", "В разделе Account permissions установите для Models значение Read-only. Задайте срок действия, создайте токен и скопируйте его один раз."],
-              ["03", "Вставьте ключ и проверьте его", "Откройте настройки API в SelfReg AI, выберите GitHub Models, вставьте токен и запустите проверку. Не вводите токен в ответы сессии."],
+              ["01", "Выберите провайдера", "OpenRouter — самый простой старт; Groq даёт open-weight модели; у GigaChat большой freemium-лимит для физлиц."],
+              ["02", "Создайте свой ключ", "Для OpenRouter или Groq создайте ключ в официальном кабинете. Для GigaChat: создайте API-проект, откройте «Настройки API», нажмите «Получить ключ» и скопируйте одноразово показанный Authorization Key."],
+              ["03", "Вставьте и проверьте ключ", "Откройте настройки API, выберите соответствующие провайдер и модель, затем запустите живую проверку. Не вводите ключ в ответы сессии."],
             ],
           },
         },
@@ -298,10 +324,29 @@ export function HomeClient() {
               ) : (
                 <Link className="button" href={withLang(activeGuideCopy.href, lang)}>{guideActionLabel}</Link>
               )}
-              {activeGuide === "api" && <a className="text-link" href="https://docs.github.com/en/rest/models/inference" target="_blank" rel="noopener noreferrer">{copy.githubDocs} ↗</a>}
+              {activeGuide === "api" && <Link className="text-link" href={withLang("/settings", lang)}>{copy.providerDocs} →</Link>}
             </div>
           )}
         </div>
+      </section>
+
+      <section className="home-provider-policy" aria-labelledby="home-provider-policy-title">
+        <div className="home-provider-policy-intro">
+          <p className="eyebrow">API и доступность</p>
+          <h2 id="home-provider-policy-title">{copy.providerPolicyTitle}</h2>
+          <p>{copy.providerPolicyLead}</p>
+        </div>
+        <div className="home-provider-cards">
+          <article className="home-provider-card">
+            <ProviderMark label={copy.providerCards.gigachat.title} tone="green" />
+            <p>{copy.providerCards.gigachat.text}</p>
+          </article>
+          <article className="home-provider-card">
+            <ProviderMark label={copy.providerCards.groq.title} tone="purple" />
+            <p>{copy.providerCards.groq.text}</p>
+          </article>
+        </div>
+        <p className="home-provider-policy-note">{copy.providerPolicyNote}</p>
       </section>
 
       <section className="home-contact" aria-labelledby="home-contact-title">

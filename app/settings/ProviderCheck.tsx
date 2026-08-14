@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { normalizeAppLang } from "@/lib/app-i18n";
-import { PROVIDERS, getReleaseProviders, isProviderEnabledInRelease, type ProviderId } from "@/lib/provider-registry";
+import { PROVIDERS, getFreeChatModels, getReleaseProviders, isProviderEnabledInRelease, type ProviderId } from "@/lib/provider-registry";
 
 function getProviderDefaultModel(provider: ProviderId) {
   return PROVIDERS.find((item) => item.id === provider)?.defaultModel || "";
@@ -21,6 +21,10 @@ export function ProviderCheck() {
         : "Ключ отправляется только на серверный route проверки и не сохраняется в браузере.",
     provider: lang === "en" ? "Provider" : "Провайдер",
     model: lang === "en" ? "Model" : "Модель",
+    freeModelList: lang === "en" ? "Free-plan model" : "Модель бесплатного тарифа",
+    freeModelListHint: lang === "en"
+      ? "Switching a model requires a new key check; preview models may be withdrawn."
+      : "После смены модели требуется новая проверка ключа; preview-модели могут быть сняты.",
     apiKey: lang === "en" ? "API key" : "API-ключ",
     apiKeyPlaceholder: lang === "en" ? "Not needed for mock" : "Для mock не нужен",
     check: lang === "en" ? "Check" : "Проверить",
@@ -28,7 +32,7 @@ export function ProviderCheck() {
     initialStatus: lang === "en" ? "Provider check has not started yet." : "Проверка еще не запускалась.",
     checkingStatus: lang === "en" ? "Checking connection..." : "Проверяю подключение...",
     errorPrefix: lang === "en" ? "Error: " : "Ошибка: ",
-    successPrefix: lang === "en" ? "Connection works. Mode: " : "Подключение работает. Режим: ",
+    successPrefix: lang === "en" ? "Live response received. Mode: " : "Получен живой ответ. Режим: ",
     successSample: lang === "en" ? ". Sample reply: " : ". Пример ответа: "
   };
 
@@ -37,6 +41,7 @@ export function ProviderCheck() {
   const [userApiKey, setUserApiKey] = useState("");
   const [status, setStatus] = useState(ui.initialStatus);
   const [isChecking, setIsChecking] = useState(false);
+  const canCheckProvider = isProviderEnabledInRelease(provider);
 
   async function checkProvider() {
     setIsChecking(true);
@@ -100,11 +105,7 @@ export function ProviderCheck() {
             }}
           >
             {getReleaseProviders().map((providerMeta) => (
-              <option
-                key={providerMeta.id}
-                value={providerMeta.id}
-                disabled={!isProviderEnabledInRelease(providerMeta.id)}
-              >
+              <option key={providerMeta.id} value={providerMeta.id}>
                 {providerMeta.title}{providerMeta.releaseStatus === "in-development" ? ` (${lang === "en" ? "in development" : "в разработке"})` : ""}
               </option>
             ))}
@@ -112,9 +113,18 @@ export function ProviderCheck() {
         </label>
         <label className="field compact">
           <span>{ui.model}</span>
-          <input value={model} onChange={(event) => setModel(event.target.value)} placeholder="openai/gpt-4o-mini, openrouter/free, or GigaChat" />
+          {getFreeChatModels(provider) ? (
+            <select value={model} onChange={(event) => setModel(event.target.value)} aria-label={ui.freeModelList}>
+              {getFreeChatModels(provider)?.map((providerModel) => (
+                <option key={providerModel} value={providerModel}>{providerModel}</option>
+              ))}
+            </select>
+          ) : (
+            <input value={model} onChange={(event) => setModel(event.target.value)} placeholder={getProviderDefaultModel(provider)} />
+          )}
         </label>
       </div>
+      {getFreeChatModels(provider) && <p className="muted small-text">{ui.freeModelListHint}</p>}
       <label className="field">
         <span>{ui.apiKey}</span>
         <input
@@ -123,11 +133,11 @@ export function ProviderCheck() {
           onChange={(event) => setUserApiKey(event.target.value)}
           placeholder={ui.apiKeyPlaceholder}
           autoComplete="off"
-          disabled={!isProviderEnabledInRelease(provider)}
+          disabled={!canCheckProvider}
         />
       </label>
       <div className="action-row" style={{ marginTop: 14 }}>
-        <button className="button" type="button" onClick={checkProvider} disabled={isChecking || !isProviderEnabledInRelease(provider)}>
+        <button className="button" type="button" onClick={checkProvider} disabled={isChecking || !canCheckProvider}>
           {isChecking ? ui.checking : ui.check}
         </button>
       </div>

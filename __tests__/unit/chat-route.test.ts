@@ -89,6 +89,35 @@ describe("chat route", () => {
     expect(analyzeMock).not.toHaveBeenCalled();
   });
 
+  it("does not advance a live session on an unusable provider response", async () => {
+    analyzeMock.mockResolvedValueOnce({
+      scenario: "B",
+      feedback: "Local fallback",
+      finalNote: "",
+      responseMode: "llm-fallback",
+    });
+
+    const response = await POST(
+      new Request("https://selfreg.ai/api/chat", {
+        method: "POST",
+        body: JSON.stringify({
+          userId: "student-1",
+          answer: "I am stuck and need a smaller step.",
+          currentStage: "2",
+          provider: "openrouter",
+          lang: "en",
+          history: [],
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual(expect.objectContaining({
+      code: "PROVIDER_UNUSABLE_RESPONSE",
+      error: "The provider returned an unusable response. Your answer was not advanced; retry or choose another provider.",
+    }));
+  });
+
   it("rejects an anonymous request before selecting an AI provider", async () => {
     requireServerUserAccessMock.mockResolvedValue({
       response: new Response(JSON.stringify({ error: "Authentication required" }), { status: 401 }),

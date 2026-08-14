@@ -16,8 +16,8 @@ export function SettingsScreen() {
     title: lang === "en" ? "Connect your own AI API" : "Подключение собственного ИИ API",
     intro:
       lang === "en"
-        ? "Connect your own key for GitHub Models or OpenRouter. GigaChat is shown as in development. Mock mode is available without external AI."
-        : "Подключите собственный ключ GitHub Models или OpenRouter. GigaChat помечен как «В разработке». Mock-режим доступен без внешнего ИИ.",
+        ? "Start without a key in Mock mode, or connect your own OpenRouter, Groq, or GigaChat key for a live response."
+        : "Начните без ключа в Mock-режиме или подключите собственный ключ OpenRouter, Groq либо GigaChat для живого ответа.",
     home: lang === "en" ? "Home" : "Главная",
     sessionApp: lang === "en" ? "Session app" : "Сессия",
     securityTitle: lang === "en" ? "Security rule" : "Правило безопасности",
@@ -62,8 +62,11 @@ export function SettingsScreen() {
           return (
             <article className="panel" key={provider.id}>
               <h2>{meta.title}</h2>
-              {provider.releaseStatus === "in-development" && (
-                <p className="muted">{lang === "en" ? "Status: in development" : "Статус: в разработке"}</p>
+              {provider.releaseStatus === "recommended" && (
+                <p className="muted">{lang === "en" ? "Status: recommended starting point." : "Статус: рекомендуемый стартовый вариант."}</p>
+              )}
+              {provider.releaseStatus === "advanced" && (
+                <p className="muted">{lang === "en" ? "Status: supported alternative; test the key before a session." : "Статус: поддерживаемая альтернатива; проверьте ключ перед сессией."}</p>
               )}
               <p className="muted">{meta.note}</p>
               <p>

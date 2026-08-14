@@ -1,7 +1,7 @@
 ﻿"use client";
 
-import { useMemo, useState, useEffect, useCallback } from "react";
-import { validateGigaChatKey, getGigaChatAccessToken } from "@/lib/gigachat-token";
+import { useMemo, useState, useEffect, useCallback, useRef } from "react";
+import { validateGigaChatKey } from "@/lib/gigachat-key";
 
 export interface KeyStatus {
   isValid: boolean | null;
@@ -53,6 +53,7 @@ export function ApiKeyManager({ lang, provider, model, onKeyChange, onStatusChan
   const [isValid, setIsValid] = useState<boolean | null>(null);
   const [testStatus, setTestStatus] = useState<string | null>(null);
   const [isTesting, setIsTesting] = useState(false);
+  const previousModelRef = useRef(model);
 
   const ui = useMemo(
     () => ({
@@ -121,13 +122,21 @@ export function ApiKeyManager({ lang, provider, model, onKeyChange, onStatusChan
     onStatusChange?.({ isValid, isTesting, hasSavedKey: isSaved, storage });
   }, [isValid, isTesting, isSaved, onStatusChange, storage]);
 
+  // A successful check applies to the exact provider + model pair. Changing
+  // the model must never leave the previous green status on screen.
+  useEffect(() => {
+    if (previousModelRef.current === model) return;
+    previousModelRef.current = model;
+    setIsValid(null);
+    setTestStatus(null);
+  }, [model]);
+
   function syncFromStorage() {
     const next = readSavedKey(provider);
     setKey(next.key);
     setStorage(next.storage);
     setIsSaved(Boolean(next.key));
     setIsValid(provider !== "gigachat" || !next.key || validateGigaChatKey(next.key) ? null : false);
-    setTestStatus(null);
     onKeyChange(next.key);
   }
 
@@ -188,11 +197,7 @@ export function ApiKeyManager({ lang, provider, model, onKeyChange, onStatusChan
 
   const performKeyTest = useCallback(async (keyToTest: string): Promise<{ ok: boolean; error?: string }> => {
     try {
-      if (provider === "gigachat") {
-        if (!validateGigaChatKey(keyToTest)) return { ok: false, error: ui.invalidFormat };
-        await getGigaChatAccessToken(keyToTest);
-        return { ok: true };
-      }
+      if (provider === "gigachat" && !validateGigaChatKey(keyToTest)) return { ok: false, error: ui.invalidFormat };
 
       const response = await fetch("/api/provider-check", {
         method: "POST",
@@ -277,6 +282,17 @@ export function ApiKeyManager({ lang, provider, model, onKeyChange, onStatusChan
           )}
           {isTesting && (
             <span style={{ fontSize: 12, color: "var(--muted)" }}>{ui.testing}</span>
+          )}
+          {!isTesting && testStatus && (
+            <span
+              role="status"
+              style={{
+                fontSize: 12,
+                color: isValid === true ? "#155724" : isValid === false ? "#721c24" : "var(--muted)",
+              }}
+            >
+              {testStatus}
+            </span>
           )}
         </div>
       ) : (

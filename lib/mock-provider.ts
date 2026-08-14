@@ -24,8 +24,8 @@ export const mockProvider = {
       feedback: result.feedback,
       dashboardNote:
         input.lang === "en"
-          ? "Mock mode: the stage logic works without an external API. To test live output, choose GitHub Models."
-          : "Mock-режим: логика этапов работает без внешнего API. Чтобы проверить живой ответ, выбери GitHub Models.",
+          ? "Mock mode: the stage logic works without an external API. To test live output, choose OpenRouter."
+          : "Mock-режим: логика этапов работает без внешнего API. Чтобы проверить живой ответ, выбери OpenRouter.",
       responseMode: "mock"
     };
   }

@@ -134,11 +134,11 @@ test.describe("Adolescent prototype flows", () => {
       await route.fulfill({
         status: 401,
         contentType: "application/json",
-        body: JSON.stringify({ error: "GitHub Models: unauthorized" }),
+        body: JSON.stringify({ error: "OpenRouter: unauthorized" }),
       });
     });
 
-    await page.locator(".provider-box select").selectOption("github-models");
+    await page.locator(".provider-box select").selectOption("openrouter");
     await page.getByRole("button", { name: "🔑 not set" }).click();
     const keyInput = page.getByPlaceholder("Paste your API key");
     await keyInput.fill("test-invalid-key");
@@ -149,14 +149,62 @@ test.describe("Adolescent prototype flows", () => {
     await savedKeyButton.click();
     await expect(keyInput).toHaveValue("test-invalid-key");
     await page.getByRole("button", { name: "Test key", exact: true }).click();
-    await expect(page.getByText("Invalid key: GitHub Models: unauthorized")).toBeVisible();
+    await expect(page.getByText("Invalid key: OpenRouter: unauthorized")).toBeVisible();
     await expect(keyInput).toHaveValue("test-invalid-key");
 
     await page.getByRole("button", { name: "Cancel", exact: true }).click();
     await page.reload({ waitUntil: "networkidle" });
-    await expect(page.locator(".provider-box select")).toHaveValue("github-models");
+    await expect(page.locator(".provider-box select")).toHaveValue("openrouter");
     await expect(page.getByRole("button", { name: "🔑 Saved in this tab" })).toBeVisible();
   });
+
+  test("requires a fresh provider check after changing the model", async ({ page, request }) => {
+    await openRegisteredAdolescentSession(page, request);
+    await page.route("**/api/provider-check", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ok: true, responseMode: "llm-text", sample: "Provider reply" }),
+      });
+    });
+
+    await page.locator(".provider-box select").selectOption("openrouter");
+    await page.getByRole("button", { name: /not set/ }).click();
+    await page.getByPlaceholder("Paste your API key").fill("test-provider-key");
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await page.getByRole("button", { name: "Test key", exact: true }).click();
+    await expect(page.getByText("Key is valid. Connection established.")).toBeVisible();
+
+    await page.getByRole("textbox", { name: "Model" }).fill("openai/gpt-oss-20b:free");
+
+    await expect(page.getByText("Key is valid. Connection established.")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Test key", exact: true })).toBeVisible();
+  });
+
+  test("offers the current Groq Free-plan model IDs as a selectable list", async ({ page, request }) => {
+    await openRegisteredAdolescentSession(page, request);
+
+    await page.locator(".provider-box select").first().selectOption("groq");
+    const groqModels = page.getByRole("combobox", { name: "Free-plan model" });
+
+    await expect(groqModels.locator("option")).toHaveCount(11);
+    await expect(groqModels.locator("option")).toHaveText([
+      "allam-2-7b",
+      "groq/compound",
+      "groq/compound-mini",
+      "llama-3.1-8b-instant",
+      "llama-3.3-70b-versatile",
+      "meta-llama/llama-prompt-guard-2-22m",
+      "meta-llama/llama-prompt-guard-2-86m",
+      "openai/gpt-oss-120b",
+      "openai/gpt-oss-20b",
+      "openai/gpt-oss-safeguard-20b",
+      "qwen/qwen3.6-27b",
+    ]);
+    await groqModels.selectOption("llama-3.3-70b-versatile");
+    await expect(groqModels).toHaveValue("llama-3.3-70b-versatile");
+  });
+
 
   test("completes the full five-stage mock cycle", async ({ page, request }) => {
     const tracker = collectClientErrors(page);
@@ -202,7 +250,7 @@ test.describe("Adolescent prototype flows", () => {
       await route.fulfill({
         status: 503,
         contentType: "application/json",
-        body: JSON.stringify({ error: "GitHub Models: temporarily unavailable" }),
+        body: JSON.stringify({ error: "OpenRouter: temporarily unavailable" }),
       });
     });
     await page.route("**/api/session-sync", async (route) => {
@@ -210,14 +258,14 @@ test.describe("Adolescent prototype flows", () => {
       await route.continue();
     });
 
-    await page.locator(".provider-box select").selectOption("github-models");
+    await page.locator(".provider-box select").selectOption("openrouter");
     const answer = "I will make a short study plan and start with the first task after this session.";
     await page.getByPlaceholder("Write 1-3 sentences").fill(answer);
     await page.getByRole("button", { name: "Continue" }).click();
 
     await expect(page.locator(".stage-pill")).toContainText("Step 1 of 5");
     await expect(page.getByPlaceholder("Write 1-3 sentences")).toHaveValue(answer);
-    await expect(page.getByText("Could not get an LLM reply: GitHub Models: temporarily unavailable. Check the key, provider, or model and try again.").first()).toBeVisible();
+    await expect(page.getByText("Could not get an LLM reply: OpenRouter: temporarily unavailable. Check the key, provider, or model and try again.").first()).toBeVisible();
     await expect(page.locator(".record")).toHaveCount(0);
     expect(syncCalls).toBe(0);
 

@@ -16,7 +16,7 @@ const ChatRequest = z.object({
   answer: z.string().min(1),
   currentStage: z.string().min(1),
   context: z.string().optional(),
-  provider: z.enum(["mock", "gigachat", "openrouter", "github-models", "vercel-gateway"]).optional(),
+  provider: z.enum(["mock", "gigachat", "openrouter", "groq", "github-models", "vercel-gateway"]).optional(),
   model: z.string().optional(),
   userApiKey: z.string().optional(),
   lang: z.enum(["ru", "en"]).optional(),
@@ -93,6 +93,15 @@ export async function POST(request: Request) {
       forcedScenario: finalScenario
     });
 
+    if (body.provider && body.provider !== "mock" && result.responseMode === "llm-fallback") {
+      return serverError(
+        lang === "en"
+          ? "The provider returned an unusable response. Your answer was not advanced; retry or choose another provider."
+          : "Провайдер вернул непригодный ответ. Этап и ответ сохранены; повторите запрос или выберите другого провайдера.",
+        "PROVIDER_UNUSABLE_RESPONSE",
+      );
+    }
+
     return NextResponse.json({
       ...result,
       nextStage: getNextStage(currentStage),
@@ -105,7 +114,7 @@ export async function POST(request: Request) {
 
     const message = error instanceof Error ? error.message : "Internal server error";
 
-    if (message.includes("API") || message.includes("provider")) {
+    if (message.includes("API") || message.includes("provider") || message.includes("OpenRouter") || message.includes("GigaChat") || message.includes("Groq")) {
       return serverError(message, "PROVIDER_ERROR");
     }
 

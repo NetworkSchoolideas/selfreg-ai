@@ -2,8 +2,8 @@ import { expect, test, type APIRequestContext, type Page } from "@playwright/tes
 
 const e2eSecret = process.env.SELFREG_E2E_SECRET || "local-e2e-secret";
 const liveApiKey = process.env.SELFREG_LIVE_AI_API_KEY;
-const liveProvider = process.env.SELFREG_LIVE_AI_PROVIDER || "github-models";
-const liveModel = process.env.SELFREG_LIVE_AI_MODEL || "openai/gpt-4o-mini";
+const liveProvider = process.env.SELFREG_LIVE_AI_PROVIDER || "openrouter";
+const liveModel = process.env.SELFREG_LIVE_AI_MODEL || "openrouter/free";
 
 test.use({ trace: "off", screenshot: "off", video: "off" });
 

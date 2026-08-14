@@ -15,8 +15,8 @@ import { z } from "zod";
 
 const EnvSchema = z.object({
   // === AI Provider Selection ===
-  DEFAULT_AI_PROVIDER: z.enum(["mock", "gigachat", "openrouter", "github-models", "vercel-gateway"]).optional(),
-  AI_PROVIDER: z.enum(["mock", "gigachat", "openrouter", "github-models", "vercel-gateway"]).optional(), // legacy
+  DEFAULT_AI_PROVIDER: z.enum(["mock", "gigachat", "openrouter", "groq", "github-models", "vercel-gateway"]).optional(),
+  AI_PROVIDER: z.enum(["mock", "gigachat", "openrouter", "groq", "github-models", "vercel-gateway"]).optional(), // legacy
 
   // === GigaChat ===
   GIGACHAT_CREDENTIALS: z.string().optional(),
@@ -28,6 +28,10 @@ const EnvSchema = z.object({
   // === OpenRouter ===
   OPENROUTER_API_KEY: z.string().optional(),
   OPENROUTER_MODEL: z.string().optional(),
+
+  // === Groq ===
+  GROQ_API_KEY: z.string().optional(),
+  GROQ_MODEL: z.string().optional(),
 
   // === GitHub Models ===
   GITHUB_MODELS_TOKEN: z.string().optional(),
@@ -102,13 +106,17 @@ export const providers = {
     apiKey: () => config.OPENROUTER_API_KEY,
     model: (override?: string) => override || config.OPENROUTER_MODEL || "openrouter/free",
   },
+  groq: {
+    apiKey: () => config.GROQ_API_KEY,
+    model: (override?: string) => override || config.GROQ_MODEL || "openai/gpt-oss-20b",
+  },
   vercelGateway: {
     apiKey: () => config.AI_GATEWAY_API_KEY,
     model: (override?: string) => override || config.AI_GATEWAY_MODEL || "openai/gpt-oss-120b",
   },
   gigachat: {
     credentials: () => config.GIGACHAT_CREDENTIALS,
-    authUrl: () => config.GIGACHAT_AUTH_URL,
+    authUrl: () => config.GIGACHAT_AUTH_URL || "https://ngw.devices.sberbank.ru:9443/api/v2/oauth",
     apiUrl: () => config.GIGACHAT_API_URL,
     model: (override?: string) => override || config.GIGACHAT_MODEL || "GigaChat",
     scope: () => config.GIGACHAT_SCOPE || "GIGACHAT_API_PERS",

@@ -12,6 +12,7 @@ import { OnboardingModal } from "@/app/components/OnboardingModal";
 import { useAdolescentSession } from "./useAdolescentSession";
 import { withLang, type AppLang } from "@/lib/app-i18n";
 import {
+  getFreeChatModels,
   getProviderMeta,
   getReleaseProviders,
   isProviderEnabledInRelease,
@@ -606,9 +607,18 @@ export function AdolescentPrototype() {
               </label>
               <label className="field compact">
                 <span>{ui.model}</span>
-                <input value={model} onChange={(e) => handleModelChange(e.target.value)} placeholder="openai/gpt-4o-mini" />
+                {getFreeChatModels(provider) ? (
+                  <select value={model} onChange={(e) => handleModelChange(e.target.value)} aria-label={ui.freeModelList}>
+                    {getFreeChatModels(provider)?.map((providerModel) => (
+                      <option key={providerModel} value={providerModel}>{providerModel}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input value={model} onChange={(e) => handleModelChange(e.target.value)} placeholder={getProviderMeta(provider).defaultModel} />
+                )}
               </label>
             </div>
+            {getFreeChatModels(provider) && <p className="muted small-text">{ui.freeModelListHint}</p>}
 
             {/* A live provider check is authenticated server work. Do not expose a
                 key form to a signed-out visitor when the check cannot run. */}
@@ -848,6 +858,10 @@ function useUiText(lang: "ru" | "en") {
     teacher: lang === "en" ? "Teacher dashboard" : "Кабинет педагога",
     provider: lang === "en" ? "AI provider" : "ИИ-провайдер",
     model: lang === "en" ? "Model" : "Модель",
+    freeModelList: lang === "en" ? "Free-plan model" : "Модель бесплатного тарифа",
+    freeModelListHint: lang === "en"
+      ? "Choose a listed free-plan model. Switching the model requires a fresh key check; preview models may be withdrawn."
+      : "Выберите модель из списка бесплатного тарифа. После смены модели требуется новая проверка ключа; preview-модели могут быть сняты.",
     key: lang === "en" ? "One-time API key" : "API-ключ",
     keyPlaceholder: lang === "en" ? "Not needed for mock" : "Для mock не нужен",
     context: lang === "en" ? "Context" : "Контекст",

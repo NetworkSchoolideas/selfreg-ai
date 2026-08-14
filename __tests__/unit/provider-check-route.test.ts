@@ -78,4 +78,26 @@ describe("provider-check route", () => {
     expect(response.status).toBe(401);
     expect(analyzeMock).not.toHaveBeenCalled();
   });
+
+  it("does not mark a local fallback as a working live-provider connection", async () => {
+    analyzeMock.mockResolvedValueOnce({
+      scenario: "A",
+      feedback: "Local fallback",
+      finalNote: "",
+      responseMode: "llm-fallback",
+    });
+
+    const response = await POST(
+      new Request("https://selfreg.ai/api/provider-check", {
+        method: "POST",
+        body: JSON.stringify({ provider: "openrouter", userApiKey: "test-key", lang: "en" }),
+      }),
+    );
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual(expect.objectContaining({
+      error: "The provider returned no usable model response. Check the selected model and try again.",
+      code: "PROVIDER_UNUSABLE_RESPONSE",
+    }));
+  });
 });

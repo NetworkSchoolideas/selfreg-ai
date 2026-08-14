@@ -56,6 +56,19 @@ test.describe("Responsive layout smoke", () => {
     expectHealthyClient(tracker);
   });
 
+  test("home page explains the changing free-provider policy and supported options", async ({ page }) => {
+    const tracker = collectClientErrors(page);
+
+    await page.goto("/?lang=en");
+
+    await expect(page.getByRole("heading", { name: "Free access, with an honest provider policy" })).toBeVisible();
+    await expect(page.getByText("GigaChat", { exact: true })).toBeVisible();
+    await expect(page.getByText("Groq", { exact: true })).toBeVisible();
+    await expect(page.getByText("Cerebras", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("SambaNova", { exact: true })).toHaveCount(0);
+    expectHealthyClient(tracker);
+  });
+
   test("signed-out teacher route does not render student data and requires sign-in on tablet", async ({ page }) => {
     const tracker = collectClientErrors(page);
 

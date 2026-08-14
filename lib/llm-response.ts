@@ -63,6 +63,21 @@ function normalizeFeedback(text: string) {
   if (!trimmed || trimmed === "{}") return "";
   if (trimmed.startsWith("{") && trimmed.includes("\"nextStage\"")) return "";
 
+  // Free model routers occasionally place prompt analysis or chain-of-thought
+  // in the normal content field. Never show that internal process to a learner.
+  const opening = trimmed.slice(0, 240).toLowerCase();
+  const internalProcessMarkers = [
+    "here's a thinking process",
+    "here is a thinking process",
+    "analyze the request",
+    "analysis of the request",
+    "step-by-step reasoning",
+    "i must answer in",
+    "critical rules (never violate)",
+    "system prompt",
+  ];
+  if (internalProcessMarkers.some((marker) => opening.includes(marker))) return "";
+
   const flattened = trimmed.replace(/\s+/g, " ").trim();
   const sentences =
     flattened

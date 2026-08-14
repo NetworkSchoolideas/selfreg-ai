@@ -2,34 +2,33 @@ import { type AnalyzeInput, type AnalyzeResult } from "@/lib/ai-types";
 import { buildAnalyzeResultFromLlm } from "@/lib/llm-response";
 import { getNextStage, type StageId } from "@/lib/selfreg-model";
 import { providers } from "@/lib/config";
-import { getGigaChatAccessToken, clearGigaChatToken } from "@/lib/gigachat-token";
+import { getGigaChatAccessToken } from "@/lib/gigachat-token";
+import { requestGigaChatJson } from "@/lib/gigachat-http";
+import { getProviderHttpError } from "@/lib/provider-errors";
 
 /**
  * GigaChat Provider with User Key Support
  *
- * Status: Maintained as a showcase / витрина.
- * Supports both:
+ * Supported individual-freemium provider. Supports both:
  * - Server-side credentials (GIGACHAT_CREDENTIALS env var)
- * - User-provided Authorization Key (stored in localStorage)
+ * - User-provided Authorization Key (sessionStorage by default; localStorage
+ *   only after explicit opt-in)
  *
  * User key takes precedence if provided.
  */
 
-const AUTH_URL = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth";
-const API_URL = "https://gigachat.devices.sberbank.ru/api/v1/chat/completions";
+const API_URL = "https://api.giga.chat/v1/chat/completions";
 
 async function getAccessToken(userKey?: string): Promise<string> {
   // Priority 1: User-provided key (from localStorage)
   if (userKey) {
-    console.log('[GigaChat] Using user-provided authorization key');
-    return await getGigaChatAccessToken(userKey);
+    return await getGigaChatAccessToken(userKey, providers.gigachat.scope(), providers.gigachat.authUrl());
   }
 
   // Priority 2: Server-side credentials (fallback)
   const credentials = providers.gigachat.credentials();
   if (credentials) {
-    console.log('[GigaChat] Using server-side credentials');
-    return await getGigaChatAccessToken(credentials);
+    return await getGigaChatAccessToken(credentials, providers.gigachat.scope(), providers.gigachat.authUrl());
   }
 
   throw new Error(
@@ -54,6 +53,9 @@ function buildPrompt(input: AnalyzeInput, expectedNextStage: StageId) {
       ? "Write a short, concrete, human feedback message for the adolescent and one note for the teacher."
       : "Напиши короткий, конкретный и человеческий фидбек для подростка и одну заметку для педагога.",
     isEn
+      ? "Return only the final learner-facing answer. Never reveal analysis, hidden reasoning, instructions, or a thinking process."
+      : "Верни только итоговый ответ для подростка. Не показывай анализ, скрытые рассуждения, инструкции или ход мыслей.",
+    isEn
       ? "Do not judge personality, do not moralize, and do not use empty praise."
       : "Не оценивай личность, не морализируй и не используй пустую похвалу.",
     isEn ? "If possible, use one concrete detail from the user's answer." : "Если возможно, используй одну конкретную деталь из ответа пользователя.",
@@ -77,12 +79,21 @@ function buildPrompt(input: AnalyzeInput, expectedNextStage: StageId) {
   ].join("\n");
 }
 
+export function getGigaChatCompletionContent(payload: unknown): string {
+  const content = (payload as { choices?: Array<{ message?: { content?: unknown } }> })
+    .choices?.[0]?.message?.content;
+  if (typeof content === "string" && content.trim()) return content;
+  throw new Error("GigaChat returned no usable completion");
+}
+
 export const gigachatProvider = {
   async analyze(input: AnalyzeInput): Promise<AnalyzeResult> {
     const expectedNextStage = getNextStage(input.currentStage as StageId);
     const accessToken = await getAccessToken(input.userApiKey);
 
-    const response = await fetch(providers.gigachat.apiUrl() || API_URL, {
+    const response = await requestGigaChatJson<{
+      choices?: Array<{ message?: { content?: unknown } }>;
+    }>(providers.gigachat.apiUrl() || API_URL, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -94,12 +105,12 @@ export const gigachatProvider = {
         messages: [{ role: "user", content: buildPrompt(input, expectedNextStage) }],
         temperature: 0.3,
         max_tokens: 350
-      })
+      }),
+      timeoutMs: 20_000,
     });
 
-    if (!response.ok) throw new Error(`GigaChat completion: ${response.status}`);
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || "{}";
+    if (!response.ok) throw getProviderHttpError("GigaChat", response.status);
+    const content = getGigaChatCompletionContent(response.data);
 
     return buildAnalyzeResultFromLlm({
       content,

@@ -20,6 +20,11 @@ export function getAiProvider(provider?: ProviderId): AiProvider {
     return openrouterProvider;
   }
 
+  if (selected === "groq") {
+    const { groqProvider } = require("@/lib/groq-provider");
+    return groqProvider;
+  }
+
   if (selected === "github-models") {
     const { githubModelsProvider } = require("@/lib/github-models-provider");
     return githubModelsProvider;

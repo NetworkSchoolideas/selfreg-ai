@@ -23,9 +23,10 @@ The public release is available at [selfreg-ai.vercel.app](https://selfreg-ai.ve
 ### AI and API keys
 
 - **Mock** mode works without an external key and is suitable for a demonstration.
-- **GitHub Models** is the recommended live BYOK provider.
-- **OpenRouter** is an advanced alternative that must be checked with the selected model.
-- **GigaChat** is shown as in development and is disabled for live release sessions.
+- **OpenRouter** is the recommended live BYOK starting point. `openrouter/free` routes across free models, but availability and limits are not guaranteed.
+- **Groq** is a supported free-tier BYOK alternative using open-weight models; the default is `openai/gpt-oss-20b`.
+- **GigaChat** is a supported option for individuals using a project Authorization Key and `GIGACHAT_API_PERS`. OAuth and completion requests run only on the server with the official Russian Trusted Root CA; the short-lived access token never reaches browser storage.
+- **GitHub Models** was retired by GitHub on 30 July 2026 and is not offered in the application.
 - An API key stays in `sessionStorage` by default and is removed when the tab closes. Persistent browser storage is an explicit opt-in. Keys are not stored in the database.
 
 ## Architecture
