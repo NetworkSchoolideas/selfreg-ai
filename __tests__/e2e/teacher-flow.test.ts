@@ -51,7 +51,7 @@ test.describe("Public smoke flows", () => {
       "mailto:adsmirnov_1@edu.hse.ru",
     );
 
-    const apiGuideTab = page.getByRole("tab", { name: "Ключ GitHub API" });
+    const apiGuideTab = page.getByRole("tab", { name: "Ключ AI API" });
     await expect(apiGuideTab).toBeVisible();
     await apiGuideTab.click();
     await expect(page.getByRole("link", { name: "Открыть настройки API" })).toBeVisible();
@@ -447,11 +447,16 @@ test.describe("Public smoke flows", () => {
 
       await page.goto(`/teacher?teacher=${teacherId}&lang=en`);
       await expect(page.getByText("Supabase · server sync active")).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Your AI provider key" })).toBeVisible();
+      await expect(page.getByText("does not change the student session")).toBeVisible();
       await expect(page.locator(".child-header-panel")).toContainText("1 session");
       await page.getByRole("button", { name: "Reveal name and class" }).click();
       await expect(page.locator(".child-header-panel")).toContainText("Test student");
       await expect(page.locator(".analytics-panel")).toBeVisible();
       await expect(page.locator(".sessions-grid")).toContainText("Analytics session");
+      await expect(page.getByRole("button", { name: "Prepare conversation questions" })).toBeDisabled();
+      await page.setViewportSize({ width: 375, height: 812 });
+      await expect(page.getByRole("heading", { name: "Your AI provider key" })).toBeVisible();
       expectHealthyClient(tracker);
       return;
     }

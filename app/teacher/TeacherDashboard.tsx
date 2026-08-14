@@ -17,6 +17,7 @@ import { TeacherSidebar } from "@/app/teacher/TeacherSidebar";
 import { TeacherSessionsPanel } from "@/app/teacher/TeacherSessionsPanel";
 import { TeacherSessionDetail } from "@/app/teacher/TeacherSessionDetail";
 import { TeacherChildHeader } from "@/app/teacher/TeacherChildHeader";
+import { TeacherProviderKeyPanel } from "@/app/teacher/TeacherProviderKeyPanel";
 import { useTeacherData } from "@/app/teacher/useTeacherData";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import {
@@ -374,6 +375,7 @@ export function TeacherDashboard() {
         />
 
         <div className="dashboard-main">
+          <TeacherProviderKeyPanel lang={lang} childId={selectedChild?.id} session={currentSession} />
           {!isInitialLoadComplete ? (
             <div className="panel text-center no-selection-panel">
               <p className="muted mb-0">{lang === "en" ? "Loading..." : "Загрузка..."}</p>

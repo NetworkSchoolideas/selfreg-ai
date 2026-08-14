@@ -21,10 +21,10 @@ export function ProviderCheck() {
         : "Ключ отправляется только на серверный route проверки и не сохраняется в браузере.",
     provider: lang === "en" ? "Provider" : "Провайдер",
     model: lang === "en" ? "Model" : "Модель",
-    freeModelList: lang === "en" ? "Free-plan model" : "Модель бесплатного тарифа",
+    freeModelList: lang === "en" ? "Session-suitable model" : "Модель для сессии",
     freeModelListHint: lang === "en"
-      ? "Switching a model requires a new key check; preview models may be withdrawn."
-      : "После смены модели требуется новая проверка ключа; preview-модели могут быть сняты.",
+      ? "Only ordinary chat models are shown. Switching a model requires a new key check; availability can change."
+      : "Показаны только модели для обычного диалога. После смены модели нужна новая проверка ключа; доступность может меняться.",
     apiKey: lang === "en" ? "API key" : "API-ключ",
     apiKeyPlaceholder: lang === "en" ? "Not needed for mock" : "Для mock не нужен",
     check: lang === "en" ? "Check" : "Проверить",

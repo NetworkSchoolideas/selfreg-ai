@@ -191,6 +191,19 @@ Test invalid key, unauthorised model, timeout, provider outage, successful retry
 
 **Done when:** one goal-based E2E covers failure and recovery, RU/EN error copy is accurate, and no key appears in logs, screenshots, traces, storage outside the documented session scope, or Git.
 
+### Iteration 2a — live-response contract and model suitability
+
+**Goal:** make a live answer as focused and understandable as the fixed five-stage route, even when a freemium provider changes its available models.
+
+The prompt contract is a product boundary, not a substitute for the scenario engine: the server continues to choose the stage and support scenario. The provider receives only the task of phrasing the already chosen support.
+
+- keep one shared response contract across GigaChat, Groq and OpenRouter: selected interface language, 2–4 plain-language sentences, one concrete next action, no diagnosis, personality judgement, moralising, hidden reasoning or generic praise;
+- accept only models that are appropriate for ordinary chat completion in the learner selector; exclude guard/safety-only models and models that are not suitable for Russian or English learner replies;
+- treat an empty, malformed or internal-reasoning response as a failed live attempt: preserve the learner's input and stage, then offer retry or another provider;
+- record the exact provider/model pair for a successful opt-in live walkthrough. Availability and quotas remain external and can change.
+
+**Done when:** unit coverage exercises the shared contract and unusable-reply handling; the visible Groq list contains only session-suitable chat models; and RU plus EN opt-in live walkthroughs produce an understandable next action without changing the fixed stage or scenario.
+
 #### Provider transition note (2026-08-13)
 
 GitHub Models was retired by GitHub on 30 July 2026. It is retained only as a historical record value; it is not a selectable SelfReg provider, a default, or part of user guidance.
@@ -252,22 +265,24 @@ Validate the complete teacher route: personal code, student connection, student 
 
 **Done when:** the teacher can explain the boundary between observation, personal work, and student ownership; owner/linked-teacher API tests and the public manual journey agree.
 
-### Iteration 4a — teacher-side optional AI assistant (discovery only)
+### Iteration 4a — teacher-side optional AI conversation preparation
 
 **Goal:** assess whether a teacher can request a concise conversation preparation note without turning the teacher cabinet into a diagnostic tool or weakening student ownership.
 
-This is not part of the current release. Before implementation, run a privacy and usability discovery pass with these boundaries:
+The first implementation increment adds a teacher-local provider-key panel and an explicit “prepare conversation questions” action for one selected completed session. The server re-fetches and authorizes that teacher–student link, then sends only a minimal process summary: the session context, stage-completion state and aggregate interaction signals. It never sends a learner name, email, identifier, raw answer or feedback. The one-shot result is not persisted and cannot modify or delete student data.
+
+The subsequent conversation-preparation request is opt-in and must retain these boundaries:
 
 - the teacher explicitly selects a completed session or an aggregate, factual view;
 - the teacher supplies and checks their own provider key in a separate personal setting;
 - the request is opt-in, one-shot, and never writes an AI conclusion back into the student's session;
-- the prompt contains the minimum necessary de-identified context; API keys, email addresses, and hidden student identifiers never leave the server boundary;
-- the output is framed as conversation prompts and observable facts, never diagnosis, scoring, or an automated judgement;
+- the prompt contains the minimum necessary session context and process signals; API keys, email addresses, hidden student identifiers, raw answers and feedback never leave the server boundary;
+- the output is framed as conversation prompts and observable facts, never clinical analysis, diagnosis, scoring, or an automated judgement;
 - the teacher can discard the result and continue using the read-only cabinet without a provider key.
 
 **Primary signal:** a teacher can explain what the generated note is for, what it does not claim, and how to discard it.
 
-**Exit criteria:** a reviewed threat/privacy note, one teacher usability walkthrough in RU and EN, a minimal server-side allowlist design, and explicit approval before any UI or API implementation.
+**Exit criteria:** a reviewed threat/privacy note, the teacher-local key panel verified in RU and EN, a minimal server-side allowlist design, and a separate approval before transmitting raw student content or creating cross-learner interpretation. A later group tool may use de-identified aggregates only.
 
 ### Iteration 5 — moderated product learning
 

@@ -6,19 +6,16 @@ export type ProviderReleaseStatus = "recommended" | "advanced" | "in-development
 export const DEFAULT_LIVE_PROVIDER: ProviderId = "openrouter";
 export const DEFAULT_LIVE_MODEL = "openrouter/free";
 
-// Current Groq Free-plan chat-completion IDs. Groq can change availability or
-// quotas, so every selected model still needs a fresh key check before use.
+// Groq models suitable for learner-facing RU/EN chat completion. The Groq
+// account can expose additional IDs, but guard/classifier and Arabic-focused
+// models are intentionally not offered as a SelfReg response model.
 export const GROQ_FREE_CHAT_MODELS = [
-  "allam-2-7b",
   "groq/compound",
   "groq/compound-mini",
   "llama-3.1-8b-instant",
   "llama-3.3-70b-versatile",
-  "meta-llama/llama-prompt-guard-2-22m",
-  "meta-llama/llama-prompt-guard-2-86m",
   "openai/gpt-oss-120b",
   "openai/gpt-oss-20b",
-  "openai/gpt-oss-safeguard-20b",
   "qwen/qwen3.6-27b",
 ] as const;
 

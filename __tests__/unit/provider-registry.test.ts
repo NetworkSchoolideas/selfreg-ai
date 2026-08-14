@@ -37,11 +37,13 @@ describe("provider registry", () => {
     expect(isProviderEnabledInRelease("vercel-gateway")).toBe(false);
   });
 
-  it("keeps the current Groq Free-plan chat model list available for explicit testing", () => {
-    expect(GROQ_FREE_CHAT_MODELS).toHaveLength(11);
+  it("offers only Groq models suitable for learner-facing session replies", () => {
+    expect(GROQ_FREE_CHAT_MODELS).toHaveLength(7);
     expect(GROQ_FREE_CHAT_MODELS).toContain("llama-3.3-70b-versatile");
     expect(GROQ_FREE_CHAT_MODELS).toContain("openai/gpt-oss-120b");
     expect(GROQ_FREE_CHAT_MODELS).toContain("qwen/qwen3.6-27b");
+    expect(GROQ_FREE_CHAT_MODELS).not.toContain("meta-llama/llama-prompt-guard-2-22m");
+    expect(GROQ_FREE_CHAT_MODELS).not.toContain("openai/gpt-oss-safeguard-20b");
   });
 
 });
