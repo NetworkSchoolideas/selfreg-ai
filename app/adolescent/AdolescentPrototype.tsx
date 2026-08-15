@@ -293,6 +293,12 @@ export function AdolescentPrototype() {
 
   // Submit hook
   const [providerStatus, setProviderStatus] = useState(ui.mockStatus);
+  // A saved provider/model is restored after the first client render. Do not
+  // show the initial mock-only status for a restored live provider: its key
+  // still needs a fresh check before another live request.
+  const visibleProviderStatus = provider !== "mock" && providerStatus === ui.mockStatus
+    ? ""
+    : providerStatus;
   const {
     isSending,
     answerQualityWarning,
@@ -656,7 +662,7 @@ export function AdolescentPrototype() {
                   {lang === "en" ? "Key saved, not tested" : "Ключ сохранён, не проверен"}
                 </span>
               ) : null}
-              {providerStatus && <span className="muted small-text">{providerStatus}</span>}
+              {visibleProviderStatus && <span className="muted small-text">{visibleProviderStatus}</span>}
             </div>
           </div>
 

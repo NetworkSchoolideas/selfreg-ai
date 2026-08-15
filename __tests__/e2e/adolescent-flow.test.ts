@@ -156,6 +156,7 @@ test.describe("Adolescent prototype flows", () => {
     await page.reload({ waitUntil: "networkidle" });
     await expect(page.locator(".provider-box select")).toHaveValue("openrouter");
     await expect(page.getByRole("button", { name: "🔑 Saved in this tab" })).toBeVisible();
+    await expect(page.getByText("Mock mode: no external key needed")).toHaveCount(0);
   });
 
   test("requires a fresh provider check after changing the model", async ({ page, request }) => {
