@@ -19,15 +19,13 @@ export const GROQ_FREE_CHAT_MODELS = [
   "qwen/qwen3.6-27b",
 ] as const;
 
-// Individual Freemium model IDs from the official GigaChat tariff. Keep this
-// list constrained rather than accepting an arbitrary value, because an
-// unavailable model returns HTTP 404 from chat/completions.
+// Current individual Freemium model IDs. The Studio project dashboard exposes
+// these four current tiers; legacy aliases such as `GigaChat` can return 404
+// for recently created projects, so they are deliberately not selectable.
+// Keep the list constrained rather than accepting an arbitrary value.
 export const GIGACHAT_SESSION_MODELS = [
-  "GigaChat",
   "GigaChat-2",
-  "GigaChat-Pro",
   "GigaChat-2-Pro",
-  "GigaChat-Max",
   "GigaChat-2-Max",
   "GigaChat-3-Ultra",
 ] as const;
@@ -102,7 +100,7 @@ export const PROVIDERS: ProviderMeta[] = [
     title: "GigaChat (Direct)",
     releaseStatus: "advanced",
     keyLabel: "GIGACHAT_CREDENTIALS",
-    defaultModel: "GigaChat",
+    defaultModel: "GigaChat-2",
     note: {
       ru: "Бесплатный вариант для физлиц. Нужен Authorization Key проекта; приложение безопасно обменивает его на короткоживущий токен на сервере.",
       en: "Free option for individuals. Requires a project Authorization Key, exchanged for a short-lived token on the server."

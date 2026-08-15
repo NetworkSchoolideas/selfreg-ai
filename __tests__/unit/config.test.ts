@@ -23,4 +23,13 @@ describe("runtime configuration", () => {
       jest.isolateModules(() => require("@/lib/config"));
     }).toThrow("APP_ENCRYPTION_KEY must contain at least 16 characters");
   });
+
+  it("uses the current GigaChat Lite model when no model is configured", () => {
+    delete process.env.GIGACHAT_MODEL;
+
+    jest.isolateModules(() => {
+      const { providers } = require("@/lib/config");
+      expect(providers.gigachat.model()).toBe("GigaChat-2");
+    });
+  });
 });

@@ -118,7 +118,7 @@ export const providers = {
     credentials: () => config.GIGACHAT_CREDENTIALS,
     authUrl: () => config.GIGACHAT_AUTH_URL || "https://ngw.devices.sberbank.ru:9443/api/v2/oauth",
     apiUrl: () => config.GIGACHAT_API_URL,
-    model: (override?: string) => override || config.GIGACHAT_MODEL || "GigaChat",
+    model: (override?: string) => override || config.GIGACHAT_MODEL || "GigaChat-2",
     scope: () => config.GIGACHAT_SCOPE || "GIGACHAT_API_PERS",
   },
 };
