@@ -187,22 +187,14 @@ test.describe("Adolescent prototype flows", () => {
     await page.locator(".provider-box select").first().selectOption("groq");
     const groqModels = page.getByRole("combobox", { name: "Free-plan model" });
 
-    await expect(groqModels.locator("option")).toHaveCount(11);
+    await expect(groqModels.locator("option")).toHaveCount(3);
     await expect(groqModels.locator("option")).toHaveText([
-      "allam-2-7b",
-      "groq/compound",
-      "groq/compound-mini",
-      "llama-3.1-8b-instant",
-      "llama-3.3-70b-versatile",
-      "meta-llama/llama-prompt-guard-2-22m",
-      "meta-llama/llama-prompt-guard-2-86m",
       "openai/gpt-oss-120b",
       "openai/gpt-oss-20b",
-      "openai/gpt-oss-safeguard-20b",
       "qwen/qwen3.6-27b",
     ]);
-    await groqModels.selectOption("llama-3.3-70b-versatile");
-    await expect(groqModels).toHaveValue("llama-3.3-70b-versatile");
+    await groqModels.selectOption("qwen/qwen3.6-27b");
+    await expect(groqModels).toHaveValue("qwen/qwen3.6-27b");
   });
 
 

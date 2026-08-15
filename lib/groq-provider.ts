@@ -9,6 +9,18 @@ type GroqCompletion = {
   choices?: Array<{ message?: { content?: unknown } }>;
 };
 
+export function getGroqModelRequestOptions(model: string) {
+  if (model === "qwen/qwen3.6-27b") {
+    return { reasoning_effort: "none", reasoning_format: "hidden" };
+  }
+
+  if (model === "openai/gpt-oss-20b" || model === "openai/gpt-oss-120b") {
+    return { reasoning_effort: "low", reasoning_format: "hidden" };
+  }
+
+  return {};
+}
+
 export function getGroqCompletionContent(payload: unknown): string {
   const content = (payload as GroqCompletion).choices?.[0]?.message?.content;
   if (typeof content === "string" && content.trim()) return content;
@@ -34,6 +46,7 @@ export const groqProvider = {
     if (!apiKey) throw new Error("GROQ_API_KEY or a one-time key in the form is required.");
 
     const expectedNextStage = getNextStage(input.currentStage as StageId);
+    const model = providers.groq.model(input.model);
     let response: Response;
     try {
       response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -43,10 +56,11 @@ export const groqProvider = {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: providers.groq.model(input.model),
+          model,
           messages: buildMessages(input, expectedNextStage),
           temperature: 0.3,
           max_tokens: 350,
+          ...getGroqModelRequestOptions(model),
         }),
         signal: AbortSignal.timeout(20_000),
       });

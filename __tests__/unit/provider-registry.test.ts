@@ -39,12 +39,11 @@ describe("provider registry", () => {
   });
 
   it("offers only approved session models for live learner responses", () => {
-    expect(GROQ_FREE_CHAT_MODELS).toHaveLength(7);
-    expect(GROQ_FREE_CHAT_MODELS).toContain("llama-3.3-70b-versatile");
+    expect(GROQ_FREE_CHAT_MODELS).toHaveLength(3);
     expect(GROQ_FREE_CHAT_MODELS).toContain("openai/gpt-oss-120b");
     expect(GROQ_FREE_CHAT_MODELS).toContain("qwen/qwen3.6-27b");
-    expect(GROQ_FREE_CHAT_MODELS).not.toContain("meta-llama/llama-prompt-guard-2-22m");
-    expect(GROQ_FREE_CHAT_MODELS).not.toContain("openai/gpt-oss-safeguard-20b");
+    expect(GROQ_FREE_CHAT_MODELS).not.toContain("llama-3.3-70b-versatile");
+    expect(GROQ_FREE_CHAT_MODELS).not.toContain("groq/compound");
     expect(GIGACHAT_SESSION_MODELS).toEqual([
       "GigaChat-2",
       "GigaChat-2-Pro",
