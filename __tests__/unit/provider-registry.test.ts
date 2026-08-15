@@ -45,8 +45,16 @@ describe("provider registry", () => {
     expect(GROQ_FREE_CHAT_MODELS).toContain("qwen/qwen3.6-27b");
     expect(GROQ_FREE_CHAT_MODELS).not.toContain("meta-llama/llama-prompt-guard-2-22m");
     expect(GROQ_FREE_CHAT_MODELS).not.toContain("openai/gpt-oss-safeguard-20b");
-    expect(GIGACHAT_SESSION_MODELS).toEqual(["GigaChat"]);
-    expect(getFreeChatModels("gigachat")).toEqual(["GigaChat"]);
+    expect(GIGACHAT_SESSION_MODELS).toEqual([
+      "GigaChat",
+      "GigaChat-2",
+      "GigaChat-Pro",
+      "GigaChat-2-Pro",
+      "GigaChat-Max",
+      "GigaChat-2-Max",
+      "GigaChat-3-Ultra",
+    ]);
+    expect(getFreeChatModels("gigachat")).toEqual(GIGACHAT_SESSION_MODELS);
   });
 
 });

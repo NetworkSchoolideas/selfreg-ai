@@ -19,10 +19,18 @@ export const GROQ_FREE_CHAT_MODELS = [
   "qwen/qwen3.6-27b",
 ] as const;
 
-// The individual GigaChat Freemium contract documents this exact model ID for
-// text generation. Keep it constrained rather than accepting a stale free-text
-// value, because an unavailable model returns HTTP 404 from chat/completions.
-export const GIGACHAT_SESSION_MODELS = ["GigaChat"] as const;
+// Individual Freemium model IDs from the official GigaChat tariff. Keep this
+// list constrained rather than accepting an arbitrary value, because an
+// unavailable model returns HTTP 404 from chat/completions.
+export const GIGACHAT_SESSION_MODELS = [
+  "GigaChat",
+  "GigaChat-2",
+  "GigaChat-Pro",
+  "GigaChat-2-Pro",
+  "GigaChat-Max",
+  "GigaChat-2-Max",
+  "GigaChat-3-Ultra",
+] as const;
 
 export function getFreeChatModels(providerId: ProviderId): readonly string[] | null {
   if (providerId === "groq") return GROQ_FREE_CHAT_MODELS;
