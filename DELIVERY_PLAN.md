@@ -62,6 +62,23 @@ Pushes are release decisions, not the default end of a task. Several approved lo
 
 ## 5. Sequential roadmap
 
+### Release blocker — provider network-path acceptance
+
+**Goal:** make the closed beta reproducible when a participant uses a VPN, a Russian network or an ordinary external network, without promising that an individual provider is available from every route.
+
+Before further live-provider work:
+
+1. Verify the same GigaChat Authorization Key through the application's provider check in two paths: local development (browser → local server → GigaChat) and production (browser → Vercel → GigaChat). Record only the outcome class, never the key or response contents.
+2. Classify a failure precisely: Authorization Key format, OAuth authentication (`400`/`401`), provider quota or model access, completion response, timeout, TLS/CA, or network reachability. Do not call a failed provider check a successful connection.
+3. Run the local path once with the participant's usual VPN state and once without it where this is lawful and safe; do not require a Russian proxy, bypass network restrictions or change a participant's VPN configuration for them.
+4. Publish a concise beta guide: Mock mode always works without a key; live mode is opt-in; the provider check must succeed immediately before a session; the result is not a guarantee of a provider's later availability; switching networks or VPN state may change only the local-server path, while production uses its server-side route.
+
+**Primary signal:** a beta tester and the support team can tell whether a problem is browser access, local networking, production networking, Authorization Key access, or provider availability, and can continue in Mock mode without losing work.
+
+**Guardrails:** no key in logs, screenshots, telemetry or commits; no VPN/proxy installation or configuration by the app; no attempt to evade provider regional or account policies; provider support remains best-effort and never replaces Mock mode.
+
+**Done when:** the two-path check has recorded a clear result for GigaChat, the public health revision matches the reviewed Git commit, a failure message preserves the error class, and the beta guide has RU/EN copy reviewed against the actual app behaviour.
+
 ### Phase 1 — Human-like baseline testing
 
 **Goal:** discover product friction that deterministic regression tests do not expose.
