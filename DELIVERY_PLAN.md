@@ -79,6 +79,19 @@ Before further live-provider work:
 
 **Done when:** the two-path check has recorded a clear result for GigaChat, the public health revision matches the reviewed Git commit, a failure message preserves the error class, and the beta guide has RU/EN copy reviewed against the actual app behaviour.
 
+#### Live-provider acceptance extension
+
+A successful provider check proves only that the selected key and model returned one usable completion. It is not a successful learner-session test.
+
+For each approved provider/model pair, run an opt-in student journey in both the local-development and production paths:
+
+1. Check the key immediately before the session, then start a new session and receive the first live response.
+2. Complete one ordinary next-stage request, then use clarification and confirm that the stage and learner input remain intact.
+3. Simulate only a normal retry after a provider failure or timeout; classify the result as provider availability, network interruption, quota/rate limit, unusable completion, or application error. Do not repeatedly retry a paid or quota-limited route.
+4. Finish the session or explicitly abandon it, then verify that the dashboard shows the correct state without exposing the key or raw provider errors.
+
+Record provider, model, local/production path, UI outcome and error class only. Never record the key, raw learner answer, full model answer, account credentials or network address. GigaChat-2 is the current first-choice GigaChat model; Groq Qwen must run with non-thinking, hidden-reasoning request options. Groq availability remains quota and network dependent, so intermittent connection success is a provider-availability result until a reproducible application fault is demonstrated.
+
 ### Phase 1 — Human-like baseline testing
 
 **Goal:** discover product friction that deterministic regression tests do not expose.
