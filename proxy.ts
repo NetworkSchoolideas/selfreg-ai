@@ -53,6 +53,7 @@ export async function proxy(req: NextRequest) {
     return NextResponse.next();
   }
 
+  let response = NextResponse.next({ request: req });
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
       getAll() {
@@ -62,15 +63,21 @@ export async function proxy(req: NextRequest) {
         cookiesToSet.forEach(({ name, value }) => {
           req.cookies.set(name, value);
         });
+        response = NextResponse.next({ request: req });
+        cookiesToSet.forEach(({ name, value, options }) => {
+          response.cookies.set(name, value, options);
+        });
       },
     },
   });
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: claimsData,
+    error: claimsError,
+  } = await supabase.auth.getClaims();
+  const userId = typeof claimsData?.claims?.sub === "string" ? claimsData.claims.sub : null;
 
-  if (!session) {
+  if (claimsError || !userId) {
     if (
       shouldBypassAuthForLocalDev({
         pathname,
@@ -91,21 +98,10 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    const url = req.nextUrl.clone();
-    url.pathname = "/auth/login";
-    withLang(url, req);
-    return NextResponse.redirect(url);
-  }
-
   const { data: profile } = await supabase
     .from("profiles")
     .select("role")
-    .eq("id", user.id)
+    .eq("id", userId)
     .single();
 
   const role = profile?.role as string | null | undefined;
@@ -117,7 +113,7 @@ export async function proxy(req: NextRequest) {
       withLang(url, req);
       return NextResponse.redirect(url);
     }
-    return NextResponse.next();
+    return response;
   }
 
   if (pathname.startsWith("/teacher")) {
@@ -127,7 +123,7 @@ export async function proxy(req: NextRequest) {
       withLang(url, req);
       return NextResponse.redirect(url);
     }
-    return NextResponse.next();
+    return response;
   }
 
   if (pathname.startsWith("/student")) {
@@ -137,14 +133,14 @@ export async function proxy(req: NextRequest) {
       withLang(url, req);
       return NextResponse.redirect(url);
     }
-    return NextResponse.next();
+    return response;
   }
 
   if (pathname.startsWith("/settings")) {
-    return NextResponse.next();
+    return response;
   }
 
-  return NextResponse.next();
+  return response;
 }
 
 export const config = {

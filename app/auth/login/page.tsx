@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Suspense, useCallback, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { LanguageToggle } from "@/app/components/LanguageToggle";
 import { ErrorBoundary } from "@/app/components/ErrorBoundary";
 import { normalizeAppLang, withLang } from "@/lib/app-i18n";
@@ -11,7 +11,6 @@ import { buildAuthCallbackUrl, signInWithEmail, signInWithGoogle } from "@/lib/s
 
 function LoginContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const lang = normalizeAppLang(searchParams.get("lang"));
   const roleParam = searchParams.get("role");
   const googleAuthEnabled = isGoogleAuthEnabled();
@@ -57,14 +56,15 @@ function LoginContent() {
           : profile?.role === "student"
             ? "/student/dashboard"
             : "/role-selection";
-      router.push(withLang(nextPath, lang));
-      router.refresh();
+      // A full navigation lets the browser send the freshly written Supabase
+      // auth cookie to the server-side proxy before it protects the dashboard.
+      window.location.assign(withLang(nextPath, lang));
     } catch (err: any) {
       setError(err.message || ui.errorGeneric);
     } finally {
       setIsLoading(false);
     }
-  }, [email, lang, password, roleParam, router, ui.errorGeneric]);
+  }, [email, lang, password, roleParam, ui.errorGeneric]);
 
   const handleGoogleLogin = useCallback(async () => {
     setError(null);

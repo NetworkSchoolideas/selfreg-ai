@@ -42,7 +42,7 @@ describe("proxy route protection", () => {
   it("redirects unauthenticated dashboard access to login", async () => {
     (createServerClient as jest.Mock).mockReturnValue({
       auth: {
-        getSession: jest.fn().mockResolvedValue({ data: { session: null } }),
+        getClaims: jest.fn().mockResolvedValue({ data: null, error: null }),
       },
     });
 
@@ -52,13 +52,14 @@ describe("proxy route protection", () => {
     expect(response.headers.get("location")).toBe("https://selfreg.ai/auth/login?lang=en");
   });
 
-  it("uses the authenticated getUser result for profile lookup", async () => {
-    const getUser = jest.fn().mockResolvedValue({
+  it("uses verified claims for profile lookup", async () => {
+    const getClaims = jest.fn().mockResolvedValue({
       data: {
-        user: {
-          id: "verified-user",
+        claims: {
+          sub: "verified-user",
         },
       },
+      error: null,
     });
     const single = jest.fn().mockResolvedValue({ data: { role: "teacher" } });
     const eq = jest.fn().mockReturnValue({ single });
@@ -67,16 +68,7 @@ describe("proxy route protection", () => {
 
     (createServerClient as jest.Mock).mockReturnValue({
       auth: {
-        getSession: jest.fn().mockResolvedValue({
-          data: {
-            session: {
-              user: {
-                id: "untrusted-session-user",
-              },
-            },
-          },
-        }),
-        getUser,
+        getClaims,
       },
       from,
     });
@@ -84,7 +76,7 @@ describe("proxy route protection", () => {
     const response = await proxy(buildRequest("https://selfreg.ai/teacher"));
 
     expect(response.status).toBe(200);
-    expect(getUser).toHaveBeenCalled();
+    expect(getClaims).toHaveBeenCalled();
     expect(eq).toHaveBeenCalledWith("id", "verified-user");
   });
 });
